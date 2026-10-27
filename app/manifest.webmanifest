@@ -1,0 +1,9 @@
+{
+  "name": "Selaqui Security Audit",
+  "short_name": "Selaqui Audit",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0E3F45",
+  "theme_color": "#0E3F45",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
