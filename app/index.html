@@ -175,6 +175,11 @@ textarea{min-height:92px;resize:vertical}
 .ent-b{margin-top:6px;white-space:pre-wrap;word-break:break-word}
 .meta{font-size:12.5px;color:var(--muted);margin-top:6px}
 .nogps{color:var(--serious)}
+.stampbox{margin-top:8px;background:var(--surface2);border-radius:9px;padding:6px 9px;font-size:12px;display:grid;gap:2px}
+.stampbox div{display:grid;grid-template-columns:86px 1fr;gap:6px}
+.stampbox span{color:var(--muted)}
+.stampbox b{font-weight:600;word-break:break-all}
+.trail-ok{border-left:5px solid var(--good)}.trail-bad{border-left:5px solid var(--crit)}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .thumbs button{padding:0;border:0;background:none;position:relative}
 .thumbs img,.thumbs .ph{width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:block}
@@ -320,9 +325,11 @@ const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad=n=>String(n).padStart(2,"0");
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const fmt=iso=>{const d=new Date(iso);return pad(d.getDate())+" "+MON[d.getMonth()]+" "+pad(d.getHours())+":"+pad(d.getMinutes());};
-const fmtFull=iso=>{const d=new Date(iso);return pad(d.getDate())+" "+MON[d.getMonth()]+" "+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());};
-const dayKey=iso=>{const d=new Date(iso);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+// All times are shown in IST regardless of the phone's timezone setting.
+const ist=iso=>new Date(new Date(iso).getTime()+330*60000);
+const fmt=iso=>{const d=ist(iso);return pad(d.getUTCDate())+" "+MON[d.getUTCMonth()]+" "+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes());};
+const fmtFull=iso=>{const d=ist(iso);return pad(d.getUTCDate())+" "+MON[d.getUTCMonth()]+" "+d.getUTCFullYear()+" "+pad(d.getUTCHours())+":"+pad(d.getUTCMinutes())+":"+pad(d.getUTCSeconds());};
+const dayKey=iso=>{const d=ist(iso);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());};
 const ago=t=>{if(!t)return "never";const s=Math.round((Date.now()-t)/1000);return s<45?"just now":s<3600?Math.round(s/60)+" min ago":Math.round(s/3600)+" h ago";};
 const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
 const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}};
@@ -370,7 +377,8 @@ async function loadLocal(){
 async function api(action,body,opts){
   const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),(opts&&opts.timeout)||25000);
   try{
-    const r=await fetch(API,{method:"POST",signal:ctl.signal,headers:Object.assign({"content-type":"application/json"},STATE.token?{authorization:"Bearer "+STATE.token}:{}),body:JSON.stringify(Object.assign({action},body||{}))});
+    const L=GEO.last,geo=L&&Date.now()-L.t<600000?{lat:L.lat,lng:L.lng,acc:L.acc,stale:Date.now()-L.t>60000}:null;
+    const r=await fetch(API,{method:"POST",signal:ctl.signal,headers:Object.assign({"content-type":"application/json"},STATE.token?{authorization:"Bearer "+STATE.token}:{}),body:JSON.stringify(Object.assign({action,geo},body||{}))});
     const j=await r.json().catch(()=>({error:"Bad response ("+r.status+")"}));
     if(r.status===401&&action!=="login"){signOut(true);}
     if(!r.ok){const er=new Error(j.error||("Error "+r.status));er.status=r.status;throw er;}
@@ -553,7 +561,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:lsGet("sa.scope")||"s1",sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedSite:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -757,8 +765,12 @@ function entryCard(e,opts){
    (e.body?'<div class="ent-b">'+esc(e.body)+'</div>':'')+
    ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="meta">'+[esc((e.evid||[]).join(", ")),e.by?"From "+esc(e.by):"",e.ref?"Ref "+esc(e.ref):""].filter(Boolean).join(" · ")+'</div>':'')+
    thumbsHTML(e.photos,e.local)+
-   '<div class="meta">'+geoLink(e.geo,e.gerr)+(e.sts?' · server '+fmt(e.sts):'')+
-   (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?' · <a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw</a>':'')+'</div></div>';
+   '<div class="stampbox"><div><span>Logged by</span><b>'+esc(uname(e.author))+'</b></div>'+
+   '<div><span>Date &amp; time</span><b class="tnum">'+fmtFull(e.ts)+' IST</b></div>'+
+   '<div><span>Received</span><b class="tnum">'+(e.sts?fmtFull(e.sts)+' IST':'Waiting to upload')+'</b></div>'+
+   '<div><span>GPS</span><b>'+geoLink(e.geo,e.gerr)+'</b></div>'+
+   '<div><span>Record</span><b class="tnum">'+esc(e.id)+(e.hash?' · #'+esc(e.hash.slice(0,10)):'')+'</b></div></div>'+
+   (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?'<div class="meta"><a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw this entry</a></div>':'')+'</div>';
 }
 function renderFeed(m){
   let list=D.all.filter(e=>e.kind!=="retract").slice().reverse();
@@ -768,13 +780,52 @@ function renderFeed(m){
   else if(ui.feedKind==="findings")list=list.filter(e=>e.sev&&e.sev!=="info");
   else if(ui.feedKind!=="all")list=list.filter(e=>e.kind===ui.feedKind);
   const shown=list.slice(0,ui.feedN);
-  m.innerHTML='<div class="h-page">Activity</div><div class="muted small">Every entry from both auditors, newest first. Nothing is overwritten; withdrawn entries stay visible.</div>'+
+  if(ui.feedView==="trail"){renderTrail(m);return;}
+  m.innerHTML=feedSwitch()+'<div class="h-page">Activity</div><div class="muted small">Every entry from both auditors, newest first. Nothing is overwritten; withdrawn entries stay visible.</div>'+
    '<div class="seg" style="margin:10px 0 0">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="feedwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
    '<div class="filters"><select id="fd-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(ui.feedSite===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select>'+
    '<select id="fd-kind">'+[["all","All entries"],["point","Point updates"],["note","Notes"],["findings","Findings"],["photos","With photos"],["visit","Check-ins"]].map(([k,l])=>'<option value="'+k+'"'+(ui.feedKind===k?" selected":"")+'>'+l+'</option>').join("")+'</select></div>'+
    '<div class="small muted" style="margin-bottom:8px">'+list.length+' entries</div>'+
    (shown.length?shown.map(e=>entryCard(e,{site:true})).join(""):'<div class="empty">Nothing logged yet.</div>')+
    (list.length>shown.length?'<div class="btn-row" style="justify-content:center"><button class="btn" data-act="more">Show more</button></div>':'');
+}
+
+function feedSwitch(){return '<div class="seg" style="margin:4px 0 10px">'+[["entries","Entries"],["trail","Audit trail"]].map(([k,l])=>'<button type="button" data-act="feedview" data-v="'+k+'" class="'+(ui.feedView===k?"on":"")+'">'+l+'</button>').join("")+'</div>';}
+const ACTION_L={"login.ok":"Signed in","login.failed":"Failed sign-in","login.blocked":"Sign-in blocked","logout":"Signed out","password.changed":"Changed password",
+ "entry.added":"Added entry","note.added":"Added note","entry.withdrawn":"Withdrew entry","site.check-in":"Checked in","site.check-out":"Checked out",
+ "photo.upload":"Uploaded photos","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
+function device(ua){if(!ua)return "";const m=ua.match(/\(([^)]+)\)/);let d=m?m[1].split(";").map(x=>x.trim()).filter(x=>!/^(Linux|U|K|wv|X11)$/.test(x)).slice(0,2).join(" "):"";
+  const b=/EdgA?\//.test(ua)?"Edge":/SamsungBrowser/.test(ua)?"Samsung Internet":/CriOS|Chrome\//.test(ua)?"Chrome":/Firefox|FxiOS/.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":/Deno/.test(ua)?"server":"";return [d,b].filter(Boolean).join(" · ");}
+let trailCache=null;
+function renderTrail(m){
+  const T=trailCache;
+  let h=feedSwitch()+'<div class="h-page">Audit trail</div><div class="muted small">Every action on the server: sign-ins, failed sign-ins, entries, withdrawals, photo uploads and backups. Each record is chained to the one before it, so an edit or deletion would show here as a broken chain.</div>';
+  if(!T){m.innerHTML=h+'<div class="empty">Loading…</div>';loadTrail();return;}
+  if(T.err){m.innerHTML=h+'<div class="empty">Could not load the audit trail ('+esc(T.err)+'). It needs signal.</div><div class="btn-row" style="justify-content:center"><button class="btn" data-act="trailreload">Try again</button></div>';return;}
+  const c=T.check,ok=c.entries.ok&&c.activity.ok;
+  h+='<div class="card '+(ok?"trail-ok":"trail-bad")+'" style="margin-top:10px"><div class="card-t">'+(ok?"✓ Chain intact":"⚠ Chain broken")+'</div><div class="small" style="margin-top:3px">'+
+     c.entries.rows+' log entries · '+c.activity.rows+' trail records checked just now'+(ok?'':'<br>First mismatch: '+esc(c.entries.firstBad||c.activity.firstBad))+'</div>'+
+     '<div class="btn-row"><button class="btn sm" data-act="trailreload">Re-check</button></div></div>';
+  let list=T.rows;if(ui.feedWho!=="all")list=list.filter(r=>r.actor===ui.feedWho);
+  h+='<div class="seg" style="margin:0 0 10px">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="trailwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  h+=list.length?list.map(r=>{const u=USERS[r.actor]?r.actor:null;const d=r.detail||{};
+    const what=[d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
+    return '<div class="ent" style="--ac:'+(u?"var(--"+u+")":r.action==="login.failed"||r.action==="login.blocked"?"var(--crit)":"var(--neutral)")+'"><div class="ent-h">'+(u?av(u,"sm"):'')+'<b>'+esc(ACTION_L[r.action]||r.action)+'</b><span class="muted">'+esc(u?uname(u):(r.actor||"System"))+'</span></div>'+
+     (what?'<div class="small" style="margin-top:4px">'+esc(what)+'</div>':'')+
+     '<div class="stampbox"><div><span>Server time</span><b class="tnum">'+fmtFull(r.at)+' IST</b></div>'+(d.deviceTime?'<div><span>Phone time</span><b class="tnum">'+fmtFull(d.deviceTime)+' IST</b></div>':'')+
+     '<div><span>GPS</span><b>'+geoLink(r.geo,d.gpsError||(r.actor?"":"server job"))+'</b></div>'+
+     (r.ip?'<div><span>Network</span><b>'+esc(r.ip)+'</b></div>':'')+(r.ua?'<div><span>Device</span><b>'+esc(device(r.ua))+'</b></div>':'')+
+     (r.target?'<div><span>Record</span><b>'+esc(r.target)+'</b></div>':'')+'<div><span>Trail #</span><b class="tnum">'+r.id+' · '+esc((r.hash||"").slice(0,12))+'</b></div></div></div>';}).join(""):'<div class="empty">No actions recorded yet.</div>';
+  m.innerHTML=h;
+}
+async function loadTrail(){
+  try{const r=await api("trail");trailCache={rows:r.activity,check:r.check};}catch(e){trailCache={err:e.message};}
+  if(ui.tab==="feed"&&ui.feedView==="trail"&&!ui.sheet)render();
+}
+function trailCSV(rows){
+  const out=[["Trail_No","Server_Time","Actor","Action","Record","Site","Point","Status","Severity","Phone_Time","Latitude","Longitude","Accuracy_m","IP","Device","Hash"]];
+  for(const r of rows.slice().reverse()){const d=r.detail||{};out.push([r.id,fmtFull(r.at),r.actor?uname(r.actor):"System",ACTION_L[r.action]||r.action,r.target,d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point,d.status,d.severity,d.deviceTime?fmtFull(d.deviceTime):"",r.geo?r.geo.lat:"",r.geo?r.geo.lng:"",r.geo?Math.round(r.geo.acc):"",r.ip,device(r.ua),r.hash]);}
+  return toCSV(out);
 }
 
 /* ================= Backup / account ================= */
@@ -789,8 +840,8 @@ function statusCSV(){
   return toCSV(rows);
 }
 function logCSV(){
-  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn"]];
-  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":""]);}
+  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn","Record_Hash"]];
+  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":"",e.hash||""]);}
   return toCSV(rows);
 }
 function renderMore(m){
@@ -804,7 +855,7 @@ function renderMore(m){
    '<div class="card"><div class="card-t">Server backups</div><div class="small muted" style="margin:3px 0 8px">A full copy of all entries is saved on the server every hour, on the hour. Photos are stored separately and never deleted.</div>'+
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
-   '<div class="btn-row"><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button></div></div>'+
+   '<div class="btn-row"><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
    '<div class="card"><div class="card-t">Before each site</div><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Tap the GPS chip and allow location.</li><li>Take one test photo and check it shows in Activity.</li><li>Check in at the gate; check out when you leave.</li><li>Before leaving, make sure the sync chip says <b>Synced</b>.</li></ul></div>';
   loadBackups();
 }
@@ -831,7 +882,9 @@ function closeSheet(force){
 function readDraftSafe(){if(!$("#sheet").hidden)readDraft();}
 function formHTML(sec){
   const sts=sec?STATUS[sec]:null;
+  const L=GEO.last;
   return '<div class="form"><div class="form-h">'+av(STATE.user,"sm")+'Add as '+esc(uname(STATE.user))+'</div>'+
+   '<div class="small muted" style="margin-top:4px">Stamped on save: '+esc(uname(STATE.user))+' · date &amp; time · '+(L&&Date.now()-L.t<60000?'GPS ±'+Math.round(L.acc)+' m':'<span class="nogps">GPS not fixed yet – tap the GPS chip</span>')+'</div>'+
    (sts?'<span class="lbl">Status <span class="muted">(optional; leave blank to add evidence only)</span></span><div class="opts" data-grp="status">'+sts.map(([k,l,c])=>'<button type="button" class="opt'+(draft.status===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="status" data-v="'+k+'">'+l+'</button>').join("")+'</div>':'')+
    '<span class="lbl">Observation / evidence note</span><textarea id="d-body" placeholder="What did you see, check or hear?">'+esc(draft.body)+'</textarea>'+
    '<span class="lbl">Finding severity <span class="muted">(optional)</span></span><div class="opts">'+SEV.map(([k,l,c])=>'<button type="button" class="opt'+(draft.sev===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="sev" data-v="'+k+'">'+l+'</button>').join("")+'</div>'+
@@ -936,6 +989,7 @@ async function doLogin(){
   const pw=$("#l-pw").value;if(!loginWho||!pw)return;
   const btn=$("#login-form .btn");btn.disabled=true;btn.textContent="Signing in…";$("#l-err").textContent="";
   try{
+    startGeo();await Promise.race([stamp(),new Promise(r=>setTimeout(r,3500))]);
     const r=await api("login",{username:loginWho,password:pw});
     if(STATE.user&&STATE.user!==r.username&&STATE.outbox.size){$("#l-err").textContent="This phone has unsent entries from "+uname(STATE.user)+". Sign in as them first to upload.";btn.disabled=false;btn.textContent="Sign in";return;}
     STATE.user=r.username;STATE.token=r.token;lsSet("sa.user",r.username);lsSet("sa.token",r.token);
@@ -970,6 +1024,10 @@ document.addEventListener("click",async ev=>{
     case "syncnow":scheduleSync(0);toast("Syncing…",1500);break;
     case "feedwho":ui.feedWho=v;ui.feedN=60;ui.tab="feed";render();break;
     case "more":ui.feedN+=60;render();break;
+    case "feedview":ui.feedView=v;if(v==="trail")trailCache=null;render();break;
+    case "trailreload":trailCache=null;render();break;
+    case "trailwho":ui.feedWho=v;render();break;
+    case "csv3":try{const r=await api("trail");download("selaqui_audit_trail_"+dayKey(new Date().toISOString())+".csv",trailCSV(r.activity));}catch(e){toast(e.message);}break;
     case "dset":readDraft();draft[t.dataset.f]=draft[t.dataset.f]===v?"":v;renderSheet();break;
     case "devid":readDraft();draft.evid=draft.evid.includes(v)?draft.evid.filter(x=>x!==v):draft.evid.concat(v);renderSheet();break;
     case "drm":readDraft();{const p=draft.photos.splice(Number(v),1)[0];if(p)URL.revokeObjectURL(p.url);}renderSheet();break;

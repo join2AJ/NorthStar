@@ -20,6 +20,20 @@ who, when and GPS, and can carry photos.
   areas (W-xx, from the Scope of Work) and 12 stakeholder interviews (I-xx, from the requisition).
 - 471 points in total.
 
+## What every log records
+
+Each entry is stamped with: who logged it (taken from the signed-in session, not typed), phone date and
+time to the second, server receive time, GPS latitude/longitude with accuracy (or the reason there is no
+fix), IP and device, a record ID and a SHA-256 hash linking it to the previous record. All times show in IST.
+
+## Audit trail
+
+Activity tab → Audit trail lists every action on the server: sign-ins, failed sign-ins, blocked sign-ins,
+sign-outs, password changes, entries, notes, withdrawals, check-in/out, photo uploads, backups created and
+downloaded. The log tables are append-only in the database (updates and deletes are rejected), and both are
+hash-chained; the app re-checks the chain each time the trail is opened and shows "Chain intact" or the
+first broken record. The trail is included in every hourly backup and can be exported as CSV.
+
 ## How data is kept safe
 
 - Entries are append-only. Nothing is overwritten; a wrong entry is *withdrawn* by its author and stays visible.

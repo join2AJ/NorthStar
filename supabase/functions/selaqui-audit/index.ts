@@ -42,6 +42,22 @@ async function authUser(req: Request) {
   return { username: rows[0].username as string, name: rows[0].display_name as string, tokenHash: await sha256(tok) };
 }
 
+/* ---------- audit trail ---------- */
+function reqMeta(req: Request) {
+  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || req.headers.get("x-real-ip") || null;
+  return { ip, ua: (req.headers.get("user-agent") || "").slice(0, 300) || null };
+}
+function cleanGeo(g: any) {
+  return g && isFinite(g.lat) && isFinite(g.lng)
+    ? { lat: Number(g.lat), lng: Number(g.lng), acc: Number(g.acc) || 0, stale: !!g.stale } : null;
+}
+async function logActivity(req: Request, actor: string | null, action: string, target: string | null, detail: unknown, geo: unknown) {
+  const m = reqMeta(req);
+  const g = cleanGeo(geo);
+  await sql`insert into selaqui.activity(actor, action, target, detail, geo, ip, ua)
+    values (${actor}, ${action}, ${target}, ${detail == null ? null : sql.json(detail as any)}, ${g ? sql.json(g) : null}, ${m.ip}, ${m.ua})`;
+}
+
 /* ---------- validation ---------- */
 const SCOPES = new Set(["G", "s1", "s2", "s3", "s4", "s5", "s6"]);
 const KINDS = new Set(["point", "note", "visit", "retract"]);
@@ -62,10 +78,7 @@ function cleanEntry(e: any, author: string) {
     if (!PHOTO_RE.test(full) || !PHOTO_RE.test(thumb)) throw new HttpError(400, "Bad photo path");
     return { p: full, t: thumb, w: Number(p.w) || 0, h: Number(p.h) || 0, kb: Number(p.kb) || 0 };
   }) : [];
-  let geo = null;
-  if (e.geo && isFinite(e.geo.lat) && isFinite(e.geo.lng)) {
-    geo = { lat: Number(e.geo.lat), lng: Number(e.geo.lng), acc: Number(e.geo.acc) || 0, stale: !!e.geo.stale };
-  }
+  const geo = cleanGeo(e.geo);
   const evid = Array.isArray(e.evid) ? e.evid.slice(0, 10).map((x: unknown) => String(x).slice(0, 40)) : [];
   return {
     id, author, kind: e.kind, scope,
@@ -78,25 +91,32 @@ const outEntry = (r: any) => ({
   id: r.id, seq: Number(r.seq), author: r.author, kind: r.kind, scope: r.scope, item: r.item_id,
   status: r.status, sev: r.sev, evid: r.evid, ref: r.ref, by: r.provided_by, body: r.body,
   photos: r.photos, geo: r.geo, gerr: r.gerr, target: r.target,
-  ts: new Date(r.device_ts).toISOString(), sts: new Date(r.server_ts).toISOString(),
+  ts: new Date(r.device_ts).toISOString(), sts: new Date(r.server_ts).toISOString(), hash: r.hash,
+});
+const outActivity = (r: any) => ({
+  id: Number(r.id), at: new Date(r.at).toISOString(), actor: r.actor, action: r.action, target: r.target,
+  detail: r.detail, geo: r.geo, ip: r.ip, ua: r.ua, hash: r.hash,
 });
 
 /* ---------- backup ---------- */
-async function makeBackup(trigger: string) {
+async function makeBackup(req: Request, actor: string | null, trigger: string, geo?: unknown) {
   const rows = await sql`select * from selaqui.entries order by seq`;
+  const acts = await sql`select * from selaqui.activity order by id`;
+  const chk = await sql`select selaqui.verify_chains() v`;
   const users = await sql`select username, display_name from selaqui.users order by username`;
   const now = new Date();
   const ist = new Date(now.getTime() + 330 * 60000).toISOString(); // IST for a readable path
   const path = `backups/${ist.slice(0, 10)}/${ist.slice(11, 13)}${ist.slice(14, 16)}-${trigger}.json`;
   const body = JSON.stringify({
     app: "selaqui-audit", version: 2, createdAt: now.toISOString(), trigger,
-    users, entryCount: rows.length, entries: rows.map(outEntry),
+    users, entryCount: rows.length, chainCheck: chk[0].v, entries: rows.map(outEntry), auditTrail: acts.map(outActivity),
   });
   const { error } = await sb.storage.from(BUCKET).upload(path, new Blob([body], { type: "application/json" }), {
     contentType: "application/json", upsert: true,
   });
   if (error) throw new HttpError(500, "Backup upload failed: " + error.message);
   await sql`insert into selaqui.backups(path, entries, bytes, trigger) values (${path}, ${rows.length}, ${body.length}, ${trigger})`;
+  await logActivity(req, actor, "backup.created", path, { trigger, entries: rows.length, bytes: body.length }, geo);
   return { path, entries: rows.length, bytes: body.length };
 }
 
@@ -107,23 +127,28 @@ async function handle(req: Request, b: any) {
   if (action === "cron") {
     const cfg = await sql`select value from selaqui.config where key = 'cron_secret'`;
     if (!cfg.length || req.headers.get("x-cron-secret") !== cfg[0].value) throw new HttpError(403, "Forbidden");
-    return await makeBackup("hourly");
+    return await makeBackup(req, null, "hourly");
   }
 
   if (action === "login") {
     const username = String(b.username || "").toLowerCase().trim();
     const password = String(b.password || "");
     const fails = await sql`select count(*)::int n from selaqui.login_failures where username = ${username} and at > now() - interval '15 minutes'`;
-    if (fails[0].n >= 8) throw new HttpError(429, "Too many wrong attempts. Wait 15 minutes.");
+    if (fails[0].n >= 8) {
+      await logActivity(req, username || null, "login.blocked", null, { reason: "too many failures" }, b.geo);
+      throw new HttpError(429, "Too many wrong attempts. Wait 15 minutes.");
+    }
     const u = await sql`select username, display_name from selaqui.users
       where username = ${username} and pass_hash = extensions.crypt(${password}, pass_hash)`;
     if (!u.length) {
       await sql`insert into selaqui.login_failures(username) values (${username})`;
+      await logActivity(req, username.slice(0, 40) || null, "login.failed", null, null, b.geo);
       throw new HttpError(401, "Wrong username or password.");
     }
     const tok = randomToken();
     await sql`insert into selaqui.sessions(token_hash, username) values (${await sha256(tok)}, ${username})`;
     await sql`delete from selaqui.sessions where expires_at < now()`;
+    await logActivity(req, username, "login.ok", null, null, b.geo);
     return { token: tok, username, name: u[0].display_name };
   }
 
@@ -135,6 +160,7 @@ async function handle(req: Request, b: any) {
 
     case "logout":
       await sql`delete from selaqui.sessions where token_hash = ${me.tokenHash}`;
+      await logActivity(req, me.username, "logout", null, null, b.geo);
       return { ok: true };
 
     case "password": {
@@ -145,6 +171,7 @@ async function handle(req: Request, b: any) {
       if (!ok.length) throw new HttpError(400, "Current password is wrong.");
       await sql`update selaqui.users set pass_hash = extensions.crypt(${nw}, extensions.gen_salt('bf', 10)) where username = ${me.username}`;
       await sql`delete from selaqui.sessions where username = ${me.username} and token_hash <> ${me.tokenHash}`;
+      await logActivity(req, me.username, "password.changed", null, null, b.geo);
       return { ok: true };
     }
 
@@ -168,11 +195,18 @@ async function handle(req: Request, b: any) {
         }
       }
       const saved: string[] = [];
+      const m = reqMeta(req);
       for (const raw of clean) {
-        const e = { ...raw, photos: sql.json(raw.photos), geo: raw.geo ? sql.json(raw.geo) : null };
-        await sql`insert into selaqui.entries ${sql(e, "id", "author", "kind", "scope", "item_id", "status", "sev", "evid", "ref", "provided_by", "body", "photos", "geo", "gerr", "target", "device_ts")}
-          on conflict (id) do nothing`;
-        saved.push(e.id);
+        const e = { ...raw, photos: sql.json(raw.photos), geo: raw.geo ? sql.json(raw.geo) : null, ip: m.ip, ua: m.ua };
+        const ins = await sql`insert into selaqui.entries ${sql(e, "id", "author", "kind", "scope", "item_id", "status", "sev", "evid", "ref", "provided_by", "body", "photos", "geo", "gerr", "target", "device_ts", "ip", "ua")}
+          on conflict (id) do nothing returning seq`;
+        if (ins.length) {
+          const action = raw.kind === "retract" ? "entry.withdrawn" : raw.kind === "visit" ? "site.check-" + (raw.status || "") : raw.kind === "note" ? "note.added" : "entry.added";
+          await logActivity(req, me.username, action, raw.kind === "retract" ? raw.target : raw.id,
+            { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr },
+            raw.geo);
+        }
+        saved.push(raw.id);
       }
       return { saved };
     }
@@ -186,6 +220,7 @@ async function handle(req: Request, b: any) {
         if (error) throw new HttpError(500, error.message);
         out.push({ path: p, url: data.signedUrl });
       }
+      if (out.length) await logActivity(req, me.username, "photo.upload", null, { files: out.map((o) => o.path) }, b.geo);
       return { uploads: out };
     }
 
@@ -197,6 +232,8 @@ async function handle(req: Request, b: any) {
       if (error) throw new HttpError(500, error.message);
       const urls: Record<string, string> = {};
       for (const d of data) if (d.signedUrl && d.path) urls[d.path] = d.signedUrl;
+      const bk = paths.filter((p) => p.startsWith("backups/"));
+      if (bk.length) await logActivity(req, me.username, "backup.downloaded", bk[0], null, b.geo);
       return { urls };
     }
 
@@ -206,7 +243,16 @@ async function handle(req: Request, b: any) {
     }
 
     case "backupNow":
-      return await makeBackup("manual-" + me.username);
+      return await makeBackup(req, me.username, "manual-" + me.username, b.geo);
+
+    case "trail": {
+      const before = Number(b.before) || 0;
+      const rows = before
+        ? await sql`select * from selaqui.activity where id < ${before} order by id desc limit 300`
+        : await sql`select * from selaqui.activity order by id desc limit 300`;
+      const chk = await sql`select selaqui.verify_chains() v`;
+      return { activity: rows.map(outActivity), check: chk[0].v };
+    }
 
     default:
       throw new HttpError(400, "Unknown action");
