@@ -243,6 +243,12 @@ async function handle(req: Request, b: any) {
       return { backups: rows };
     }
 
+    case "resources": {
+      // Travel details and contacts; kept on the server so they are only visible after sign-in.
+      const r = await sql`select value from selaqui.config where key = 'resources'`;
+      return { resources: r.length ? JSON.parse(r[0].value) : null };
+    }
+
     case "backupNow":
       return await makeBackup(req, me.username, "manual-" + me.username, b.geo);
 

@@ -198,7 +198,11 @@ textarea{min-height:92px;resize:vertical}
 .stampbox{margin-top:8px;background:var(--surface2);border-radius:9px;padding:6px 9px;font-size:12px;display:grid;gap:2px}
 .stampbox div{display:grid;grid-template-columns:86px 1fr;gap:6px}
 .stampbox span{color:var(--muted)}
-.stampbox b{font-weight:600;word-break:break-all}
+.stampbox b{font-weight:600;overflow-wrap:anywhere}
+.res-for{margin-top:8px;font-size:13.5px;background:var(--brand-soft);border-radius:9px;padding:7px 10px}
+.res-for span{display:block;font-size:11.5px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.4px}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:4px}
+.tabs button{font-size:10.5px}
 .trail-ok{border-left:5px solid var(--good)}.trail-bad{border-left:5px solid var(--crit)}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .thumbs button{padding:0;border:0;background:none;position:relative}
@@ -272,7 +276,7 @@ textarea{min-height:92px;resize:vertical}
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.3";
+const VERSION="2026-10-28.4";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -588,7 +592,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:lsGet("sa.scope")||"s1",sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,info:"contacts",pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -596,6 +600,7 @@ const ICON={
  sites:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 21V9l6-4v4l6-4v4l6-4v16z"/><path d="M7 17h2M12 17h2M17 17h1"/></svg>',
  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg>',
  feed:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+ info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M18 20h2V6M8 9h6M8 13h6"/></svg>',
  more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>'
 };
 const LOGO='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>';
@@ -619,7 +624,7 @@ function renderTop(){
     '<button type="button" class="chip-h" data-act="gallery">📷 Photos</button></div>';
 }
 function renderTabs(){
-  const T=[["dash","Dashboard"],["sites","Sites"],["list","Checklist"],["feed","Activity"],["more","Backup"]];
+  const T=[["dash","Home"],["sites","Sites"],["list","Checklist"],["feed","Activity"],["info","Resources"],["more","Backup"]];
   $("#tabs").innerHTML=T.map(([k,l])=>'<button type="button" data-act="tab" data-v="'+k+'" class="'+(ui.tab===k?"on":"")+'">'+ICON[k]+l+'</button>').join("");
 }
 function render(){
@@ -627,7 +632,7 @@ function render(){
   $("#login").hidden=true;
   derive();renderTop();renderTabs();
   const m=$("#main");
-  ({dash:renderDash,sites:renderSites,list:renderList,feed:renderFeed,more:renderMore})[ui.tab](m);
+  (({dash:renderDash,sites:renderSites,list:renderList,feed:renderFeed,info:renderInfo,more:renderMore})[ui.tab]||renderDash)(m);
   $("#fab").hidden=!!ui.sheet||ui.tab==="more";
   hydrateThumbs(m);
   if(ui.sheet)renderSheet();
@@ -921,6 +926,57 @@ function trailCSV(rows){
   return toCSV(out);
 }
 
+/* ================= Resources ================= */
+// Contacts and travel are served by the API after sign-in (not baked into this public page) and cached for offline use.
+let RES=null,resLoading=false;
+async function loadResources(force){
+  if(!RES){const c=await dbGet("meta","resources");if(c)RES=c;}
+  if(resLoading||(!force&&RES&&RES._at&&Date.now()-RES._at<10*60000))return;
+  resLoading=true;
+  try{const r=await api("resources");if(r.resources){RES=Object.assign(r.resources,{_at:Date.now()});await dbPut("meta",RES,"resources");}}
+  catch(e){if(!RES)RES={_err:e.message};}
+  finally{resLoading=false;if(ui.tab==="info"&&!ui.sheet)render();}
+}
+const mapUrl=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+function phoneBtns(ph){
+  if(!ph)return "";
+  const d=ph.replace(/[^0-9+]/g,""),wa=/^\+91\d{10}$/.test(d)?d.slice(1):"";
+  return '<a class="btn sm" href="tel:'+esc(d)+'">📞 Call</a>'+(wa?'<a class="btn sm" href="https://wa.me/'+wa+'" target="_blank" rel="noopener">WhatsApp</a>':'');
+}
+const fmtPhone=ph=>{const d=ph.replace(/[^0-9]/g,"");return /^91\d{10}$/.test(d)?"+91 "+d.slice(2,7)+" "+d.slice(7):ph;};
+function renderInfo(m){
+  if(!RES||(RES._err&&!RES.contacts)){m.innerHTML='<div class="h-page">Resources</div><div class="empty">'+(RES&&RES._err?'Could not load resources ('+esc(RES._err)+'). They need signal the first time.':'Loading…')+'</div>';loadResources(true);return;}
+  loadResources(false);
+  const groups=[];for(const c of RES.contacts||[]){let g=groups.find(x=>x.n===c.group);if(!g){g={n:c.group,l:[]};groups.push(g);}g.l.push(c);}
+  const tcol={Train:"var(--s2)",Cab:"var(--s4)",Hotel:"var(--s6)","Audit day 1":"var(--s1)"};
+  let h='<div class="h-page">Resources</div><div class="muted small">Who to contact for what, travel bookings and site addresses. Tap to call, WhatsApp or open in Maps. Saved on this phone for use without signal.</div>';
+  h+='<div class="seg" style="margin:10px 0 4px">'+[["contacts","Contacts"],["travel","Travel"],["sites","Sites"],["about","Engagement"]].map(([k,l])=>'<button type="button" data-act="infosec" data-v="'+k+'" class="'+(ui.info===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  if(ui.info==="contacts"){
+    for(const g of groups){
+      h+='<div class="sec-h">'+esc(g.n)+'</div>';
+      for(const c of g.l)h+='<div class="card res"><div class="card-t">'+esc(c.name)+'</div><div class="small" style="color:var(--ink2)">'+esc(c.role)+(c.company?' · '+esc(c.company):'')+'</div>'+
+        '<div class="res-for"><span>Contact for</span>'+esc(c.for)+'</div>'+
+        '<div class="small tnum" style="margin-top:6px"><b>'+esc(fmtPhone(c.phone||""))+'</b>'+(c.email?' · <a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>':'')+'</div>'+
+        '<div class="btn-row">'+phoneBtns(c.phone)+(c.email?'<a class="btn sm" href="mailto:'+esc(c.email)+'">✉ Email</a>':'')+'</div></div>';
+    }
+  }else if(ui.info==="travel"){
+    for(const t of RES.travel||[]){
+      h+='<div class="card site-card" style="--sc:'+(tcol[t.type]||"var(--brand)")+'"><div class="small" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">'+esc(t.type)+'</div><div class="card-t">'+esc(t.title)+'</div><div class="small" style="margin-top:2px"><b>'+esc(t.when)+'</b></div>'+
+        '<div class="stampbox" style="margin-top:9px">'+(t.rows||[]).map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join("")+'</div>'+
+        (t.note?'<div class="hint" style="margin-bottom:0">'+esc(t.note)+'</div>':'')+
+        (t.map?'<div class="btn-row"><a class="btn sm" href="'+mapUrl(t.map)+'" target="_blank" rel="noopener">📍 Open in Maps</a></div>':'')+'</div>';
+    }
+  }else if(ui.info==="sites"){
+    for(const x of RES.sites||[]){const sid=SITE[x.site]?x.site:null;
+      h+='<div class="card'+(sid?' site-card':'')+'" style="'+(sid?'--sc:'+scol(sid):'')+'"><div style="display:flex;gap:10px;align-items:flex-start">'+(sid?badge(sid):'<span class="badge" style="--sc:var(--s0)">✈</span>')+'<div><div class="card-t">'+esc(x.name)+'</div><div class="small muted">'+esc(x.addr)+'</div></div></div>'+
+        '<div class="btn-row"><a class="btn sm" href="'+mapUrl(x.addr)+'" target="_blank" rel="noopener">📍 Directions</a>'+(sid?'<button class="btn sm" data-act="openscope" data-v="'+sid+'">Open checklist</button>':'')+'</div></div>';}
+  }else{
+    h+='<div class="card"><div class="stampbox" style="margin-top:0">'+(RES.engagement||[]).map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join("")+'</div></div>';
+  }
+  h+='<div class="small muted" style="text-align:center;margin:6px 0 14px">Updated '+esc(RES.updated||"")+(RES._at?' · fetched '+ago(RES._at):'')+'</div>';
+  m.innerHTML=h;
+}
+
 /* ================= Backup / account ================= */
 let backupsCache=null;
 function csvCell(v){if(v==null)v="";v=String(v).replace(/\r?\n/g," | ");return /[",]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
@@ -1102,7 +1158,7 @@ async function doLogin(){
     const r=await api("login",{username:loginWho,password:pw});
     if(STATE.user&&STATE.user!==r.username&&STATE.outbox.size){$("#l-err").textContent="This phone has unsent entries from "+uname(STATE.user)+". Sign in as them first to upload.";btn.disabled=false;btn.textContent="Sign in";return;}
     STATE.user=r.username;STATE.token=r.token;lsSet("sa.user",r.username);lsSet("sa.token",r.token);
-    startGeo();render();scheduleSync(50);
+    startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
   }catch(e){$("#l-err").textContent=e.name==="AbortError"?"No response. Check the signal and try again.":e.message;btn.disabled=false;btn.textContent="Sign in";}
 }
 function signOut(expired){
@@ -1126,6 +1182,7 @@ document.addEventListener("click",async ev=>{
     case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
     case "qpri":ui.pri=v;lsSet("sa.pri",v);render();break;
     case "qwhen":ui.when=v;lsSet("sa.when",v);render();break;
+    case "infosec":ui.info=v;window.scrollTo(0,0);render();break;
     case "photowho":ui.feedWho=v;ui.photoN=60;render();break;
     case "morephotos":ui.photoN+=60;render();break;
     case "gallery":ui.tab="feed";ui.feedView="photos";lsSet("sa.tab","feed");window.scrollTo(0,0);render();break;
@@ -1199,7 +1256,7 @@ setInterval(()=>{if(STATE.user&&STATE.token&&!document.hidden)renderTop();},3000
   }
   loginWho=STATE.user;
   render();
-  if(STATE.token){startGeo();scheduleSync(50);}
+  if(STATE.token){startGeo();scheduleSync(50);setTimeout(()=>loadResources(true),1500);}
 })();
 })();
 </script>
