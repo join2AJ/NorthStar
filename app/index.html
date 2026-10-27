@@ -425,7 +425,13 @@ async function sync(){
     }
     // 2. pull everything newer than what this phone has
     for(let guard=0;guard<20;guard++){
-      const r=await api("pull",{since:STATE.lastSeq});
+      let r=await api("pull",{since:STATE.lastSeq});
+      // The server's epoch changes when the log is reset; drop this phone's cached copy (never the unsent outbox).
+      const ep=await dbGet("meta","epoch");
+      if(r.epoch&&ep!==r.epoch){
+        if(STATE.synced.size||STATE.lastSeq){STATE.synced.clear();STATE.lastSeq=0;if(idb){try{await reqP(tx("entries","readwrite").clear());}catch(e){}}changed=true;r=await api("pull",{since:0});}
+        await dbPut("meta",r.epoch,"epoch");
+      }
       if(r.entries.length){
         r.entries.forEach(e=>{STATE.synced.set(e.id,e);if(e.seq>STATE.lastSeq)STATE.lastSeq=e.seq;});
         await dbPutMany("entries",r.entries);await dbPut("meta",STATE.lastSeq,"lastSeq");changed=true;

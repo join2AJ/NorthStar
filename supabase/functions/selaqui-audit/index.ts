@@ -179,7 +179,8 @@ async function handle(req: Request, b: any) {
       const since = Math.max(0, Number(b.since) || 0);
       const rows = await sql`select * from selaqui.entries where seq > ${since} order by seq limit 3000`;
       const users = await sql`select username, display_name from selaqui.users`;
-      return { entries: rows.map(outEntry), more: rows.length === 3000, users };
+      const ep = await sql`select value from selaqui.config where key = 'epoch'`;
+      return { entries: rows.map(outEntry), more: rows.length === 3000, users, epoch: ep.length ? ep[0].value : "1" };
     }
 
     case "push": {
