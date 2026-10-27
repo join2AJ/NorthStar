@@ -157,11 +157,25 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .opt.plain::before{display:none}
 .opt.on{background:color-mix(in srgb,var(--pc,var(--brand)) 20%,var(--surface));border-color:var(--pc,var(--brand));box-shadow:inset 0 0 0 1px var(--pc,var(--brand))}
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.filters select{padding:9px 8px;font-size:14px}
 input[type=text],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;font-size:16px}
 textarea{min-height:92px;resize:vertical}
 .cat-h{font-weight:700;font-size:13.5px;margin:16px 0 6px;color:var(--brand);display:flex;justify-content:space-between}
 .row{display:flex;gap:11px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pc,var(--line));border-radius:12px;padding:10px 11px;margin:0 0 7px}
 .rbody{display:block;min-width:0;flex:1}
+.tick{flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);margin-top:1px;position:relative}
+.tick.on{background:var(--good);box-shadow:none}
+.tick.on::after{content:"";position:absolute;left:8px;top:4px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.row.done{background:color-mix(in srgb,var(--good) 5%,var(--surface))}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (min-width:600px){.gal{grid-template-columns:repeat(4,1fr)}}
+.gi{padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);text-align:left;border-bottom:3px solid var(--ac)}
+.gi img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--surface2)}
+.gc{display:flex;gap:5px;align-items:flex-start;padding:5px 6px;font-size:11px;line-height:1.3;color:var(--ink2)}
+.lb-info{background:rgba(255,255,255,.08);border-radius:10px;padding:8px 11px;font-size:13px;max-width:560px;width:100%}
+.lb-info a{color:#9fd6ff}
+.lb-btns{display:flex;gap:10px}
+.lb-btns .btn{background:#fff;color:#0E3F45;border:0}
 .rtop{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
 .rtxt{display:block;margin-top:3px;font-size:14.5px}
 .rmeta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--muted)}
@@ -212,8 +226,8 @@ textarea{min-height:92px;resize:vertical}
 
 /* misc */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:70;background:#14212B;color:#fff;border-radius:10px;padding:10px 14px;font-size:14px;max-width:90%;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-.lightbox{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;gap:10px;color:#fff}
-.lightbox img{max-width:100%;max-height:85vh;border-radius:6px}
+.lightbox{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);display:flex;flex-direction:column;align-items:center;justify-content:safe center;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(14px + env(safe-area-inset-bottom,0px));gap:10px;color:#fff;overflow-y:auto}
+.lightbox img{max-width:100%;max-height:60vh;border-radius:6px;flex:none}
 .tip{position:fixed;z-index:90;pointer-events:none;background:#14212B;color:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;max-width:240px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .login{position:fixed;inset:0;z-index:95;background:linear-gradient(160deg,var(--head),#0b2f33 60%,#09262a);display:flex;align-items:center;justify-content:center;padding:24px;color:#fff}
 .login .box{width:100%;max-width:380px}
@@ -567,7 +581,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:lsGet("sa.scope")||"s1",sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedView:"entries",feedSite:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,pri:"all",when:"all",st:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -594,7 +608,8 @@ function renderTop(){
   $("#top").innerHTML='<div class="top-row"><div class="app-title">'+LOGO+'Selaqui audit</div>'+
     '<button class="me" type="button" data-act="tab" data-v="more">'+av(STATE.user)+esc(USERS[STATE.user].short)+'</button></div>'+
     '<div class="sub-row"><button type="button" class="chip-h '+sc+'" data-act="syncnow"><i></i>'+esc(sl)+'</button>'+
-    '<button type="button" class="chip-h '+gc+'" data-act="gps"><i></i>'+esc(gl)+'</button></div>';
+    '<button type="button" class="chip-h '+gc+'" data-act="gps"><i></i>'+esc(gl)+'</button>'+
+    '<button type="button" class="chip-h" data-act="gallery">📷 Photos</button></div>';
 }
 function renderTabs(){
   const T=[["dash","Dashboard"],["sites","Sites"],["list","Checklist"],["feed","Activity"],["more","Backup"]];
@@ -646,7 +661,7 @@ function renderDash(m){
      stackBar([{n:T.covered,c:"var(--good)",l:"Covered"},{n:T.progress,c:"var(--warn)",l:"In progress"},{n:T.none,c:"transparent",l:"Not covered"}],true,"All sites")+'</div></div>'+legend+'</div>';
   h+='<div class="tiles">'+
      '<div class="tile"><div class="l">Entries logged</div><div class="v">'+D.live.filter(e=>e.kind!=="visit").length+'</div><div class="s">'+STATE.outbox.size+' waiting to upload</div></div>'+
-     '<div class="tile"><div class="l">Photos</div><div class="v">'+photos+'</div><div class="s">across all entries</div></div>'+
+     '<button type="button" class="tile" style="text-align:left" data-act="gallery"><div class="l">Photos</div><div class="v">'+photos+'</div><div class="s" style="color:var(--brand);font-weight:600">Open gallery ›</div></button>'+
      '<div class="tile"><div class="l">Findings</div><div class="v">'+findings.length+'</div><div class="s">'+sevPill("high")+' '+high+'</div></div>'+
      '<div class="tile"><div class="l">Gaps</div><div class="v">'+Array.from(D.pts.values()).filter(p=>p.status==="notavail"||p.status==="noncomp").length+'</div><div class="s">Not available or non-compliant</div></div></div>';
 
@@ -719,18 +734,33 @@ function renderSites(m){
 }
 
 /* ================= Checklist ================= */
+// Text the search box looks through: the point itself plus everything entered against it.
+function haystack(it,p){
+  let h=(it.id+" "+it.text+" "+it.cat+" "+(it.mand?"mandatory":"desirable")+" "+it.when).toLowerCase();
+  if(p){
+    h+=" "+(p.status?ST[p.status].label:"notes only");
+    for(const e of p.entries)h+=" "+[e.body,e.by,e.ref,(e.evid||[]).join(" "),e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",uname(e.author)].join(" ").toLowerCase();
+  }else h+=" not covered";
+  return h;
+}
 function renderList(m){
   if(ui.scope==="G")ui.sec="doc";
   const chips=SITES.map(s=>'<button type="button" class="chip '+(ui.scope===s.id?"on":"")+'" style="--sc:'+scol(s.id)+'" data-act="scope" data-v="'+s.id+'">'+badge(s.id,1)+esc(s.id==="G"?"Common":s.name)+'</button>').join("");
   const r=scopeStats(ui.scope);
-  const cats=Array.from(new Set(itemsFor(ui.scope,ui.sec).map(i=>i.cat)));
+  const its=itemsFor(ui.scope,ui.sec);
+  const cats=Array.from(new Set(its.map(i=>i.cat)));
+  const sel=(id,label,cur,opts)=>'<select id="'+id+'" aria-label="'+label+'">'+opts.map(([v,l])=>'<option value="'+esc(v)+'"'+(cur===v?" selected":"")+'>'+esc(l)+'</option>').join("")+'</select>';
   let h='<div class="chips" role="tablist">'+chips+'</div>'+
    '<div class="h-page" style="display:flex;align-items:center;gap:8px">'+badge(ui.scope)+esc(SITE[ui.scope].name)+'</div><div class="muted small">'+r.covered+' of '+r.total+' covered · '+r.progress+' in progress</div>';
   if(ui.scope!=="G")h+='<div class="seg" style="margin:10px 0 0">'+SECTIONS.map(([k,l])=>{const x=scopeStats(ui.scope,k);return '<button type="button" data-act="sec" data-v="'+k+'" class="'+(ui.sec===k?"on":"")+'">'+l+' <span class="small">'+x.covered+'/'+x.total+'</span></button>';}).join("")+'</div>';
   h+='<div class="seg" style="margin:8px 0 0">'+[["all","All"],["none","Not covered"],["progress","In progress"],["covered","Covered"],["gaps","Gaps"]].map(([k,l])=>'<button type="button" data-act="filter" data-v="'+k+'" class="'+(ui.filter===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
-   '<div class="filters"><select id="f-cat" aria-label="Category"><option value="all">All categories</option>'+cats.map(c=>'<option'+(ui.cat===c?" selected":"")+'>'+esc(c)+'</option>').join("")+'</select>'+
-   '<select id="f-who" aria-label="Logged by"><option value="all">Anyone</option>'+Object.keys(USERS).map(u=>'<option value="'+u+'"'+(ui.who===u?" selected":"")+'>Logged by '+esc(USERS[u].short)+'</option>').join("")+'</select></div>'+
-   '<input type="search" id="f-q" placeholder="Search points, IDs or notes" value="'+esc(ui.q)+'"><div id="rows"></div>';
+   '<div class="filters">'+
+   (ui.sec==="doc"?sel("f-pri","Priority",ui.pri,[["all","Mandatory + desirable"],["M","Mandatory only"],["D","Desirable only"]])+
+     sel("f-when","When needed",ui.when,[["all","Pre-audit + on-site"],["Pre-audit","Pre-audit only"],["On-site","On-site only"]]):'')+
+   sel("f-status","Status",ui.st,[["all","Any status"],["none","Not covered"],["notes","Notes only (no status)"]].concat(STATUS[ui.sec].map(([k,l])=>[k,l])))+
+   sel("f-who","Logged by",ui.who,[["all","Logged by anyone"]].concat(Object.keys(USERS).map(u=>[u,"Logged by "+USERS[u].short])))+
+   (cats.length>1?sel("f-cat","Category",ui.cat,[["all","All categories"]].concat(cats.map(c=>[c,c]))):'')+
+   '</div><input type="search" id="f-q" placeholder="Search points, notes, names, status, doc refs…" value="'+esc(ui.q)+'"><div id="rows"></div>';
   m.innerHTML=h;renderRows();
 }
 function renderRows(){
@@ -738,25 +768,66 @@ function renderRows(){
   const rows=itemsFor(sc,ui.sec).filter(it=>{
     const p=D.pts.get(sc+"|"+it.id),s=stateOf(p);
     if(ui.cat!=="all"&&it.cat!==ui.cat)return false;
+    if(ui.sec==="doc"&&ui.pri!=="all"&&(it.mand?"M":"D")!==ui.pri)return false;
+    if(ui.sec==="doc"&&ui.when!=="all"&&it.when!==ui.when)return false;
     if(ui.who!=="all"&&!(p&&p.authors.has(ui.who)))return false;
+    if(ui.st==="none"&&p)return false;
+    if(ui.st==="notes"&&!(p&&!p.status))return false;
+    if(ui.st!=="all"&&ui.st!=="none"&&ui.st!=="notes"&&!(p&&p.status===ui.st))return false;
     if(ui.filter==="gaps"){if(!(p&&(p.status==="notavail"||p.status==="noncomp")))return false;}
     else if(ui.filter!=="all"&&s!==ui.filter)return false;
-    if(q&&!(it.id.toLowerCase().includes(q)||it.text.toLowerCase().includes(q)||(p&&p.entries.some(e=>(e.body||"").toLowerCase().includes(q)))))return false;
+    if(q&&!q.split(/\s+/).every(w=>haystack(it,p).includes(w)))return false;
     return true;
   });
-  let h="",last="";
+  // Mandatory first; inside each group, points with no entries yet stay on top and logged ones drop to the end.
+  const order=new Map(ITEMS.map((it,i)=>[it.id,i]));
+  rows.sort((a,b)=>{
+    const ta=D.pts.has(sc+"|"+a.id)?1:0,tb=D.pts.has(sc+"|"+b.id)?1:0;
+    return (a.mand?0:1)-(b.mand?0:1)||ta-tb||order.get(a.id)-order.get(b.id);
+  });
+  let h="",lastG="";
   for(const it of rows){
     const p=D.pts.get(sc+"|"+it.id),pc=pointColor(p);
-    if(it.cat!==last){h+='<div class="cat-h"><span>'+esc(it.cat)+'</span></div>';last=it.cat;}
+    const g=it.mand?"Mandatory":"Desirable";
+    if(g!==lastG){
+      const inG=rows.filter(x=>x.mand===it.mand),done=inG.filter(x=>D.pts.has(sc+"|"+x.id)).length;
+      h+='<div class="cat-h"><span>'+g+'</span><span class="small muted">'+(inG.length-done)+' to do · '+done+' logged</span></div>';lastG=g;
+    }
     const meta=p?[stPill(p.status)||'<span class="pill" style="--pc:var(--warn)">Notes only</span>',
       '<span class="avs">'+Array.from(p.authors).map(u=>av(u,"sm")).join("")+'</span>',
       '<span>'+p.entries.length+' entr'+(p.entries.length>1?"ies":"y")+'</span>',
-      p.photos?'<span>📷 '+p.photos+'</span>':'',p.sev?sevPill(p.sev):''].join(" "):'<span class="pill outline">Not covered</span>';
-    h+='<button type="button" class="row" style="--pc:'+(pc?cv(pc):"var(--line)")+'" data-act="open" data-v="'+it.id+'"><span class="rbody"><span class="rtop"><b>'+it.id+'</b>'+
+      p.photos?'<span>📷 '+p.photos+'</span>':'',p.sev?sevPill(p.sev):'',
+      '<span>Last '+fmt(p.entries[p.entries.length-1].ts)+'</span>'].join(" "):'<span class="pill outline">Not covered</span>';
+    h+='<button type="button" class="row'+(p?" done":"")+'" style="--pc:'+(pc?cv(pc):"var(--line)")+'" data-act="open" data-v="'+it.id+'">'+
+      '<span class="tick'+(p?" on":"")+'" aria-label="'+(p?"Logged":"Not logged")+'"></span><span class="rbody"><span class="rtop"><b>'+it.id+'</b>'+
       (it.sec==="doc"?'<span class="tag '+(it.mand?"mand":"")+'">'+(it.mand?"Mandatory":"Desirable")+'</span><span class="tag">'+it.when+'</span>':'')+
-      '</span><span class="rtxt">'+esc(it.text)+'</span><span class="rmeta">'+meta+'</span></span></button>';
+      (it.sec!=="int"?'<span class="tag">'+esc(it.sec==="walk"?it.area:it.cat.replace(/^[A-M]\. /,""))+'</span>':'')+
+      '</span><span class="rtxt">'+esc(it.sec==="walk"?it.text.slice(it.area.length+2):it.text)+'</span><span class="rmeta">'+meta+'</span></span></button>';
   }
-  $("#rows").innerHTML=h||'<div class="empty">No points match these filters.</div>';
+  $("#rows").innerHTML='<div class="small muted" style="margin-top:8px">'+rows.length+' point'+(rows.length===1?"":"s")+' shown</div>'+(h||'<div class="empty">No points match these filters.</div>');
+}
+
+/* ================= Photos gallery ================= */
+function allPhotos(){
+  const out=[];
+  for(const e of D.live){(e.photos||[]).forEach((ph,i)=>out.push({ph,i,e}));}
+  return out.reverse();
+}
+function photoName(e,i){
+  const site=e.scope?(e.scope==="G"?"Common":"Site"+SITE[e.scope].no):"NoSite";
+  return [site,e.item||"note",USERS[e.author]?USERS[e.author].short:e.author,dayKey(e.ts),fmtFull(e.ts).slice(12,20).replace(/:/g,""),i+1].join("_")+".jpg";
+}
+function renderPhotos(m){
+  let list=allPhotos();
+  if(ui.feedWho!=="all")list=list.filter(x=>x.e.author===ui.feedWho);
+  if(ui.feedSite!=="all")list=list.filter(x=>x.e.scope===ui.feedSite);
+  const shown=list.slice(0,ui.photoN);
+  m.innerHTML=feedSwitch()+'<div class="h-page">Photos</div><div class="muted small">Every photo from both auditors, newest first. Tap one for full size, details and download.</div>'+
+   '<div class="seg" style="margin:10px 0 0">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="photowho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
+   '<div class="filters"><select id="ph-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(ui.feedSite===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select><div class="small muted" style="align-self:center">'+list.length+' photo'+(list.length===1?"":"s")+'</div></div>'+
+   (shown.length?'<div class="gal">'+shown.map(x=>'<button type="button" class="gi" style="--ac:var(--'+esc(x.e.author)+')" data-act="zoom" data-v="'+esc(x.ph.p)+'"><img data-p="'+esc(x.ph.t)+'" alt="" loading="lazy">'+
+     '<span class="gc">'+av(x.e.author,"sm")+'<span>'+(x.e.scope?badge(x.e.scope,1):'')+' '+esc(x.e.item||"Note")+'<br>'+fmt(x.e.ts)+'</span></span></button>').join("")+'</div>':'<div class="empty">No photos yet.</div>')+
+   (list.length>shown.length?'<div class="btn-row" style="justify-content:center"><button class="btn" data-act="morephotos">Show more</button></div>':'');
 }
 
 /* ================= Activity feed ================= */
@@ -787,6 +858,7 @@ function renderFeed(m){
   else if(ui.feedKind!=="all")list=list.filter(e=>e.kind===ui.feedKind);
   const shown=list.slice(0,ui.feedN);
   if(ui.feedView==="trail"){renderTrail(m);return;}
+  if(ui.feedView==="photos"){renderPhotos(m);return;}
   m.innerHTML=feedSwitch()+'<div class="h-page">Activity</div><div class="muted small">Every entry from both auditors, newest first. Nothing is overwritten; withdrawn entries stay visible.</div>'+
    '<div class="seg" style="margin:10px 0 0">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="feedwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
    '<div class="filters"><select id="fd-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(ui.feedSite===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select>'+
@@ -796,7 +868,7 @@ function renderFeed(m){
    (list.length>shown.length?'<div class="btn-row" style="justify-content:center"><button class="btn" data-act="more">Show more</button></div>':'');
 }
 
-function feedSwitch(){return '<div class="seg" style="margin:4px 0 10px">'+[["entries","Entries"],["trail","Audit trail"]].map(([k,l])=>'<button type="button" data-act="feedview" data-v="'+k+'" class="'+(ui.feedView===k?"on":"")+'">'+l+'</button>').join("")+'</div>';}
+function feedSwitch(){return '<div class="seg" style="margin:4px 0 10px">'+[["entries","Entries"],["photos","Photos"],["trail","Audit trail"]].map(([k,l])=>'<button type="button" data-act="feedview" data-v="'+k+'" class="'+(ui.feedView===k?"on":"")+'">'+l+'</button>').join("")+'</div>';}
 const ACTION_L={"login.ok":"Signed in","login.failed":"Failed sign-in","login.blocked":"Sign-in blocked","logout":"Signed out","password.changed":"Changed password",
  "entry.added":"Added entry","note.added":"Added note","entry.withdrawn":"Withdrew entry","site.check-in":"Checked in","site.check-out":"Checked out",
  "photo.upload":"Uploaded photos","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
@@ -974,11 +1046,26 @@ async function withdraw(id){
   const st=await stamp();const e={id:newId(),author:STATE.user,kind:"retract",target:id,scope:null,item:null,status:null,sev:null,evid:[],body:null,by:null,ref:null,photos:[],geo:st.geo,gerr:st.gerr||null,ts:st.ts};
   STATE.outbox.set(e.id,e);await dbPut("outbox",e);STATE.ver++;render();scheduleSync(100);
 }
-async function zoom(path){
-  const lb=$("#lightbox");lb.hidden=false;lb.innerHTML='<div>Loading photo…</div>';
+function photoOwner(path){for(const e of D.all){const ps=e.photos||[];for(let i=0;i<ps.length;i++)if(ps[i].p===path)return {e,i};}return null;}
+async function fullUrl(path){
   let u=await urlFor(path);
   if(!u){try{const {urls}=await api("signRead",{paths:[path]});u=urls[path];if(u)signed.set(path,{url:u,exp:Date.now()+5*3600e3});}catch(e){}}
-  lb.innerHTML=u?'<img src="'+esc(u)+'" alt=""><div class="small">Tap anywhere to close</div>':'<div>Photo not available yet. It will appear once uploaded.</div>';
+  return u;
+}
+async function zoom(path){
+  const lb=$("#lightbox");lb.hidden=false;lb.innerHTML='<div>Loading photo…</div>';
+  const u=await fullUrl(path),o=photoOwner(path);
+  let info="";
+  if(o){const e=o.e,it=e.item?ITEM[e.item]:null;
+    info='<div class="lb-info"><b>'+esc(uname(e.author))+'</b> · '+fmtFull(e.ts)+' IST<br>'+
+     (e.scope?esc(SITE[e.scope].name):'')+(it?' · '+esc(it.id)+' '+esc(it.text.slice(0,80)):'')+'<br>GPS '+geoLink(e.geo,e.gerr)+
+     (e.body?'<br><span style="opacity:.85">'+esc(e.body.slice(0,200))+'</span>':'')+'<br><span style="opacity:.7">Photo '+(o.i+1)+' of '+e.photos.length+' · '+esc(path)+'</span></div>';}
+  lb.innerHTML=u?'<img src="'+esc(u)+'" alt="">'+info+'<div class="lb-btns"><button class="btn" data-act="dlphoto" data-v="'+esc(path)+'">Download</button><button class="btn">Close</button></div>':'<div>Photo not available yet. It will appear once uploaded.</div>';
+}
+async function dlPhoto(path){
+  const u=await fullUrl(path),o=photoOwner(path);if(!u){toast("Photo not available yet.");return;}
+  try{const b=await (await fetch(u)).blob();const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=o?photoName(o.e,o.i):path.split("/").pop();document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+  catch(e){window.open(u,"_blank","noopener");}
 }
 
 /* ================= login ================= */
@@ -1013,14 +1100,18 @@ function signOut(expired){
 /* ================= events ================= */
 document.addEventListener("click",async ev=>{
   const t=ev.target.closest("[data-act]");
-  if(!t){if(!$("#lightbox").hidden&&ev.target.closest("#lightbox")){$("#lightbox").hidden=true;$("#lightbox").innerHTML="";}return;}
+  if(!t){if(!$("#lightbox").hidden&&ev.target.closest("#lightbox")&&!ev.target.closest(".lb-info")){$("#lightbox").hidden=true;$("#lightbox").innerHTML="";}return;}
   const a=t.dataset.act,v=t.dataset.v;
   if(t.tagName==="A")ev.preventDefault();
   switch(a){
     case "tab":ui.tab=v;lsSet("sa.tab",v);window.scrollTo(0,0);render();break;
     case "openscope":ui.scope=v;ui.tab="list";ui.filter="all";ui.cat="all";lsSet("sa.scope",v);lsSet("sa.tab","list");window.scrollTo(0,0);render();break;
     case "scope":ui.scope=v;ui.cat="all";lsSet("sa.scope",v);render();break;
-    case "sec":ui.sec=v;ui.cat="all";render();break;
+    case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
+    case "photowho":ui.feedWho=v;ui.photoN=60;render();break;
+    case "morephotos":ui.photoN+=60;render();break;
+    case "gallery":ui.tab="feed";ui.feedView="photos";lsSet("sa.tab","feed");window.scrollTo(0,0);render();break;
+    case "dlphoto":dlPhoto(v);break;
     case "filter":ui.filter=v;render();break;
     case "open":if(!v){if(t.dataset.s){ui.feedSite=t.dataset.s;ui.tab="feed";render();}break;}openPoint(v,t.dataset.s||ui.scope);break;
     case "close":requestClose();break;
@@ -1028,7 +1119,7 @@ document.addEventListener("click",async ev=>{
     case "visit":logVisit(v,t.dataset.k);break;
     case "gps":startGeo(true);toast("Looking for GPS… allow location if asked.");break;
     case "syncnow":scheduleSync(0);toast("Syncing…",1500);break;
-    case "feedwho":ui.feedWho=v;ui.feedN=60;ui.tab="feed";render();break;
+    case "feedwho":ui.feedWho=v;ui.feedN=60;ui.tab="feed";ui.feedView="entries";render();break;
     case "more":ui.feedN+=60;render();break;
     case "feedview":ui.feedView=v;if(v==="trail")trailCache=null;render();break;
     case "trailreload":trailCache=null;render();break;
@@ -1057,6 +1148,10 @@ document.addEventListener("submit",ev=>{if(ev.target.id==="login-form"){ev.preve
 document.addEventListener("change",ev=>{
   const id=ev.target.id;
   if(id==="f-cat"){ui.cat=ev.target.value;renderRows();}
+  else if(id==="f-pri"){ui.pri=ev.target.value;renderRows();}
+  else if(id==="f-when"){ui.when=ev.target.value;renderRows();}
+  else if(id==="f-status"){ui.st=ev.target.value;renderRows();}
+  else if(id==="ph-site"){ui.feedSite=ev.target.value;ui.photoN=60;render();}
   else if(id==="f-who"){ui.who=ev.target.value;renderRows();}
   else if(id==="fd-site"){ui.feedSite=ev.target.value;ui.feedN=60;render();}
   else if(id==="fd-kind"){ui.feedKind=ev.target.value;ui.feedN=60;render();}

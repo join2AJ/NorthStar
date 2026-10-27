@@ -34,6 +34,14 @@ downloaded. The log tables are append-only in the database (updates and deletes 
 hash-chained; the app re-checks the chain each time the trail is opened and shows "Chain intact" or the
 first broken record. The trail is included in every hourly backup and can be exported as CSV.
 
+## Where photos are stored
+
+Supabase → project **client-portal** → Storage → bucket **`selaqui-audit`** → `photos/ajay/` and `photos/anis/`.
+Each file is `<entry-id>-<n>.jpg` (about 1600 px) with a `-t.jpg` thumbnail. The bucket is private.
+In the app: the 📷 Photos chip in the header (or Activity → Photos) shows every photo with who took it,
+IST date/time, site, point, GPS and note, and downloads it with a readable name
+(`Site1_AD-01_Ajay_2026-10-28_143205_1.jpg`).
+
 ## How data is kept safe
 
 - Entries are append-only. Nothing is overwritten; a wrong entry is *withdrawn* by its author and stays visible.
