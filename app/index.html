@@ -278,7 +278,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.6";
+const VERSION="2026-10-28.7";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -356,6 +356,10 @@ for(const [id,cat,text,hint] of WALKS)ITEMS.push({id,sec:"walk",cat:"Walkthrough
 for(const [id,who] of INTS)ITEMS.push({id,sec:"int",cat:"Stakeholder interviews",text:who,mand:true,when:"On-site",scope:"S",hint:"20–30 minute slot. Note name, role, key concerns and anything that contradicts the records."});
 const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 const itemsFor=(scope,sec)=>ITEMS.filter(i=>(scope==="G"?i.scope==="G":i.scope==="S")&&(!sec||i.sec===sec));
+// What a site's checklist shows: all its own points plus the corporate-level documents, which are logged once
+// under Common and mirrored into every site. ALL_POINTS (unique points) stays the basis for overall totals.
+const viewItems=(scope,sec)=>scope==="G"?itemsFor("G",sec):ITEMS.filter(i=>!sec||i.sec===sec);
+const pkey=(sc,it)=>(it.scope==="G"?"G":sc)+"|"+it.id;
 const ALL_POINTS=[];for(const s of SITES)for(const it of itemsFor(s.id))ALL_POINTS.push([s.id,it]);
 
 /* ================= helpers ================= */
@@ -613,8 +617,8 @@ function stateOf(p){if(!p)return "none";if(p.status&&!IN_PROGRESS.has(p.status))
 const STATE_COL={covered:"good",progress:"warn",none:null};
 function pointColor(p){if(!p)return null;if(p.status)return ST[p.status].col;return "warn";}
 function scopeStats(scope,sec){
-  const its=itemsFor(scope,sec);const r={total:its.length,covered:0,progress:0,none:0,gaps:0,findings:0,cells:[]};
-  for(const it of its){const p=D.pts.get(scope+"|"+it.id);const s=stateOf(p);r[s]++;
+  const its=viewItems(scope,sec);const r={total:its.length,covered:0,progress:0,none:0,gaps:0,findings:0,cells:[]};
+  for(const it of its){const p=D.pts.get(pkey(scope,it));const s=stateOf(p);r[s]++;
     if(p&&(p.status==="notavail"||p.status==="noncomp"))r.gaps++;
     r.cells.push(pointColor(p));}
   return r;
@@ -722,7 +726,7 @@ function renderDash(m){
   // by section
   h+='<div class="sec-h">Coverage by type</div><div class="card">';
   for(const [k,l] of SECTIONS){const r={total:0,covered:0,progress:0,none:0};
-    for(const s of SITES){if(s.id==="G"&&k!=="doc")continue;const x=scopeStats(s.id,k);r.total+=x.total;r.covered+=x.covered;r.progress+=x.progress;r.none+=x.none;}
+    for(const [sc,it] of ALL_POINTS){if(it.sec!==k)continue;r.total++;r[stateOf(D.pts.get(sc+"|"+it.id))]++;}
     h+='<div class="brow"><span class="nm"><span>'+l+'</span></span>'+parts(r,l)+'<span class="num tnum">'+r.covered+'/'+r.total+'</span></div>';}
   h+='</div>';
 
@@ -799,7 +803,7 @@ function haystack(it,p){
 }
 // How many points in the current site/section each quick filter would show (respecting the other quick filter).
 function qcount(kind,v){
-  return itemsFor(ui.scope,ui.sec).filter(it=>{
+  return viewItems(ui.scope,ui.sec).filter(it=>{
     const pri=kind==="pri"?v:ui.pri,when=kind==="when"?v:ui.when;
     return (pri==="all"||(it.mand?"M":"D")===pri)&&(when==="all"||it.when===when);
   }).length;
@@ -808,7 +812,7 @@ function renderList(m){
   if(ui.scope==="G")ui.sec="doc";
   const chips=SITES.map(s=>'<button type="button" class="chip '+(ui.scope===s.id?"on":"")+'" style="--sc:'+scol(s.id)+'" data-act="scope" data-v="'+s.id+'">'+badge(s.id,1)+esc(s.id==="G"?"Common":s.name)+'</button>').join("");
   const r=scopeStats(ui.scope);
-  const its=itemsFor(ui.scope,ui.sec);
+  const its=viewItems(ui.scope,ui.sec);
   const cats=Array.from(new Set(its.map(i=>i.cat)));
   const sel=(id,label,cur,opts)=>'<select id="'+id+'" aria-label="'+label+'">'+opts.map(([v,l])=>'<option value="'+esc(v)+'"'+(cur===v?" selected":"")+'>'+esc(l)+'</option>').join("")+'</select>';
   let h='<div class="chips" role="tablist">'+chips+'</div>'+
@@ -827,8 +831,8 @@ function renderList(m){
 }
 function renderRows(){
   const sc=ui.scope,q=ui.q.trim().toLowerCase();
-  const rows=itemsFor(sc,ui.sec).filter(it=>{
-    const p=D.pts.get(sc+"|"+it.id),s=stateOf(p);
+  const rows=viewItems(sc,ui.sec).filter(it=>{
+    const p=D.pts.get(pkey(sc,it)),s=stateOf(p);
     if(ui.cat!=="all"&&it.cat!==ui.cat)return false;
     if(ui.pri!=="all"&&(it.mand?"M":"D")!==ui.pri)return false;
     if(ui.when!=="all"&&it.when!==ui.when)return false;
@@ -844,15 +848,15 @@ function renderRows(){
   // Mandatory first; inside each group, points with no entries yet stay on top and logged ones drop to the end.
   const order=new Map(ITEMS.map((it,i)=>[it.id,i]));
   rows.sort((a,b)=>{
-    const ta=D.pts.has(sc+"|"+a.id)?1:0,tb=D.pts.has(sc+"|"+b.id)?1:0;
+    const ta=D.pts.has(pkey(sc,a))?1:0,tb=D.pts.has(pkey(sc,b))?1:0;
     return (a.mand?0:1)-(b.mand?0:1)||ta-tb||order.get(a.id)-order.get(b.id);
   });
   let h="",lastG="";
   for(const it of rows){
-    const p=D.pts.get(sc+"|"+it.id),pc=pointColor(p);
+    const p=D.pts.get(pkey(sc,it)),pc=pointColor(p),mir=sc!=="G"&&it.scope==="G";
     const g=it.mand?"Mandatory":"Desirable";
     if(g!==lastG){
-      const inG=rows.filter(x=>x.mand===it.mand),done=inG.filter(x=>D.pts.has(sc+"|"+x.id)).length;
+      const inG=rows.filter(x=>x.mand===it.mand),done=inG.filter(x=>D.pts.has(pkey(sc,x))).length;
       h+='<div class="cat-h"><span>'+g+'</span><span class="small muted">'+(inG.length-done)+' to do · '+done+' logged</span></div>';lastG=g;
     }
     const meta=p?[stPill(p.status)||'<span class="pill" style="--pc:var(--warn)">Notes only</span>',
@@ -860,9 +864,10 @@ function renderRows(){
       '<span>'+p.entries.length+' entr'+(p.entries.length>1?"ies":"y")+'</span>',
       p.photos?'<span>📷 '+p.photos+'</span>':'',p.sev?sevPill(p.sev):'',
       '<span>Last '+fmt(p.entries[p.entries.length-1].ts)+'</span>'].join(" "):'<span class="pill outline">Not covered</span>';
-    h+='<button type="button" class="row'+(p?" done":"")+'" style="--pc:'+(pc?cv(pc):"var(--line)")+'" data-act="open" data-v="'+it.id+'">'+
+    h+='<button type="button" class="row'+(p?" done":"")+'" style="--pc:'+(pc?cv(pc):"var(--line)")+'" data-act="open" data-v="'+it.id+'" data-s="'+(mir?"G":sc)+'">'+
       '<span class="tick'+(p?" on":"")+'" aria-label="'+(p?"Logged":"Not logged")+'"></span><span class="rbody"><span class="rtop"><b>'+it.id+'</b>'+
       (it.sec==="doc"?'<span class="tag '+(it.mand?"mand":"")+'">'+(it.mand?"Mandatory":"Desirable")+'</span><span class="tag">'+it.when+'</span>':'')+
+      (mir?'<span class="tag" style="color:var(--brand);border-color:var(--brand)">Common · all sites</span>':'')+
       (it.sec!=="int"?'<span class="tag">'+esc(it.sec==="walk"?it.area:it.cat.replace(/^[A-M]\. /,""))+'</span>':'')+
       '</span><span class="rtxt">'+esc(it.sec==="walk"?it.text.slice(it.area.length+2):it.text)+'</span><span class="rmeta">'+meta+'</span></span></button>';
   }
@@ -1165,7 +1170,7 @@ function reportHTML(r,scopes,ents,urls){
    '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p>'+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
   for(const sc of scopes){
-    const S=SITE[sc],its=itemsFor(sc);
+    const S=SITE[sc],its=viewItems(sc);
     b+='<section class="site"><h2><span class="badge">'+E(S.no)+'</span> '+E(S.name)+'</h2><div class="muted">'+E(S.addr)+'</div>';
     const v=(D.visits[sc]||[]).filter(inPeriodV=>r.period==="all"||dayKey(inPeriodV.ts)===r.period);
     if(v.length)b+='<h3>Site visits</h3><table><tr><th>When (IST)</th><th>Event</th><th>Auditor</th><th>GPS</th></tr>'+v.map(x=>'<tr><td>'+fmtFull(x.ts)+'</td><td>'+(x.status==="in"?"Checked in":"Checked out")+'</td><td>'+E(uname(x.author))+'</td><td>'+(x.geo?x.geo.lat.toFixed(5)+", "+x.geo.lng.toFixed(5):"–")+'</td></tr>').join("")+'</table>';
@@ -1178,8 +1183,8 @@ function reportHTML(r,scopes,ents,urls){
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
     b+='<h3>Status of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Last update</th></tr>'+
-      its.map(it=>{const p=D.pts.get(sc+"|"+it.id);const last=p?p.entries[p.entries.length-1]:null;
-        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td><td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
+      its.map(it=>{const p=D.pts.get(pkey(sc,it));const last=p?p.entries[p.entries.length-1]:null;
+        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td><td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
     const se=ents.filter(e=>e.scope===sc);
     b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
       return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
@@ -1347,6 +1352,7 @@ function renderSheet(){
     lsSet("sa.lastScope",sc);
     sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">'+esc(it.id)+' · '+esc(SITE[sc].name)+'</div></div><div class="sh-body">'+
      '<div class="rtop">'+badge(sc,1)+'<b>'+it.id+'</b><span class="tag">'+esc(it.cat)+'</span>'+(it.sec==="doc"?'<span class="tag '+(it.mand?"mand":"")+'">'+(it.mand?"Mandatory":"Desirable")+'</span><span class="tag">'+it.when+'</span>':'')+'</div>'+
+     (sc==="G"?'<div class="hint" style="background:color-mix(in srgb,var(--brand) 12%,var(--surface))">Common document: logged once here and shown on all six sites.</div>':'')+
      '<div class="req">'+esc(it.text)+'</div>'+(it.hint?'<div class="hint">'+esc(it.hint)+'</div>':'')+
      '<div class="small" style="margin-top:8px">Current: '+(p&&p.status?stPill(p.status)+' by '+esc(uname(p.statusBy)):p?'<span class="pill" style="--pc:var(--warn)">Notes only</span>':'<span class="pill outline">Not covered</span>')+'</div>'+
      '<div class="sec-h">Entries ('+(p?p.entries.length:0)+')</div>'+
