@@ -200,6 +200,7 @@ textarea{min-height:92px;resize:vertical}
 .stampbox div{display:grid;grid-template-columns:86px 1fr;gap:6px}
 .stampbox span{color:var(--muted)}
 .stampbox b{font-weight:600;overflow-wrap:anywhere}
+.later-box{background:color-mix(in srgb,var(--warn) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 45%,var(--line));border-radius:10px;padding:9px 11px;margin-top:10px;font-size:13.5px}
 .res-for{margin-top:8px;font-size:13.5px;background:var(--brand-soft);border-radius:9px;padding:7px 10px}
 .res-for span{display:block;font-size:11.5px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.4px}
 a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:4px}
@@ -277,7 +278,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.5";
+const VERSION="2026-10-28.6";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -295,12 +296,13 @@ const scol=id=>"var(--s"+(id==="G"?0:id.slice(1))+")";
 
 const SECTIONS=[["doc","Documents"],["walk","Walkthrough"],["int","Interviews"]];
 const STATUS={
- doc:[["verified","Seen & verified","good"],["shared","Shared","info"],["onsite","Will show on-site","warn"],["notavail","Not available","crit"],["notapp","Not applicable","neutral"]],
+ doc:[["verified","Seen & verified","good"],["shared","Shared","info"],["onsite","Will show on-site","warn"],["later","Client will share later","warn"],["notavail","Not available","crit"],["notapp","Not applicable","neutral"]],
  walk:[["ok","Satisfactory","good"],["observed","Observed","info"],["improve","Needs improvement","serious"],["noncomp","Non-compliant","crit"],["notapp","Not applicable","neutral"]],
  int:[["done","Interview done","good"],["sched","Scheduled","warn"],["notavail","Not available","crit"],["notapp","Not applicable","neutral"]]
 };
 const ST={};for(const k in STATUS)for(const [v,l,c] of STATUS[k])ST[v]={label:l,col:c};
-const IN_PROGRESS=new Set(["onsite","sched"]);
+const IN_PROGRESS=new Set(["onsite","sched","later"]);
+const FUNCS=["Plant Head","Admin / Security","Security agency","CCTV / Control room","HR / IR","Stores","Dispatch","Maintenance / Utilities","EHS / Fire","IT","Quality","Production","Finance"];
 const SEV=[["high","High","crit"],["med","Medium","serious"],["low","Low","warn"],["good","Good practice","good"],["info","Info","neutral"]];
 const SEVM=Object.fromEntries(SEV.map(([k,l,c])=>[k,{label:l,col:c}]));
 const EXP_CAT=[["cab","Cab / taxi","s4"],["train","Train / flight","s2"],["hotel","Hotel","s6"],["food","Food","s3"],["local","Local travel / auto","s1"],["other","Other","s0"]];
@@ -309,6 +311,9 @@ const CLAIM_ST=[["draft","Not submitted","neutral"],["submitted","Submitted","in
 const CLAIM_STM=Object.fromEntries(CLAIM_ST.map(([k,l,c])=>[k,{label:l,col:c}]));
 const PAY_MODES=["UPI","Cash","Card","Bank transfer","Paid by Northstar"];
 const isAudit=e=>e.kind==="point"||e.kind==="note";
+const peopleFor=sc=>(D.people[sc]||[]).concat(sc!=="G"?(D.people.G||[]):[]);
+function laterInfo(e){if(!e||e.status!=="later"||!e.ref||e.ref[0]!=="{")return null;try{return JSON.parse(e.ref).later||null;}catch(x){return null;}}
+const waNum=m=>{const d=String(m||"").replace(/[^0-9]/g,"");return d.length===10?"91"+d:(d.length===12&&d.startsWith("91")?d:"");};
 const fmtDate=ymd=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd||"");return m?m[3]+" "+MON[Number(m[2])-1]+" "+m[1]:(ymd||"");};
 const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2});
 const EVID=["Document copy","Register / log seen","Photo","System screen","Interview note","Physical check"];
@@ -591,7 +596,17 @@ function derive(){
     exp.push({e,d,amount:Number(d.amount)||0,status:last?last.status:"draft",statusBy:last?last.author:e.author,statusAt:last?last.ts:e.ts,hist});
   }
   exp.reverse();
-  D={all,live,withdrawn,pts,visits,exp};Dver=STATE.ver;return D;
+  // Auditees: a person record replaced by a later one (target) or marked removed drops out.
+  const replaced=new Set(live.filter(e=>e.kind==="person"&&e.target).map(e=>e.target));
+  const people={};
+  for(const e of live){
+    if(e.kind!=="person"||replaced.has(e.id))continue;
+    let d={};try{d=JSON.parse(e.body||"{}");}catch(x){}
+    if(d.removed)continue;
+    (people[e.scope||"G"]=people[e.scope||"G"]||[]).push({e,d});
+  }
+  for(const k in people)people[k].sort((a,b)=>(a.d.func||"").localeCompare(b.d.func||"")||(a.d.name||"").localeCompare(b.d.name||""));
+  D={all,live,withdrawn,pts,visits,exp,people};Dver=STATE.ver;return D;
 }
 // "covered" = a final status is recorded; "progress" = entries exist but nothing final yet.
 function stateOf(p){if(!p)return "none";if(p.status&&!IN_PROGRESS.has(p.status))return "covered";return "progress";}
@@ -687,7 +702,8 @@ function renderDash(m){
   const high=findings.filter(e=>e.sev==="high").length;
   const legend='<div class="legend"><span><i style="--pc:var(--good)"></i>Covered</span><span><i style="--pc:var(--warn)"></i>In progress</span><span><i class="none"></i>Not covered</span></div>';
   const parts=(r,pfx)=>stackBar([{n:r.covered,c:"var(--good)",l:"Covered"},{n:r.progress,c:"var(--warn)",l:"In progress"},{n:r.none,c:"transparent",l:"Not covered"}],false,pfx);
-  let h='<div class="h-page">Dashboard</div><div class="muted small">Six Dixon sites and Common documents · '+T.total+' audit points in all</div>';
+  let h='<div class="h-page">Dashboard</div><div class="muted small">Six Dixon sites and Common documents · '+T.total+' audit points in all</div>'+
+   '<div class="btn-row"><button class="btn primary" data-act="report">📄 End-of-day report (PDF)</button></div>';
   h+='<div class="card" style="margin-top:12px"><div class="hero">'+ring(pct,pctL)+'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">'+T.covered+' of '+T.total+' points covered</div>'+
      '<div class="small muted" style="margin:2px 0 8px">'+T.progress+' in progress · '+T.none+' not started</div>'+
      stackBar([{n:T.covered,c:"var(--good)",l:"Covered"},{n:T.progress,c:"var(--warn)",l:"In progress"},{n:T.none,c:"transparent",l:"Not covered"}],true,"All sites")+'</div></div>'+legend+'</div>';
@@ -742,6 +758,9 @@ function renderDash(m){
   const hi=D.live.filter(e=>e.sev==="high").slice(-12).reverse();
   h+='<div class="sec-h">Needs attention</div><div class="card"><div class="card-t">High findings</div>'+
      (hi.length?hi.map(e=>'<button type="button" class="gap-li" data-act="open" data-v="'+esc(e.item||"")+'" data-s="'+esc(e.scope||"")+'">'+badge(e.scope||"G",1)+'<span style="flex:1;min-width:0"><b>'+esc(e.item||"Note")+'</b> '+esc((e.body||"").slice(0,120))+'<span class="meta" style="display:block;margin-top:2px">'+esc(uname(e.author))+' · '+fmt(e.ts)+'</span></span></button>').join(""):'<div class="muted small" style="padding:6px 0">No high findings logged.</div>')+'</div>'+
+     (()=>{const pg=pendingGroups(null),n=pg.reduce((a,g)=>a+g.items.length,0);
+       return '<div class="card"><div class="card-h"><div class="card-t">Client will share later</div><b class="tnum">'+n+'</b></div>'+
+       (n?'<div class="small" style="margin-top:4px">'+pg.map(g=>esc(g.L.name)+' ('+g.items.length+')').join(" · ")+'</div><div class="btn-row"><button class="btn sm primary" data-act="pending">Open follow-up list</button></div>':'<div class="muted small" style="padding:6px 0">Nothing pending.</div>')+'</div>';})()+
      '<div class="card"><div class="card-t">Mandatory documents not available</div>'+
      (gaps.length?gaps.map(([sc,it,p])=>'<button type="button" class="gap-li" data-act="open" data-v="'+it.id+'" data-s="'+sc+'">'+badge(sc,1)+'<span style="flex:1;min-width:0"><b>'+it.id+'</b> '+esc(it.text.slice(0,110))+'</span></button>').join(""):'<div class="muted small" style="padding:6px 0">None so far.</div>')+'</div>';
   m.innerHTML=h;
@@ -760,6 +779,9 @@ function renderSites(m){
       '<div class="small" style="margin-top:8px;color:var(--ink2)"><b>'+r.covered+'</b> of '+r.total+' covered · <b>'+r.progress+'</b> in progress · <b>'+r.gaps+'</b> gaps</div>'+
       (lastIn||lastOut?'<div class="meta">'+(lastIn?"In "+fmt(lastIn.ts)+" · "+esc(uname(lastIn.author)):"")+(lastIn&&lastOut?" · ":"")+(lastOut?"Out "+fmt(lastOut.ts)+" · "+esc(uname(lastOut.author)):"")+'</div>':'')+
       '<div class="btn-row"><button class="btn primary" data-act="openscope" data-v="'+s.id+'">Open checklist</button>'+
+      '<button class="btn" data-act="people" data-v="'+s.id+'">👥 Auditees ('+((D.people[s.id]||[]).length)+')</button>'+
+      (pendingGroups(s.id).length?'<button class="btn" data-act="pending">📨 Pending from client ('+pendingGroups(s.id).reduce((a,g)=>a+g.items.length,0)+')</button>':'')+
+      '<button class="btn" data-act="report" data-v="'+s.id+'">📄 Report</button>'+
       (s.id!=="G"?'<button class="btn" data-act="visit" data-v="'+s.id+'" data-k="in">Check in</button><button class="btn" data-act="visit" data-v="'+s.id+'" data-k="out">Check out</button>':'')+'</div></div>';
   }
   m.innerHTML=h;
@@ -880,7 +902,8 @@ function entryCard(e,opts){
    '<span class="muted">'+kindL+'</span>'+stPill(e.kind!=="visit"&&e.status)+sevPill(e.sev)+(e.local?(e.rejected?'<span class="pill" style="--pc:var(--crit)">Not accepted: '+esc(e.rejected)+'</span>':'<span class="pill" style="--pc:var(--warn)">Waiting to upload</span>'):'')+(wd?'<span class="pill outline">Withdrawn</span>':'')+'</div>'+
    (opts.site&&it?'<div class="small muted" style="margin-top:3px">'+esc(it.text.slice(0,140))+'</div>':'')+
    (e.body?'<div class="ent-b">'+esc(e.body)+'</div>':'')+
-   ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="meta">'+[esc((e.evid||[]).join(", ")),e.by?"From "+esc(e.by):"",e.ref?"Ref "+esc(e.ref):""].filter(Boolean).join(" · ")+'</div>':'')+
+   (laterInfo(e)?(()=>{const L=laterInfo(e);return '<div class="later-box" style="margin-top:8px"><b>Will be shared by '+esc(L.name)+'</b>'+(L.mobile?' · '+esc(L.mobile):'')+(L.email?' · '+esc(L.email):'')+(L.due?'<br>Expected by '+esc(fmtDate(L.due)):'')+'</div>';})():
+   ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="meta">'+[esc((e.evid||[]).join(", ")),e.by?"From "+esc(e.by):"",e.ref?"Ref "+esc(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
    thumbsHTML(e.photos,e.local)+
    '<div class="stampbox"><div><span>Logged by</span><b>'+esc(uname(e.author))+'</b></div>'+
    '<div><span>Date &amp; time</span><b class="tnum">'+fmtFull(e.ts)+' IST</b></div>'+
@@ -911,7 +934,7 @@ function renderFeed(m){
 function feedSwitch(){return '<div class="seg" style="margin:4px 0 10px">'+[["entries","Entries"],["photos","Photos"],["trail","Audit trail"]].map(([k,l])=>'<button type="button" data-act="feedview" data-v="'+k+'" class="'+(ui.feedView===k?"on":"")+'">'+l+'</button>').join("")+'</div>';}
 const ACTION_L={"login.ok":"Signed in","login.failed":"Failed sign-in","login.blocked":"Sign-in blocked","logout":"Signed out","password.changed":"Changed password",
  "entry.added":"Added entry","note.added":"Added note","entry.withdrawn":"Withdrew entry","site.check-in":"Checked in","site.check-out":"Checked out",
- "photo.upload":"Uploaded photos","expense.added":"Logged expense claim","claim.submitted":"Claim submitted","claim.approved":"Claim approved","claim.paid":"Claim paid","claim.rejected":"Claim rejected","claim.draft":"Claim set back to not submitted","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
+ "photo.upload":"Uploaded photos","expense.added":"Logged expense claim","auditee.added":"Added auditee","auditee.updated":"Edited auditee","auditee.removed":"Removed auditee","claim.submitted":"Claim submitted","claim.approved":"Claim approved","claim.paid":"Claim paid","claim.rejected":"Claim rejected","claim.draft":"Claim set back to not submitted","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
 function device(ua){if(!ua)return "";const m=ua.match(/\(([^)]+)\)/);let d=m?m[1].split(";").map(x=>x.trim()).filter(x=>!/^(Linux|U|K|wv|X11)$/.test(x)).slice(0,2).join(" "):"";
   const b=/EdgA?\//.test(ua)?"Edge":/SamsungBrowser/.test(ua)?"Samsung Internet":/CriOS|Chrome\//.test(ua)?"Chrome":/Firefox|FxiOS/.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":/Deno/.test(ua)?"server":"";return [d,b].filter(Boolean).join(" · ");}
 let trailCache=null;
@@ -927,7 +950,7 @@ function renderTrail(m){
   let list=T.rows;if(ui.feedWho!=="all")list=list.filter(r=>r.actor===ui.feedWho);
   h+='<div class="seg" style="margin:0 0 10px">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="trailwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   h+=list.length?list.map(r=>{const u=USERS[r.actor]?r.actor:null;const d=r.detail||{};
-    const what=[d.amount?inr(d.amount)+(d.vendor?" · "+d.vendor:""):"",d.category&&EXP_CATM[d.category]?EXP_CATM[d.category].label:"",d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
+    const what=[d.name?d.name+(d.designation?" · "+d.designation:""):"",d.amount?inr(d.amount)+(d.vendor?" · "+d.vendor:""):"",d.category&&EXP_CATM[d.category]?EXP_CATM[d.category].label:"",d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
     return '<div class="ent" style="--ac:'+(u?"var(--"+u+")":r.action==="login.failed"||r.action==="login.blocked"?"var(--crit)":"var(--neutral)")+'"><div class="ent-h">'+(u?av(u,"sm"):'')+'<b>'+esc(ACTION_L[r.action]||r.action)+'</b><span class="muted">'+esc(u?uname(u):(r.actor||"System"))+'</span></div>'+
      (what?'<div class="small" style="margin-top:4px">'+esc(what)+'</div>':'')+
      '<div class="stampbox"><div><span>Server time</span><b class="tnum">'+fmtFull(r.at)+' IST</b></div>'+(d.deviceTime?'<div><span>Phone time</span><b class="tnum">'+fmtFull(d.deviceTime)+' IST</b></div>':'')+
@@ -998,6 +1021,187 @@ function renderInfo(m){
   }
   h+='<div class="small muted" style="text-align:center;margin:6px 0 14px">Updated '+esc(RES.updated||"")+(RES._at?' · fetched '+ago(RES._at):'')+'</div>';
   m.innerHTML=h;
+}
+
+/* ================= Auditees ================= */
+function openPeople(sc){
+  readDraftSafe();
+  const back=ui.sheet&&ui.sheet.type==="point"?{sheet:ui.sheet,draft}:null;
+  if(!back)pushSheet();
+  ui.sheet={type:"people",scope:sc||"s1",back};
+  draft=newDraft("person",ui.sheet.scope,"");draft.pname="";draft.pdes="";draft.pfunc="";draft.pmail="";draft.pmob="";draft.edit="";
+  renderSheet();$("#sheet").scrollTop=0;
+}
+function peopleSheet(){
+  const sc=ui.sheet.scope,list=D.people[sc]||[];
+  let h='<div class="sh-top"><button class="x" data-act="'+(ui.sheet.back?"peopleback":"close")+'">Back</button><div class="sh-title">Auditees · '+esc(SITE[sc].name)+'</div></div><div class="sh-body">'+
+   '<div class="chips">'+SITES.map(s=>'<button type="button" class="chip '+(sc===s.id?"on":"")+'" style="--sc:'+scol(s.id)+'" data-act="peoplesite" data-v="'+s.id+'">'+badge(s.id,1)+esc(s.id==="G"?"Corporate / common":s.name)+' <b class="small">'+((D.people[s.id]||[]).length)+'</b></button>').join("")+'</div>'+
+   '<div class="muted small">People met or interviewed at this site, by function. They show up as suggestions when you log interviews, documents or "client will share later".</div>';
+  let last="";
+  for(const x of list){
+    const f=x.d.func||"Other";if(f!==last){h+='<div class="sec-h">'+esc(f)+'</div>';last=f;}
+    const wa=waNum(x.d.mobile);
+    h+='<div class="card res"><div class="card-t">'+esc(x.d.name)+'</div><div class="small" style="color:var(--ink2)">'+esc(x.d.designation||"")+'</div>'+
+     '<div class="small" style="margin-top:6px">'+(x.d.email?'<a href="mailto:'+esc(x.d.email)+'">'+esc(x.d.email)+'</a>':'<span class="nogps">No email</span>')+(x.d.mobile?' · <b class="tnum">'+esc(x.d.mobile)+'</b>':'')+'</div>'+
+     '<div class="meta">Added by '+esc(uname(x.e.author))+' · '+fmt(x.e.ts)+'</div>'+
+     '<div class="btn-row">'+(x.d.mobile?'<a class="btn sm" href="tel:'+esc(x.d.mobile.replace(/[^0-9+]/g,""))+'">📞 Call</a>':'')+(wa?'<a class="btn sm" href="https://wa.me/'+wa+'" target="_blank" rel="noopener">WhatsApp</a>':'')+(x.d.email?'<a class="btn sm" href="mailto:'+esc(x.d.email)+'">✉ Email</a>':'')+
+     (x.e.local?'':'<button class="btn sm" data-act="pedit" data-v="'+esc(x.e.id)+'">Edit</button><button class="btn sm danger" data-act="premove" data-v="'+esc(x.e.id)+'">Remove</button>')+'</div></div>';
+  }
+  if(!list.length)h+='<div class="empty">No auditees added for this site yet.</div>';
+  h+='<div class="form" id="pform"><div class="form-h">'+av(STATE.user,"sm")+(draft.edit?'Edit auditee':'Add auditee')+'</div>'+
+   '<span class="lbl">Name *</span><input type="text" id="p-name" value="'+esc(draft.pname)+'" placeholder="e.g. Mr. Pankaj Sharma">'+
+   '<span class="lbl">Designation *</span><input type="text" id="p-des" value="'+esc(draft.pdes)+'" placeholder="e.g. Admin & Security Manager">'+
+   '<span class="lbl">Function / department</span><input type="text" id="p-func" list="func-list" value="'+esc(draft.pfunc)+'" placeholder="Pick or type">'+
+   '<datalist id="func-list">'+FUNCS.map(f=>'<option value="'+esc(f)+'">').join("")+'</datalist>'+
+   '<span class="lbl">Email *</span><input type="text" inputmode="email" id="p-mail" value="'+esc(draft.pmail)+'" placeholder="name@dixoninfo.com">'+
+   '<span class="lbl">Mobile <span class="muted">(optional)</span></span><input type="text" inputmode="tel" id="p-mob" value="'+esc(draft.pmob)+'" placeholder="10-digit mobile">'+
+   (draft.edit?'<div class="btn-row"><button class="btn" data-act="pcancel">Cancel edit</button></div>':'')+'</div></div>'+
+   '<div class="sh-foot"><button class="btn primary" data-act="psave">'+(draft.edit?"Save changes":"Add auditee")+'</button></div>';
+  return h;
+}
+function readPerson(){for(const [id,f] of [["p-name","pname"],["p-des","pdes"],["p-func","pfunc"],["p-mail","pmail"],["p-mob","pmob"]]){const x=$("#"+id);if(x)draft[f]=x.value;}}
+async function savePerson(removeId){
+  let body,target;
+  if(removeId){
+    const x=(D.people[ui.sheet.scope]||[]).find(p=>p.e.id===removeId);
+    if(!confirm("Remove "+(x?x.d.name:"this auditee")+" from the list? The record stays in the audit trail."))return;
+    body={removed:true,name:x?x.d.name:""};target=removeId;
+  }else{
+    readPerson();const d=draft;
+    if(!d.pname.trim()){toast("Enter the name.");return;}
+    if(!d.pdes.trim()){toast("Enter the designation.");return;}
+    if(d.pmail.trim()&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.pmail.trim())){toast("That email doesn't look right.");return;}
+    if(!d.pmail.trim()&&!confirm("No email entered. Save without email?"))return;
+    body={name:d.pname.trim(),designation:d.pdes.trim(),func:d.pfunc.trim(),email:d.pmail.trim(),mobile:d.pmob.trim()};target=d.edit||null;
+  }
+  const st=await stamp();
+  const e={id:newId(),author:STATE.user,kind:"person",scope:ui.sheet.scope,target,item:null,status:null,sev:null,evid:[],body:JSON.stringify(body),by:null,ref:null,photos:[],geo:st.geo,gerr:st.gerr||null,ts:st.ts};
+  STATE.outbox.set(e.id,e);await dbPut("outbox",e);STATE.ver++;derive();
+  draft=newDraft("person",ui.sheet.scope,"");Object.assign(draft,{pname:"",pdes:"",pfunc:"",pmail:"",pmob:"",edit:""});
+  toast(removeId?"Removed.":"Saved.");renderSheet();scheduleSync(100);
+}
+
+/* ================= Pending from client ================= */
+function pendingGroups(onlyScope){
+  const g=new Map();
+  for(const [sc,it] of ALL_POINTS){
+    if(onlyScope&&sc!==onlyScope)continue;
+    const p=D.pts.get(sc+"|"+it.id);if(!p||p.status!=="later")continue;
+    const e=p.entries.slice().reverse().find(x=>x.status==="later");const L=laterInfo(e)||{name:e&&e.by||"Not named"};
+    const k=[L.name,L.mobile,L.email].map(x=>(x||"").toLowerCase().trim()).join("|");
+    if(!g.has(k))g.set(k,{L,items:[]});g.get(k).items.push({sc,it,e,L});
+  }
+  return Array.from(g.values());
+}
+function requestText(gr){
+  const sites=Array.from(new Set(gr.items.map(x=>SITE[x.sc].name))).join(", ");
+  return "Dear "+gr.L.name+",\n\nThank you for your time during the security audit at "+sites+". As agreed, please share the following documents by email:\n\n"+
+    gr.items.map((x,i)=>(i+1)+". ["+SITE[x.sc].name+"] "+x.it.id+" – "+x.it.text+(x.L.due?" (by "+fmtDate(x.L.due)+")":"")).join("\n")+
+    "\n\nRegards,\n"+uname(STATE.user)+"\nNorthstar audit team";
+}
+function pendingSheet(){
+  const groups=pendingGroups(null);const n=groups.reduce((a,g)=>a+g.items.length,0);
+  let h='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Pending from client ('+n+')</div></div><div class="sh-body">'+
+   '<div class="muted small">Documents the client agreed to share later, grouped by who will share them. Use the buttons to send a request with the full list. When a document arrives, open the point and set it to “Shared”.</div>';
+  for(const [gi,gr] of groups.entries()){
+    const L=gr.L,wa=waNum(L.mobile);
+    h+='<div class="card" style="margin-top:12px"><div class="card-t">'+esc(L.name)+'</div><div class="small tnum">'+[L.mobile?esc(L.mobile):"",L.email?'<a href="mailto:'+esc(L.email)+'">'+esc(L.email)+'</a>':""].filter(Boolean).join(" · ")+'</div>'+
+     gr.items.map(x=>'<button type="button" class="gap-li" data-act="open" data-v="'+x.it.id+'" data-s="'+x.sc+'">'+badge(x.sc,1)+'<span style="flex:1;min-width:0"><b>'+x.it.id+'</b> '+esc(x.it.text.slice(0,110))+'<span class="meta" style="display:block;margin-top:2px">'+(x.L.due?'Expected by '+esc(fmtDate(x.L.due))+' · ':'')+'Logged by '+esc(uname(x.e.author))+' · '+fmt(x.e.ts)+'</span></span></button>').join("")+
+     '<div class="btn-row">'+(L.email?'<a class="btn sm primary" href="mailto:'+esc(L.email)+'?subject='+encodeURIComponent("Pending documents – Dixon Selaqui security audit")+'&body='+encodeURIComponent(requestText(gr))+'">✉ Email request</a>':'')+
+     (wa?'<a class="btn sm" href="https://wa.me/'+wa+'?text='+encodeURIComponent(requestText(gr))+'" target="_blank" rel="noopener">WhatsApp request</a>':'')+
+     (L.mobile?'<a class="btn sm" href="tel:'+esc(L.mobile.replace(/[^0-9+]/g,""))+'">📞 Call</a>':'')+
+     '<button class="btn sm" data-act="copyreq" data-v="'+gi+'">Copy list</button></div></div>';
+  }
+  if(!groups.length)h+='<div class="empty">Nothing pending. When a document is marked “Client will share later” it appears here.</div>';
+  return h+'</div>';
+}
+
+/* ================= Report (print / save as PDF) ================= */
+function openReport(sc){
+  pushSheet();
+  const days=Array.from(new Set(D.live.filter(e=>isAudit(e)||e.kind==="visit").map(e=>dayKey(e.ts)))).sort().reverse();
+  ui.sheet={type:"report",site:sc||"all",period:days.includes(dayKey(new Date().toISOString()))?dayKey(new Date().toISOString()):"all",photos:true,days};
+  renderSheet();
+}
+function reportSheet(){
+  const r=ui.sheet;
+  return '<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Audit report (PDF)</div></div><div class="sh-body">'+
+   '<div class="muted small">Builds a printable report from everything logged, then opens your phone\'s print screen. Choose <b>Save as PDF</b> there.</div>'+
+   '<span class="lbl">Site</span><select id="r-site"><option value="all">All sites + common documents</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select>'+
+   '<span class="lbl">Entries from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
+   '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
+   '<div class="hint" style="margin-top:14px">The report has: cover page, auditees, check-in/out, coverage summary, findings by severity, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
+   '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
+}
+async function makeReport(){
+  const r=ui.sheet;r.site=$("#r-site").value;r.period=$("#r-period").value;r.photos=$("#r-photos").checked;
+  const w=window.open("","_blank");
+  if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
+  w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing report…</p>');
+  const scopes=r.site==="all"?SITES.map(s=>s.id):[r.site];
+  const inPeriod=e=>r.period==="all"||dayKey(e.ts)===r.period;
+  const ents=D.live.filter(e=>isAudit(e)&&scopes.includes(e.scope)&&inPeriod(e));
+  const urls={};
+  if(r.photos){
+    const paths=[];ents.forEach(e=>(e.photos||[]).forEach(p=>paths.push(p.t)));
+    for(const p of paths){const u=await urlFor(p);if(u)urls[p]=u;}
+    const need=paths.filter(p=>!urls[p]);
+    for(let i=0;i<need.length;i+=200){try{const res=await api("signRead",{paths:need.slice(i,i+200)});Object.assign(urls,res.urls);}catch(e){}}
+  }
+  const html=reportHTML(r,scopes,ents,urls);
+  w.document.open();w.document.write(html);w.document.close();
+  const imgs=Array.from(w.document.images);
+  await Promise.race([Promise.all(imgs.map(im=>im.complete?1:new Promise(res=>{im.onload=im.onerror=res;}))),new Promise(res=>setTimeout(res,20000))]);
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
+}
+function reportHTML(r,scopes,ents,urls){
+  const E=esc,now=new Date().toISOString();
+  const period=r.period==="all"?"Whole audit":fmtDate(r.period);
+  const sevOrder={high:0,med:1,low:2};
+  let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit report</h1><h2>'+(r.site==="all"?"Dixon Technologies – Selaqui sites":E(SITE[r.site].name))+'</h2>'+
+   '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr><tr><th>Reference</th><td>NSS/DTIL/SECA/2026-07/01</td></tr><tr><th>Sites</th><td>'+scopes.map(sc=>E(SITE[sc].name)).join(", ")+'</td></tr>'+
+   '<tr><th>Entries from</th><td>'+E(period)+'</td></tr><tr><th>Auditors</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+'</td></tr>'+
+   '<tr><th>Generated</th><td>'+fmtFull(now)+' IST by '+E(uname(STATE.user))+'</td></tr></table>'+
+   '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p>'+
+   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
+  for(const sc of scopes){
+    const S=SITE[sc],its=itemsFor(sc);
+    b+='<section class="site"><h2><span class="badge">'+E(S.no)+'</span> '+E(S.name)+'</h2><div class="muted">'+E(S.addr)+'</div>';
+    const v=(D.visits[sc]||[]).filter(inPeriodV=>r.period==="all"||dayKey(inPeriodV.ts)===r.period);
+    if(v.length)b+='<h3>Site visits</h3><table><tr><th>When (IST)</th><th>Event</th><th>Auditor</th><th>GPS</th></tr>'+v.map(x=>'<tr><td>'+fmtFull(x.ts)+'</td><td>'+(x.status==="in"?"Checked in":"Checked out")+'</td><td>'+E(uname(x.author))+'</td><td>'+(x.geo?x.geo.lat.toFixed(5)+", "+x.geo.lng.toFixed(5):"–")+'</td></tr>').join("")+'</table>';
+    const ppl=D.people[sc]||[];
+    b+='<h3>Auditees</h3>'+(ppl.length?'<table><tr><th>Name</th><th>Designation</th><th>Function</th><th>Email</th><th>Mobile</th></tr>'+ppl.map(x=>'<tr><td>'+E(x.d.name)+'</td><td>'+E(x.d.designation)+'</td><td>'+E(x.d.func)+'</td><td>'+E(x.d.email)+'</td><td>'+E(x.d.mobile)+'</td></tr>').join("")+'</table>':'<p class="muted">None recorded.</p>');
+    b+='<h3>Coverage</h3><table><tr><th>Type</th><th>Points</th><th>Covered</th><th>In progress</th><th>Not covered</th><th>Gaps</th></tr>'+
+      SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+x.gaps+'</td></tr>';}).join("")+'</table>';
+    const f=ents.filter(e=>e.scope===sc&&sevOrder[e.sev]!=null).sort((a,b2)=>sevOrder[a.sev]-sevOrder[b2.sev]||(a.ts<b2.ts?-1:1));
+    b+='<h3>Findings</h3>'+(f.length?'<table><tr><th>Severity</th><th>Point</th><th>Observation</th><th>Logged</th></tr>'+f.map(e=>'<tr><td class="sev-'+e.sev+'">'+E(SEVM[e.sev].label)+'</td><td>'+E(e.item||"Note")+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+'</td><td>'+E(e.body||"")+'</td><td>'+E(uname(e.author))+'<br>'+fmtFull(e.ts)+'</td></tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
+    const pg=pendingGroups(sc);
+    if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
+    b+='<h3>Status of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Last update</th></tr>'+
+      its.map(it=>{const p=D.pts.get(sc+"|"+it.id);const last=p?p.entries[p.entries.length-1]:null;
+        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td><td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
+    const se=ents.filter(e=>e.scope===sc);
+    b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
+      return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
+       '<div class="meta">'+E(uname(e.author))+' · '+fmtFull(e.ts)+' IST · '+(e.geo?'GPS '+e.geo.lat.toFixed(5)+', '+e.geo.lng.toFixed(5)+' ±'+Math.round(e.geo.acc)+' m':'No GPS')+(e.hash?' · #'+E(e.hash.slice(0,12)):'')+'</div>'+
+       ((e.status&&ST[e.status])||e.sev?'<div><b>'+[e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?"Severity: "+SEVM[e.sev].label:""].filter(Boolean).join(" · ")+'</b></div>':'')+
+       (e.body?'<div class="body">'+E(e.body)+'</div>':'')+
+       (L?'<div class="muted">Will be shared by '+E(L.name)+(L.mobile?' · '+E(L.mobile):'')+(L.email?' · '+E(L.email):'')+(L.due?' · expected '+E(fmtDate(L.due)):'')+'</div>':
+         ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="muted">'+[E((e.evid||[]).join(", ")),e.by?"From "+E(e.by):"",e.ref?"Ref "+E(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
+       (r.photos&&e.photos&&e.photos.length?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<img src="'+E(urls[p.t])+'">':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
+    b+='</section>';
+  }
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selaqui audit report '+E(period)+'</title><style>'+
+   '@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10.5pt/1.4 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
+   'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:0 0 4px;color:#0E3F45}h3{font-size:11.5pt;margin:16px 0 6px;color:#0E5A61;border-bottom:1.5px solid #0E5A61;padding-bottom:2px}'+
+   '.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55;margin-top:18px}'+
+   'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:9pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#E6EDEB}'+
+   '.kv th{width:28%}.muted{color:#5E7079;font-size:8.5pt}.badge{display:inline-block;background:#0E5A61;color:#fff;border-radius:5px;padding:0 7px}'+
+   '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}'+
+   '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph img{width:31%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}'+
+   '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
+   'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
+   '</style></head><body>'+b+'</body></html>';
 }
 
 /* ================= Expenses / reimbursement claims ================= */
@@ -1090,7 +1294,7 @@ function renderMore(m){
    '<div class="card"><div class="card-t">Server backups</div><div class="small muted" style="margin:3px 0 8px">A full copy of all entries is saved on the server every hour, on the hour. Photos are stored separately and never deleted.</div>'+
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
-   '<div class="btn-row"><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
+   '<div class="btn-row"><button class="btn primary" data-act="report">📄 Report (PDF)</button><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
    '<div class="small muted" style="margin:0 0 10px;text-align:center">App version '+VERSION+'</div>'+
    '<div class="card"><div class="card-t">Before each site</div><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Tap the GPS chip and allow location.</li><li>Take one test photo and check it shows in Activity.</li><li>Check in at the gate; check out when you leave.</li><li>Before leaving, make sure the sync chip says <b>Synced</b>.</li></ul></div>';
   loadBackups();
@@ -1104,7 +1308,7 @@ async function loadBackups(){
 
 /* ================= point sheet + forms ================= */
 let draft=null;
-function newDraft(kind,scope,item){return {kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:""};}
+function newDraft(kind,scope,item){return {kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:"",lname:"",lmob:"",lmail:"",ldue:""};}
 function pushSheet(){try{if(!(history.state&&history.state.sheet))history.pushState({sheet:1},"");}catch(e){}}
 function openPoint(item,scope){pushSheet();ui.sheet={type:"point",item,scope:scope||ui.scope};draft=newDraft("point",ui.sheet.scope,item);renderSheet();$("#sheet").scrollTop=0;}
 function openNote(){pushSheet();const sc=ui.tab==="list"?ui.scope:(lsGet("sa.lastScope")||"s1");ui.sheet={type:"note"};draft=newDraft("note",sc,"");renderSheet();}
@@ -1122,10 +1326,16 @@ function formHTML(sec){
   return '<div class="form"><div class="form-h">'+av(STATE.user,"sm")+'Add as '+esc(uname(STATE.user))+'</div>'+
    '<div class="small muted" style="margin-top:4px">Stamped on save: '+esc(uname(STATE.user))+' · date &amp; time · '+(L&&Date.now()-L.t<60000?'GPS ±'+Math.round(L.acc)+' m':'<span class="nogps">GPS not fixed yet – tap the GPS chip</span>')+'</div>'+
    (sts?'<span class="lbl">Status <span class="muted">(optional; leave blank to add evidence only)</span></span><div class="opts" data-grp="status">'+sts.map(([k,l,c])=>'<button type="button" class="opt'+(draft.status===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="status" data-v="'+k+'">'+l+'</button>').join("")+'</div>':'')+
+   (draft.status==="later"?'<div class="later-box"><b>Who will share it?</b><div class="small muted" style="margin:2px 0 8px">Pick an auditee or type a name. Mobile or email is needed so you can follow up after the audit.</div>'+
+     '<input type="text" id="l-name" list="aud-list" placeholder="Name *" value="'+esc(draft.lname)+'">'+
+     '<div class="two" style="margin-top:8px"><input type="text" inputmode="tel" id="l-mob" placeholder="Mobile" value="'+esc(draft.lmob)+'"><input type="text" inputmode="email" id="l-mail" placeholder="Email" value="'+esc(draft.lmail)+'"></div>'+
+     '<label class="small" style="display:block;margin-top:8px"><b>Expected by</b> (optional)<input type="date" id="l-due" value="'+esc(draft.ldue)+'"></label></div>':'')+
    '<span class="lbl">Observation / evidence note</span><textarea id="d-body" placeholder="What did you see, check or hear?">'+esc(draft.body)+'</textarea>'+
    '<span class="lbl">Finding severity <span class="muted">(optional)</span></span><div class="opts">'+SEV.map(([k,l,c])=>'<button type="button" class="opt'+(draft.sev===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="sev" data-v="'+k+'">'+l+'</button>').join("")+'</div>'+
    '<span class="lbl">Evidence type</span><div class="opts">'+EVID.map(x=>'<button type="button" class="opt plain'+(draft.evid.includes(x)?" on":"")+'" data-act="devid" data-v="'+esc(x)+'">'+esc(x)+'</button>').join("")+'</div>'+
-   (sec==="doc"||sec==="int"?'<div class="two" style="margin-top:12px"><input type="text" id="d-by" placeholder="'+(sec==="int"?"Name / designation":"Shown / shared by")+'" value="'+esc(draft.by)+'"><input type="text" id="d-ref" placeholder="Doc ref / file name" value="'+esc(draft.ref)+'"></div>':'')+
+   ((sec==="doc"&&draft.status!=="later")||sec==="int"?'<div class="two" style="margin-top:12px"><input type="text" id="d-by" list="aud-list" placeholder="'+(sec==="int"?"Auditee name (pick or type)":"Shown / shared by")+'" value="'+esc(draft.by)+'"><input type="text" id="d-ref" placeholder="'+(sec==="int"?"Designation / notes ref":"Doc ref / file name")+'" value="'+esc(draft.ref)+'"></div>':'')+
+   (sec?'<div class="small" style="margin-top:6px">'+(peopleFor(draft.scope||"G").length?peopleFor(draft.scope||"G").length+' auditee(s) on file for suggestions · ':'No auditees on file yet · ')+'<a href="#" data-act="people" data-v="'+esc(draft.scope||"G")+'">Manage auditees</a></div>':'')+
+   '<datalist id="aud-list">'+peopleFor(draft.scope||"G").map(x=>'<option value="'+esc(x.d.name)+'">'+esc([x.d.designation,x.d.func].filter(Boolean).join(" · "))+'</option>').join("")+'</datalist>'+
    '<span class="lbl">Photos <span class="muted">('+draft.photos.length+'/12)</span></span><div class="btn-row" style="margin-top:0"><button type="button" class="btn" data-act="cam">📷 Take photo</button><button type="button" class="btn" data-act="gal">Add from gallery</button></div>'+
    '<div class="thumbs" id="d-thumbs">'+draft.photos.map((p,i)=>'<span style="position:relative"><img src="'+p.url+'" alt=""><button type="button" class="rm" data-act="drm" data-v="'+i+'" aria-label="Remove">×</button></span>').join("")+(draft.busy?'<span class="ph" style="display:grid;place-items:center;font-size:12px">Processing…</span>':'')+'</div></div>';
 }
@@ -1143,6 +1353,12 @@ function renderSheet(){
      (p?p.entries.map(e=>entryCard(e)).join(""):'<div class="muted small">No entries yet. Either auditor can add the first one.</div>')+
      formHTML(it.sec)+'</div>'+
      '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save entry</button></div>';
+  }else if(ui.sheet.type==="people"){
+    sh.innerHTML=peopleSheet();
+  }else if(ui.sheet.type==="pending"){
+    sh.innerHTML=pendingSheet();
+  }else if(ui.sheet.type==="report"){
+    sh.innerHTML=reportSheet();
   }else if(ui.sheet.type==="expense"){
     sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">New expense claim</div></div><div class="sh-body">'+expenseForm()+'</div>'+
      '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save claim</button></div>';
@@ -1164,6 +1380,7 @@ function readDraft(){
   const rf=$("#d-ref");if(rf)draft.ref=rf.value;
   const am=$("#x-amt");if(am)draft.amount=am.value;
   const dt=$("#x-date");if(dt)draft.date=dt.value;
+  for(const [id,f] of [["l-name","lname"],["l-mob","lmob"],["l-mail","lmail"],["l-due","ldue"]]){const x=$("#"+id);if(x)draft[f]=x.value;}
 }
 async function addPhotos(files){
   if(!draft)return;readDraft();
@@ -1182,6 +1399,10 @@ async function saveDraft(){
   const d=draft;if(!d||d.busy)return;
   if(ui.sheet.type==="note"&&!d.body.trim()&&!d.photos.length){toast("Write a note or add a photo.");return;}
   if(ui.sheet.type==="point"&&!d.status&&!d.body.trim()&&!d.photos.length&&!d.sev){toast("Pick a status, write a note or add a photo.");return;}
+  if(ui.sheet.type==="point"&&d.status==="later"){
+    if(!d.lname.trim()){toast("Enter who will share it.");return;}
+    if(!d.lmob.trim()&&!d.lmail.trim()){toast("Enter their mobile or email.");return;}
+  }
   const amt=Number(String(d.amount).replace(/[₹,\s]/g,""));
   if(ui.sheet.type==="expense"){
     if(!d.cat){toast("Pick a category.");return;}
@@ -1199,6 +1420,7 @@ async function saveDraft(){
     photos.push({p:base+".jpg",t:base+"-t.jpg",w:p.w,h:p.h,kb:Math.round(p.full.size/1024)});
   }
   const e={id,author:STATE.user,kind:d.kind,scope:d.scope||null,item:d.item||null,status:d.status||null,sev:d.sev||null,evid:d.evid,body:d.body.trim()||null,by:d.by.trim()||null,ref:d.ref.trim()||null,photos,geo:st.geo,gerr:st.gerr||null,ts:st.ts};
+  if(d.kind==="point"&&d.status==="later"){e.by=d.lname.trim();e.ref=JSON.stringify({later:{name:d.lname.trim(),mobile:d.lmob.trim(),email:d.lmail.trim(),due:d.ldue||""}});}
   if(d.kind==="expense"){e.item=d.cat;e.body=JSON.stringify({amount:amt,date:d.date,vendor:d.by.trim(),ref:d.ref.trim(),mode:d.mode,desc:d.body.trim()});}
   STATE.outbox.set(id,e);await dbPut("outbox",e);STATE.ver++;
   if(d.kind==="expense"){ui.tab="info";ui.info="expenses";}
@@ -1281,6 +1503,17 @@ document.addEventListener("click",async ev=>{
     case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
     case "qpri":ui.pri=v;lsSet("sa.pri",v);render();break;
     case "qwhen":ui.when=v;lsSet("sa.when",v);render();break;
+    case "people":ev.preventDefault();openPeople(v);break;
+    case "peoplesite":readPerson();ui.sheet.scope=v;draft.edit="";renderSheet();break;
+    case "peopleback":{const bk=ui.sheet.back;ui.sheet=bk.sheet;draft=bk.draft;renderSheet();break;}
+    case "psave":savePerson(null);break;
+    case "premove":savePerson(v);break;
+    case "pedit":{const x=(D.people[ui.sheet.scope]||[]).find(p=>p.e.id===v);if(x){Object.assign(draft,{pname:x.d.name||"",pdes:x.d.designation||"",pfunc:x.d.func||"",pmail:x.d.email||"",pmob:x.d.mobile||"",edit:v});renderSheet();const f=$("#pform");if(f)f.scrollIntoView({behavior:"smooth"});}break;}
+    case "pcancel":Object.assign(draft,{pname:"",pdes:"",pfunc:"",pmail:"",pmob:"",edit:""});renderSheet();break;
+    case "pending":pushSheet();ui.sheet={type:"pending"};renderSheet();$("#sheet").scrollTop=0;break;
+    case "copyreq":{const g=pendingGroups(null)[Number(v)];if(g){try{await navigator.clipboard.writeText(requestText(g));toast("Copied.");}catch(e){toast("Could not copy.");}}break;}
+    case "report":openReport(v||null);break;
+    case "mkreport":makeReport();break;
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
     case "claimst":setClaim(v,t.dataset.k);break;
     case "expwho":ui.expWho=v;render();break;
@@ -1291,7 +1524,7 @@ document.addEventListener("click",async ev=>{
     case "gallery":ui.tab="feed";ui.feedView="photos";lsSet("sa.tab","feed");window.scrollTo(0,0);render();break;
     case "dlphoto":dlPhoto(v);break;
     case "filter":ui.filter=v;render();break;
-    case "open":if(!v){if(t.dataset.s){ui.feedSite=t.dataset.s;ui.tab="feed";render();}break;}openPoint(v,t.dataset.s||ui.scope);break;
+    case "open":if(ui.sheet&&ui.sheet.type==="pending"){ui.sheet=null;}if(!v){if(t.dataset.s){ui.feedSite=t.dataset.s;ui.tab="feed";render();}break;}openPoint(v,t.dataset.s||ui.scope);break;
     case "close":requestClose();break;
     case "newnote":openNote();break;
     case "visit":logVisit(v,t.dataset.k);break;
@@ -1337,7 +1570,9 @@ document.addEventListener("change",ev=>{
   else if(id==="pick-cam"||id==="pick-gal"){const f=ev.target.files;addPhotos(f).finally(()=>{ev.target.value="";});}
 });
 let qT=null;
-document.addEventListener("input",ev=>{if(ev.target.id==="f-q"){ui.q=ev.target.value;clearTimeout(qT);qT=setTimeout(renderRows,150);}});
+document.addEventListener("input",ev=>{
+  if(ev.target.id==="l-name"&&draft){const x=peopleFor(draft.scope||"G").find(p=>p.d.name===ev.target.value);
+    if(x){const m=$("#l-mob"),e=$("#l-mail");if(m&&!m.value)m.value=x.d.mobile||"";if(e&&!e.value)e.value=x.d.email||"";}}if(ev.target.id==="f-q"){ui.q=ev.target.value;clearTimeout(qT);qT=setTimeout(renderRows,150);}});
 // hover tooltips for chart marks
 const tip=$("#tip");
 document.addEventListener("pointerover",ev=>{const t=ev.target.closest("[data-tip]");if(!t){tip.hidden=true;return;}tip.textContent=t.dataset.tip;tip.hidden=false;});

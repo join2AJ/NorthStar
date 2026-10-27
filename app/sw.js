@@ -1,6 +1,6 @@
 // Network-first app shell: always try for the latest version, fall back to the cached copy
 // so the app still opens at a site with no signal. API and photo requests are never cached.
-const CACHE = "selaqui-shell-v5";
+const CACHE = "selaqui-shell-v6";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (e) => {

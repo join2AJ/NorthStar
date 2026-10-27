@@ -34,6 +34,18 @@ downloaded. The log tables are append-only in the database (updates and deletes 
 hash-chained; the app re-checks the chain each time the trail is opened and shows "Chain intact" or the
 first broken record. The trail is included in every hourly backup and can be exported as CSV.
 
+## Auditees, client-will-share-later and the report
+
+- **Auditees** (Sites → 👥 Auditees, or "Manage auditees" in any point form): name, designation, function,
+  email and optional mobile per site, plus a corporate/common list. Edits and removals are new stamped records.
+  Names are offered as suggestions when logging interviews, documents and "client will share later".
+- **Client will share later** (document status): asks who will share it (pick an auditee or type), their
+  mobile or email, and an expected date. Dashboard → *Client will share later* opens a follow-up list grouped
+  by person with one-tap email / WhatsApp requests listing every pending document.
+- **Report (PDF)** (Dashboard, Sites, Backup tab): one site or all, one day or the whole audit. Cover page,
+  site visits, auditees, coverage, findings by severity, pending documents, status of every point, and the
+  entry log with who / when / GPS / hash and photos. Opens the phone's print screen → *Save as PDF*.
+
 ## Expense claims
 
 Resources → Expenses: log a reimbursement claim (category, amount, date, vendor, bill/booking no., payment
