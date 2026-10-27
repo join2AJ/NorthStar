@@ -158,6 +158,12 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .opt.on{background:color-mix(in srgb,var(--pc,var(--brand)) 20%,var(--surface));border-color:var(--pc,var(--brand));box-shadow:inset 0 0 0 1px var(--pc,var(--brand))}
 .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
 .filters select{padding:9px 8px;font-size:14px}
+.qf{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px}
+.qf-l{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:62px}
+.qchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:600}
+.qchip b{font-weight:700;color:var(--muted);margin-left:2px}
+.qchip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.qchip.on b{color:inherit;opacity:.85}
 input[type=text],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;font-size:16px}
 textarea{min-height:92px;resize:vertical}
 .cat-h{font-weight:700;font-size:13.5px;margin:16px 0 6px;color:var(--brand);display:flex;justify-content:space-between}
@@ -266,6 +272,7 @@ textarea{min-height:92px;resize:vertical}
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
+const VERSION="2026-10-28.3";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -581,7 +588,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:lsGet("sa.scope")||"s1",sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,pri:"all",when:"all",st:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -743,6 +750,13 @@ function haystack(it,p){
   }else h+=" not covered";
   return h;
 }
+// How many points in the current site/section each quick filter would show (respecting the other quick filter).
+function qcount(kind,v){
+  return itemsFor(ui.scope,ui.sec).filter(it=>{
+    const pri=kind==="pri"?v:ui.pri,when=kind==="when"?v:ui.when;
+    return (pri==="all"||(it.mand?"M":"D")===pri)&&(when==="all"||it.when===when);
+  }).length;
+}
 function renderList(m){
   if(ui.scope==="G")ui.sec="doc";
   const chips=SITES.map(s=>'<button type="button" class="chip '+(ui.scope===s.id?"on":"")+'" style="--sc:'+scol(s.id)+'" data-act="scope" data-v="'+s.id+'">'+badge(s.id,1)+esc(s.id==="G"?"Common":s.name)+'</button>').join("");
@@ -751,12 +765,13 @@ function renderList(m){
   const cats=Array.from(new Set(its.map(i=>i.cat)));
   const sel=(id,label,cur,opts)=>'<select id="'+id+'" aria-label="'+label+'">'+opts.map(([v,l])=>'<option value="'+esc(v)+'"'+(cur===v?" selected":"")+'>'+esc(l)+'</option>').join("")+'</select>';
   let h='<div class="chips" role="tablist">'+chips+'</div>'+
-   '<div class="h-page" style="display:flex;align-items:center;gap:8px">'+badge(ui.scope)+esc(SITE[ui.scope].name)+'</div><div class="muted small">'+r.covered+' of '+r.total+' covered · '+r.progress+' in progress</div>';
+   '<div class="h-page" style="display:flex;align-items:center;gap:8px">'+badge(ui.scope)+esc(SITE[ui.scope].name)+'</div><div class="muted small">'+r.covered+' of '+r.total+' covered · '+r.progress+' in progress</div>'+
+   (ui.sec!=="doc"?'<div class="small muted" style="margin-top:4px">All '+(ui.sec==="walk"?"walkthrough areas":"interviews")+' are mandatory and on-site.</div>':'');
   if(ui.scope!=="G")h+='<div class="seg" style="margin:10px 0 0">'+SECTIONS.map(([k,l])=>{const x=scopeStats(ui.scope,k);return '<button type="button" data-act="sec" data-v="'+k+'" class="'+(ui.sec===k?"on":"")+'">'+l+' <span class="small">'+x.covered+'/'+x.total+'</span></button>';}).join("")+'</div>';
   h+='<div class="seg" style="margin:8px 0 0">'+[["all","All"],["none","Not covered"],["progress","In progress"],["covered","Covered"],["gaps","Gaps"]].map(([k,l])=>'<button type="button" data-act="filter" data-v="'+k+'" class="'+(ui.filter===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
+   '<div class="qf"><span class="qf-l">Priority</span>'+[["all","All"],["M","Mandatory"],["D","Other (desirable)"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.pri===k?" on":"")+'" data-act="qpri" data-v="'+k+'">'+l+' <b>'+qcount("pri",k)+'</b></button>').join("")+'</div>'+
+   '<div class="qf"><span class="qf-l">When</span>'+[["all","All"],["Pre-audit","Pre-audit"],["On-site","On-site"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.when===k?" on":"")+'" data-act="qwhen" data-v="'+k+'">'+l+' <b>'+qcount("when",k)+'</b></button>').join("")+'</div>'+
    '<div class="filters">'+
-   (ui.sec==="doc"?sel("f-pri","Priority",ui.pri,[["all","Mandatory + desirable"],["M","Mandatory only"],["D","Desirable only"]])+
-     sel("f-when","When needed",ui.when,[["all","Pre-audit + on-site"],["Pre-audit","Pre-audit only"],["On-site","On-site only"]]):'')+
    sel("f-status","Status",ui.st,[["all","Any status"],["none","Not covered"],["notes","Notes only (no status)"]].concat(STATUS[ui.sec].map(([k,l])=>[k,l])))+
    sel("f-who","Logged by",ui.who,[["all","Logged by anyone"]].concat(Object.keys(USERS).map(u=>[u,"Logged by "+USERS[u].short])))+
    (cats.length>1?sel("f-cat","Category",ui.cat,[["all","All categories"]].concat(cats.map(c=>[c,c]))):'')+
@@ -768,8 +783,8 @@ function renderRows(){
   const rows=itemsFor(sc,ui.sec).filter(it=>{
     const p=D.pts.get(sc+"|"+it.id),s=stateOf(p);
     if(ui.cat!=="all"&&it.cat!==ui.cat)return false;
-    if(ui.sec==="doc"&&ui.pri!=="all"&&(it.mand?"M":"D")!==ui.pri)return false;
-    if(ui.sec==="doc"&&ui.when!=="all"&&it.when!==ui.when)return false;
+    if(ui.pri!=="all"&&(it.mand?"M":"D")!==ui.pri)return false;
+    if(ui.when!=="all"&&it.when!==ui.when)return false;
     if(ui.who!=="all"&&!(p&&p.authors.has(ui.who)))return false;
     if(ui.st==="none"&&p)return false;
     if(ui.st==="notes"&&!(p&&!p.status))return false;
@@ -934,6 +949,7 @@ function renderMore(m){
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
    '<div class="btn-row"><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
+   '<div class="small muted" style="margin:0 0 10px;text-align:center">App version '+VERSION+'</div>'+
    '<div class="card"><div class="card-t">Before each site</div><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Tap the GPS chip and allow location.</li><li>Take one test photo and check it shows in Activity.</li><li>Check in at the gate; check out when you leave.</li><li>Before leaving, make sure the sync chip says <b>Synced</b>.</li></ul></div>';
   loadBackups();
 }
@@ -1108,6 +1124,8 @@ document.addEventListener("click",async ev=>{
     case "openscope":ui.scope=v;ui.tab="list";ui.filter="all";ui.cat="all";lsSet("sa.scope",v);lsSet("sa.tab","list");window.scrollTo(0,0);render();break;
     case "scope":ui.scope=v;ui.cat="all";lsSet("sa.scope",v);render();break;
     case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
+    case "qpri":ui.pri=v;lsSet("sa.pri",v);render();break;
+    case "qwhen":ui.when=v;lsSet("sa.when",v);render();break;
     case "photowho":ui.feedWho=v;ui.photoN=60;render();break;
     case "morephotos":ui.photoN+=60;render();break;
     case "gallery":ui.tab="feed";ui.feedView="photos";lsSet("sa.tab","feed");window.scrollTo(0,0);render();break;
@@ -1148,8 +1166,6 @@ document.addEventListener("submit",ev=>{if(ev.target.id==="login-form"){ev.preve
 document.addEventListener("change",ev=>{
   const id=ev.target.id;
   if(id==="f-cat"){ui.cat=ev.target.value;renderRows();}
-  else if(id==="f-pri"){ui.pri=ev.target.value;renderRows();}
-  else if(id==="f-when"){ui.when=ev.target.value;renderRows();}
   else if(id==="f-status"){ui.st=ev.target.value;renderRows();}
   else if(id==="ph-site"){ui.feedSite=ev.target.value;ui.photoN=60;render();}
   else if(id==="f-who"){ui.who=ev.target.value;renderRows();}
@@ -1175,7 +1191,12 @@ setInterval(()=>{if(STATE.user&&STATE.token&&!document.hidden)renderTop();},3000
 (async function boot(){
   await loadLocal();
   if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
-  if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator&&location.protocol==="https:"){
+    const had=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register("sw.js").then(r=>r.update()).catch(()=>{});
+    // A new version took over: reload once to use it, unless a form is open (then the next open picks it up).
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!ui.sheet&&!STATE.syncing)location.reload();});
+  }
   loginWho=STATE.user;
   render();
   if(STATE.token){startGeo();scheduleSync(50);}
