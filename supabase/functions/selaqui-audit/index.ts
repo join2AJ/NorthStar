@@ -60,7 +60,9 @@ async function logActivity(req: Request, actor: string | null, action: string, t
 
 /* ---------- validation ---------- */
 const SCOPES = new Set(["G", "s1", "s2", "s3", "s4", "s5", "s6"]);
-const KINDS = new Set(["point", "note", "visit", "retract"]);
+// expense = a reimbursement claim (details as JSON in body, bills as photos); claim = a status change on an expense.
+const KINDS = new Set(["point", "note", "visit", "retract", "expense", "claim"]);
+const CLAIM_STATUS = new Set(["submitted", "approved", "paid", "rejected", "draft"]);
 const str = (v: unknown, max: number) => (v == null || v === "" ? null : String(v).slice(0, max));
 const PHOTO_RE = /^photos\/[a-z0-9-]{1,64}\/[a-z0-9-]{1,64}(-t)?\.jpg$/;
 
@@ -187,6 +189,16 @@ async function handle(req: Request, b: any) {
       const list = Array.isArray(b.entries) ? b.entries.slice(0, 200) : [];
       const clean = list.map((e: any) => cleanEntry(e, me.username));
       for (const e of clean) {
+        if (e.kind === "expense") {
+          let d: any;
+          try { d = JSON.parse(e.body || ""); } catch { throw new HttpError(400, "Bad expense details"); }
+          if (!(Number(d.amount) > 0) || Number(d.amount) > 10000000) throw new HttpError(400, "Enter an amount above zero.");
+        }
+        if (e.kind === "claim") {
+          if (!CLAIM_STATUS.has(String(e.status))) throw new HttpError(400, "Bad claim status");
+          const t = await sql`select kind from selaqui.entries where id = ${e.target}`;
+          if (!t.length || t[0].kind !== "expense") throw new HttpError(400, "That expense was not found.");
+        }
         if (e.kind === "retract") {
           const t = await sql`select author from selaqui.entries where id = ${e.target}`;
           if (!t.length || t[0].author !== me.username) throw new HttpError(403, "You can only withdraw your own entries.");
@@ -202,9 +214,11 @@ async function handle(req: Request, b: any) {
         const ins = await sql`insert into selaqui.entries ${sql(e, "id", "author", "kind", "scope", "item_id", "status", "sev", "evid", "ref", "provided_by", "body", "photos", "geo", "gerr", "target", "device_ts", "ip", "ua")}
           on conflict (id) do nothing returning seq`;
         if (ins.length) {
-          const action = raw.kind === "retract" ? "entry.withdrawn" : raw.kind === "visit" ? "site.check-" + (raw.status || "") : raw.kind === "note" ? "note.added" : "entry.added";
-          await logActivity(req, me.username, action, raw.kind === "retract" ? raw.target : raw.id,
-            { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr },
+          const action = raw.kind === "retract" ? "entry.withdrawn" : raw.kind === "visit" ? "site.check-" + (raw.status || "")
+            : raw.kind === "note" ? "note.added" : raw.kind === "expense" ? "expense.added" : raw.kind === "claim" ? "claim." + raw.status : "entry.added";
+          await logActivity(req, me.username, action, raw.kind === "retract" || raw.kind === "claim" ? raw.target : raw.id,
+            raw.kind === "expense" ? { category: raw.item_id, ...JSON.parse(raw.body || "{}"), photos: raw.photos.length, deviceTime: raw.device_ts }
+              : { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr },
             raw.geo);
         }
         saved.push(raw.id);

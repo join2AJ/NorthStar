@@ -34,6 +34,15 @@ downloaded. The log tables are append-only in the database (updates and deletes 
 hash-chained; the app re-checks the chain each time the trail is opened and shows "Chain intact" or the
 first broken record. The trail is included in every hourly backup and can be exported as CSV.
 
+## Expense claims
+
+Resources → Expenses: log a reimbursement claim (category, amount, date, vendor, bill/booking no., payment
+mode, description) with photos or screenshots of the bill. Each claim is stamped with who, IST time and GPS.
+Status moves Not submitted → Submitted → Approved → Paid (or Rejected); every change is a new stamped
+record with an optional note, so the history stays visible. Totals per person and per status, and a CSV
+export for sending to Northstar. Travel cards with a booking (e.g. the Savaari cab) have a one-tap
+"Log as expense claim" that pre-fills the details.
+
 ## Where photos are stored
 
 Supabase → project **client-portal** → Storage → bucket **`selaqui-audit`** → `photos/ajay/` and `photos/anis/`.

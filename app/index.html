@@ -164,7 +164,8 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .qchip b{font-weight:700;color:var(--muted);margin-left:2px}
 .qchip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .qchip.on b{color:inherit;opacity:.85}
-input[type=text],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;font-size:16px}
+input[type=date]{display:block;min-height:46px}
+input[type=text],input[type=password],input[type=search],input[type=date],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;font-size:16px}
 textarea{min-height:92px;resize:vertical}
 .cat-h{font-weight:700;font-size:13.5px;margin:16px 0 6px;color:var(--brand);display:flex;justify-content:space-between}
 .row{display:flex;gap:11px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pc,var(--line));border-radius:12px;padding:10px 11px;margin:0 0 7px}
@@ -276,7 +277,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.4";
+const VERSION="2026-10-28.5";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -302,6 +303,14 @@ const ST={};for(const k in STATUS)for(const [v,l,c] of STATUS[k])ST[v]={label:l,
 const IN_PROGRESS=new Set(["onsite","sched"]);
 const SEV=[["high","High","crit"],["med","Medium","serious"],["low","Low","warn"],["good","Good practice","good"],["info","Info","neutral"]];
 const SEVM=Object.fromEntries(SEV.map(([k,l,c])=>[k,{label:l,col:c}]));
+const EXP_CAT=[["cab","Cab / taxi","s4"],["train","Train / flight","s2"],["hotel","Hotel","s6"],["food","Food","s3"],["local","Local travel / auto","s1"],["other","Other","s0"]];
+const EXP_CATM=Object.fromEntries(EXP_CAT.map(([k,l,c])=>[k,{label:l,col:c}]));
+const CLAIM_ST=[["draft","Not submitted","neutral"],["submitted","Submitted","info"],["approved","Approved","warn"],["paid","Paid","good"],["rejected","Rejected","crit"]];
+const CLAIM_STM=Object.fromEntries(CLAIM_ST.map(([k,l,c])=>[k,{label:l,col:c}]));
+const PAY_MODES=["UPI","Cash","Card","Bank transfer","Paid by Northstar"];
+const isAudit=e=>e.kind==="point"||e.kind==="note";
+const fmtDate=ymd=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd||"");return m?m[3]+" "+MON[Number(m[2])-1]+" "+m[1]:(ymd||"");};
+const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2});
 const EVID=["Document copy","Register / log seen","Photo","System screen","Interview note","Physical check"];
 const cv=c=>"var(--"+c+")";
 
@@ -571,7 +580,18 @@ function derive(){
     if(e.status){p.status=e.status;p.statusBy=e.author;if(!p.firstBy&&!IN_PROGRESS.has(e.status))p.firstBy=e.author;}
     if(e.sev&&e.sev!=="info"&&e.sev!=="good")p.sev=e.sev;
   }
-  D={all,live,withdrawn,pts,visits};Dver=STATE.ver;return D;
+  const exp=[],claims=new Map();
+  for(const e of live){
+    if(e.kind==="claim"){(claims.get(e.target)||claims.set(e.target,[]).get(e.target)).push(e);}
+  }
+  for(const e of live){
+    if(e.kind!=="expense")continue;
+    let d={};try{d=JSON.parse(e.body||"{}");}catch(x){}
+    const hist=claims.get(e.id)||[];const last=hist[hist.length-1];
+    exp.push({e,d,amount:Number(d.amount)||0,status:last?last.status:"draft",statusBy:last?last.author:e.author,statusAt:last?last.ts:e.ts,hist});
+  }
+  exp.reverse();
+  D={all,live,withdrawn,pts,visits,exp};Dver=STATE.ver;return D;
 }
 // "covered" = a final status is recorded; "progress" = entries exist but nothing final yet.
 function stateOf(p){if(!p)return "none";if(p.status&&!IN_PROGRESS.has(p.status))return "covered";return "progress";}
@@ -592,7 +612,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:lsGet("sa.scope")||"s1",sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,info:"contacts",pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,info:"contacts",expWho:"all",expSt:"all",pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -651,7 +671,7 @@ function ring(pct,label){
 }
 function audStats(u){
   const r={entries:0,points:new Set(),covered:0,photos:0,findings:{high:0,med:0,low:0},last:null,bySite:{},days:{}};
-  for(const e of D.live){if(e.author!==u||e.kind==="visit")continue;
+  for(const e of D.live){if(e.author!==u||!isAudit(e))continue;
     r.entries++;r.photos+=(e.photos||[]).length;if(e.item)r.points.add(e.scope+"|"+e.item);
     if(e.sev&&r.findings[e.sev]!=null)r.findings[e.sev]++;
     if(!r.last||e.ts>r.last)r.last=e.ts;
@@ -662,7 +682,7 @@ function audStats(u){
 }
 function renderDash(m){
   const T=totals();const pct=T.total?Math.round(T.covered*100/T.total):0;const pctL=T.covered&&!pct?"<1":String(pct);
-  const photos=D.live.reduce((a,e)=>a+(e.photos||[]).length,0);
+  const photos=D.live.filter(isAudit).reduce((a,e)=>a+(e.photos||[]).length,0);
   const findings=D.live.filter(e=>e.sev==="high"||e.sev==="med"||e.sev==="low");
   const high=findings.filter(e=>e.sev==="high").length;
   const legend='<div class="legend"><span><i style="--pc:var(--good)"></i>Covered</span><span><i style="--pc:var(--warn)"></i>In progress</span><span><i class="none"></i>Not covered</span></div>';
@@ -672,7 +692,7 @@ function renderDash(m){
      '<div class="small muted" style="margin:2px 0 8px">'+T.progress+' in progress · '+T.none+' not started</div>'+
      stackBar([{n:T.covered,c:"var(--good)",l:"Covered"},{n:T.progress,c:"var(--warn)",l:"In progress"},{n:T.none,c:"transparent",l:"Not covered"}],true,"All sites")+'</div></div>'+legend+'</div>';
   h+='<div class="tiles">'+
-     '<div class="tile"><div class="l">Entries logged</div><div class="v">'+D.live.filter(e=>e.kind!=="visit").length+'</div><div class="s">'+STATE.outbox.size+' waiting to upload</div></div>'+
+     '<div class="tile"><div class="l">Entries logged</div><div class="v">'+D.live.filter(isAudit).length+'</div><div class="s">'+STATE.outbox.size+' waiting to upload</div></div>'+
      '<button type="button" class="tile" style="text-align:left" data-act="gallery"><div class="l">Photos</div><div class="v">'+photos+'</div><div class="s" style="color:var(--brand);font-weight:600">Open gallery ›</div></button>'+
      '<div class="tile"><div class="l">Findings</div><div class="v">'+findings.length+'</div><div class="s">'+sevPill("high")+' '+high+'</div></div>'+
      '<div class="tile"><div class="l">Gaps</div><div class="v">'+Array.from(D.pts.values()).filter(p=>p.status==="notavail"||p.status==="noncomp").length+'</div><div class="s">Not available or non-compliant</div></div></div>';
@@ -830,11 +850,11 @@ function renderRows(){
 /* ================= Photos gallery ================= */
 function allPhotos(){
   const out=[];
-  for(const e of D.live){(e.photos||[]).forEach((ph,i)=>out.push({ph,i,e}));}
+  for(const e of D.live){if(!isAudit(e))continue;(e.photos||[]).forEach((ph,i)=>out.push({ph,i,e}));}
   return out.reverse();
 }
 function photoName(e,i){
-  const site=e.scope?(e.scope==="G"?"Common":"Site"+SITE[e.scope].no):"NoSite";
+  const site=e.kind==="expense"?"Claim":e.scope?(e.scope==="G"?"Common":"Site"+SITE[e.scope].no):"NoSite";
   return [site,e.item||"note",USERS[e.author]?USERS[e.author].short:e.author,dayKey(e.ts),fmtFull(e.ts).slice(12,20).replace(/:/g,""),i+1].join("_")+".jpg";
 }
 function renderPhotos(m){
@@ -870,7 +890,7 @@ function entryCard(e,opts){
    (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?'<div class="meta"><a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw this entry</a></div>':'')+'</div>';
 }
 function renderFeed(m){
-  let list=D.all.filter(e=>e.kind!=="retract").slice().reverse();
+  let list=D.all.filter(e=>e.kind!=="retract"&&e.kind!=="expense"&&e.kind!=="claim").slice().reverse();
   if(ui.feedWho!=="all")list=list.filter(e=>e.author===ui.feedWho);
   if(ui.feedSite!=="all")list=list.filter(e=>e.scope===ui.feedSite);
   if(ui.feedKind==="photos")list=list.filter(e=>(e.photos||[]).length);
@@ -891,7 +911,7 @@ function renderFeed(m){
 function feedSwitch(){return '<div class="seg" style="margin:4px 0 10px">'+[["entries","Entries"],["photos","Photos"],["trail","Audit trail"]].map(([k,l])=>'<button type="button" data-act="feedview" data-v="'+k+'" class="'+(ui.feedView===k?"on":"")+'">'+l+'</button>').join("")+'</div>';}
 const ACTION_L={"login.ok":"Signed in","login.failed":"Failed sign-in","login.blocked":"Sign-in blocked","logout":"Signed out","password.changed":"Changed password",
  "entry.added":"Added entry","note.added":"Added note","entry.withdrawn":"Withdrew entry","site.check-in":"Checked in","site.check-out":"Checked out",
- "photo.upload":"Uploaded photos","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
+ "photo.upload":"Uploaded photos","expense.added":"Logged expense claim","claim.submitted":"Claim submitted","claim.approved":"Claim approved","claim.paid":"Claim paid","claim.rejected":"Claim rejected","claim.draft":"Claim set back to not submitted","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
 function device(ua){if(!ua)return "";const m=ua.match(/\(([^)]+)\)/);let d=m?m[1].split(";").map(x=>x.trim()).filter(x=>!/^(Linux|U|K|wv|X11)$/.test(x)).slice(0,2).join(" "):"";
   const b=/EdgA?\//.test(ua)?"Edge":/SamsungBrowser/.test(ua)?"Samsung Internet":/CriOS|Chrome\//.test(ua)?"Chrome":/Firefox|FxiOS/.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":/Deno/.test(ua)?"server":"";return [d,b].filter(Boolean).join(" · ");}
 let trailCache=null;
@@ -907,7 +927,7 @@ function renderTrail(m){
   let list=T.rows;if(ui.feedWho!=="all")list=list.filter(r=>r.actor===ui.feedWho);
   h+='<div class="seg" style="margin:0 0 10px">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="trailwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   h+=list.length?list.map(r=>{const u=USERS[r.actor]?r.actor:null;const d=r.detail||{};
-    const what=[d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
+    const what=[d.amount?inr(d.amount)+(d.vendor?" · "+d.vendor:""):"",d.category&&EXP_CATM[d.category]?EXP_CATM[d.category].label:"",d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
     return '<div class="ent" style="--ac:'+(u?"var(--"+u+")":r.action==="login.failed"||r.action==="login.blocked"?"var(--crit)":"var(--neutral)")+'"><div class="ent-h">'+(u?av(u,"sm"):'')+'<b>'+esc(ACTION_L[r.action]||r.action)+'</b><span class="muted">'+esc(u?uname(u):(r.actor||"System"))+'</span></div>'+
      (what?'<div class="small" style="margin-top:4px">'+esc(what)+'</div>':'')+
      '<div class="stampbox"><div><span>Server time</span><b class="tnum">'+fmtFull(r.at)+' IST</b></div>'+(d.deviceTime?'<div><span>Phone time</span><b class="tnum">'+fmtFull(d.deviceTime)+' IST</b></div>':'')+
@@ -950,7 +970,7 @@ function renderInfo(m){
   const groups=[];for(const c of RES.contacts||[]){let g=groups.find(x=>x.n===c.group);if(!g){g={n:c.group,l:[]};groups.push(g);}g.l.push(c);}
   const tcol={Train:"var(--s2)",Cab:"var(--s4)",Hotel:"var(--s6)","Audit day 1":"var(--s1)"};
   let h='<div class="h-page">Resources</div><div class="muted small">Who to contact for what, travel bookings and site addresses. Tap to call, WhatsApp or open in Maps. Saved on this phone for use without signal.</div>';
-  h+='<div class="seg" style="margin:10px 0 4px">'+[["contacts","Contacts"],["travel","Travel"],["sites","Sites"],["about","Engagement"]].map(([k,l])=>'<button type="button" data-act="infosec" data-v="'+k+'" class="'+(ui.info===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  h+='<div class="seg" style="margin:10px 0 4px">'+[["contacts","Contacts"],["travel","Travel"],["expenses","Expenses"],["sites","Sites"],["about","Info"]].map(([k,l])=>'<button type="button" data-act="infosec" data-v="'+k+'" class="'+(ui.info===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   if(ui.info==="contacts"){
     for(const g of groups){
       h+='<div class="sec-h">'+esc(g.n)+'</div>';
@@ -964,8 +984,11 @@ function renderInfo(m){
       h+='<div class="card site-card" style="--sc:'+(tcol[t.type]||"var(--brand)")+'"><div class="small" style="font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">'+esc(t.type)+'</div><div class="card-t">'+esc(t.title)+'</div><div class="small" style="margin-top:2px"><b>'+esc(t.when)+'</b></div>'+
         '<div class="stampbox" style="margin-top:9px">'+(t.rows||[]).map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join("")+'</div>'+
         (t.note?'<div class="hint" style="margin-bottom:0">'+esc(t.note)+'</div>':'')+
-        (t.map?'<div class="btn-row"><a class="btn sm" href="'+mapUrl(t.map)+'" target="_blank" rel="noopener">📍 Open in Maps</a></div>':'')+'</div>';
+        ((t.map||t.claim)?'<div class="btn-row">'+(t.map?'<a class="btn sm" href="'+mapUrl(t.map)+'" target="_blank" rel="noopener">📍 Open in Maps</a>':'')+
+          (t.claim?(D.exp.some(x=>x.d.ref&&x.d.ref===t.claim.ref)?'<button class="btn sm" data-act="infosec" data-v="expenses">✓ Claim logged – view</button>':'<button class="btn sm primary" data-act="newexp" data-v="'+esc(JSON.stringify(t.claim))+'">₹ Log as expense claim</button>'):'')+'</div>':'')+'</div>';
     }
+  }else if(ui.info==="expenses"){
+    h+=renderExpenses();
   }else if(ui.info==="sites"){
     for(const x of RES.sites||[]){const sid=SITE[x.site]?x.site:null;
       h+='<div class="card'+(sid?' site-card':'')+'" style="'+(sid?'--sc:'+scol(sid):'')+'"><div style="display:flex;gap:10px;align-items:flex-start">'+(sid?badge(sid):'<span class="badge" style="--sc:var(--s0)">✈</span>')+'<div><div class="card-t">'+esc(x.name)+'</div><div class="small muted">'+esc(x.addr)+'</div></div></div>'+
@@ -975,6 +998,69 @@ function renderInfo(m){
   }
   h+='<div class="small muted" style="text-align:center;margin:6px 0 14px">Updated '+esc(RES.updated||"")+(RES._at?' · fetched '+ago(RES._at):'')+'</div>';
   m.innerHTML=h;
+}
+
+/* ================= Expenses / reimbursement claims ================= */
+function renderExpenses(){
+  const all=D.exp;
+  let list=all;
+  if(ui.expWho!=="all")list=list.filter(x=>x.e.author===ui.expWho);
+  if(ui.expSt!=="all")list=list.filter(x=>x.status===ui.expSt);
+  const sum=(arr)=>arr.reduce((a,x)=>a+x.amount,0);
+  const live=all.filter(x=>x.status!=="rejected");
+  let h='<div class="tiles" style="margin-top:10px">'+
+   '<div class="tile"><div class="l">Total claimed</div><div class="v">'+inr(sum(live))+'</div><div class="s">'+live.length+' claim'+(live.length===1?"":"s")+' (excl. rejected)</div></div>'+
+   '<div class="tile"><div class="l">Still to be paid</div><div class="v">'+inr(sum(live.filter(x=>x.status!=="paid")))+'</div><div class="s">'+inr(sum(all.filter(x=>x.status==="paid")))+' paid so far</div></div>'+
+   Object.keys(USERS).map(u=>{const m=live.filter(x=>x.e.author===u);return '<div class="tile" style="border-top:4px solid var(--'+u+')"><div class="l">'+esc(USERS[u].name)+'</div><div class="v">'+inr(sum(m))+'</div><div class="s">'+inr(sum(m.filter(x=>x.status!=="paid")))+' pending</div></div>';}).join("")+'</div>';
+  h+='<div class="card" style="margin-top:10px"><div class="card-t">By status</div>'+stackBar(CLAIM_ST.map(([k,l,c])=>({n:sum(all.filter(x=>x.status===k)),c:cv(c),l})),true,"Amount")+
+   '<div class="legend" style="margin-top:8px">'+CLAIM_ST.map(([k,l,c])=>'<span><i style="--pc:'+cv(c)+'"></i>'+l+' '+inr(sum(all.filter(x=>x.status===k)))+'</span>').join("")+'</div></div>';
+  h+='<div class="btn-row"><button class="btn primary" data-act="newexp">+ Add expense</button><button class="btn" data-act="expcsv">Export claims (CSV)</button></div>';
+  h+='<div class="seg" style="margin:12px 0 0">'+[["all","Both"]].concat(Object.keys(USERS).map(u=>[u,USERS[u].short])).map(([k,l])=>'<button type="button" data-act="expwho" data-v="'+k+'" class="'+(ui.expWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
+   '<div class="filters"><select id="exp-st"><option value="all">All statuses</option>'+CLAIM_ST.map(([k,l])=>'<option value="'+k+'"'+(ui.expSt===k?" selected":"")+'>'+l+'</option>').join("")+'</select><div class="small muted" style="align-self:center">'+list.length+' shown · '+inr(sum(list))+'</div></div>';
+  h+=list.length?list.map(expCard).join(""):'<div class="empty">No expenses logged yet. Tap “+ Add expense” and attach the bill or a screenshot.</div>';
+  return h;
+}
+function expCard(x){
+  const e=x.e,d=x.d,c=EXP_CATM[e.item]||EXP_CATM.other,cs=CLAIM_STM[x.status]||CLAIM_STM.draft;
+  return '<div class="ent" style="--ac:var(--'+esc(e.author)+')"><div class="ent-h">'+av(e.author,"sm")+'<b>'+esc(uname(e.author))+'</b><span class="pill" style="--pc:var(--'+c.col+')">'+esc(c.label)+'</span><span class="pill" style="--pc:'+cv(cs.col)+'">'+esc(cs.label)+'</span>'+(e.local?'<span class="pill" style="--pc:var(--warn)">Waiting to upload</span>':'')+'</div>'+
+   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px"><div style="font-size:24px;font-weight:700" class="tnum">'+inr(x.amount)+'</div><div class="small muted">'+esc(d.date?fmtDate(d.date):"")+'</div></div>'+
+   (d.desc?'<div class="ent-b">'+esc(d.desc)+'</div>':'')+
+   '<div class="stampbox"><div><span>Vendor</span><b>'+esc(d.vendor||"–")+'</b></div><div><span>Bill / booking</span><b>'+esc(d.ref||"–")+'</b></div><div><span>Paid by</span><b>'+esc(uname(e.author))+' · '+esc(d.mode||"–")+'</b></div>'+
+   '<div><span>Logged</span><b class="tnum">'+fmtFull(e.ts)+' IST</b></div><div><span>GPS</span><b>'+geoLink(e.geo,e.gerr)+'</b></div><div><span>Record</span><b class="tnum">'+esc(e.id)+(e.hash?' · #'+esc(e.hash.slice(0,10)):'')+'</b></div></div>'+
+   (e.photos&&e.photos.length?thumbsHTML(e.photos,e.local):'<div class="meta nogps">No bill attached yet.</div>')+
+   (x.hist.length?'<div class="meta">'+x.hist.map(h=>esc((CLAIM_STM[h.status]||{}).label||h.status)+' by '+esc(uname(h.author))+' · '+fmt(h.ts)+(h.body?' – '+esc(h.body):'')).join('<br>')+'</div>':'')+
+   (e.local?'':'<div class="btn-row">'+CLAIM_ST.filter(([k])=>k!==x.status).map(([k,l])=>'<button class="btn sm" data-act="claimst" data-v="'+esc(e.id)+'" data-k="'+k+'">'+(k==="draft"?"Back to not submitted":"Mark "+l.toLowerCase())+'</button>').join("")+
+     (e.author===STATE.user?'<button class="btn sm danger" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw</button>':'')+'</div>')+'</div>';
+}
+async function setClaim(id,k){
+  const note=prompt("Mark as "+CLAIM_STM[k].label+". Add a note (optional), e.g. sent to Pooja by email, UTR number:","");
+  if(note===null)return;
+  const st=await stamp();
+  const e={id:newId(),author:STATE.user,kind:"claim",target:id,scope:null,item:null,status:k,sev:null,evid:[],body:note.trim()||null,by:null,ref:null,photos:[],geo:st.geo,gerr:st.gerr||null,ts:st.ts};
+  STATE.outbox.set(e.id,e);await dbPut("outbox",e);STATE.ver++;render();scheduleSync(100);
+}
+function openExpense(pre){
+  pushSheet();ui.sheet={type:"expense"};draft=newDraft("expense",null,"");
+  draft.date=dayKey(new Date().toISOString());draft.mode="UPI";
+  if(pre){draft.cat=pre.cat||"";draft.amount=String(pre.amount||"");draft.date=pre.date||draft.date;draft.by=pre.vendor||"";draft.ref=pre.ref||"";draft.body=pre.desc||"";}
+  renderSheet();$("#sheet").scrollTop=0;
+}
+function expenseForm(){
+  return '<div class="form"><div class="form-h">'+av(STATE.user,"sm")+'Claim by '+esc(uname(STATE.user))+'</div>'+
+   '<div class="small muted" style="margin-top:4px">Stamped on save with your name, date &amp; time and GPS. Attach the bill, receipt or payment screenshot.</div>'+
+   '<span class="lbl">Category</span><div class="opts">'+EXP_CAT.map(([k,l,c])=>'<button type="button" class="opt'+(draft.cat===k?" on":"")+'" style="--pc:var(--'+c+')" data-act="dset" data-f="cat" data-v="'+k+'">'+l+'</button>').join("")+'</div>'+
+   '<div class="two" style="margin-top:12px"><label class="small"><b>Amount (₹)</b><input type="text" inputmode="decimal" id="x-amt" placeholder="0" value="'+esc(draft.amount)+'"></label><label class="small"><b>Date of expense</b><input type="date" id="x-date" value="'+esc(draft.date)+'"></label></div>'+
+   '<div class="two" style="margin-top:8px"><label class="small"><b>Vendor</b><input type="text" id="d-by" placeholder="e.g. Savaari, hotel, restaurant" value="'+esc(draft.by)+'"></label><label class="small"><b>Bill / booking no.</b><input type="text" id="d-ref" placeholder="optional" value="'+esc(draft.ref)+'"></label></div>'+
+   '<span class="lbl">Paid by '+esc(USERS[STATE.user].short)+' via</span><div class="opts">'+PAY_MODES.map(m=>'<button type="button" class="opt plain'+(draft.mode===m?" on":"")+'" data-act="dset" data-f="mode" data-v="'+esc(m)+'">'+esc(m)+'</button>').join("")+'</div>'+
+   '<span class="lbl">Description</span><textarea id="d-body" placeholder="What was it for? e.g. cab Roorkee station → Selakui for audit day 1">'+esc(draft.body)+'</textarea>'+
+   '<span class="lbl">Bill / receipt / screenshot <span class="muted">('+draft.photos.length+'/12)</span></span><div class="btn-row" style="margin-top:0"><button type="button" class="btn" data-act="cam">📷 Photo of bill</button><button type="button" class="btn" data-act="gal">Add screenshot</button></div>'+
+   '<div class="thumbs" id="d-thumbs">'+draft.photos.map((p,i)=>'<span style="position:relative"><img src="'+p.url+'" alt=""><button type="button" class="rm" data-act="drm" data-v="'+i+'" aria-label="Remove">×</button></span>').join("")+(draft.busy?'<span class="ph" style="display:grid;place-items:center;font-size:12px">Processing…</span>':'')+'</div></div>';
+}
+function expCSV(){
+  const rows=[["Claim_ID","Expense_Date","Category","Vendor","Bill_or_Booking_No","Amount_INR","Payment_Mode","Claimant","Claim_Status","Status_By","Status_Time_IST","Description","Receipts","Logged_Time_IST","Latitude","Longitude"]];
+  for(const x of D.exp.slice().reverse()){const e=x.e,d=x.d;
+    rows.push([e.id,fmtDate(d.date),(EXP_CATM[e.item]||EXP_CATM.other).label,d.vendor,d.ref,x.amount.toFixed(2),d.mode,uname(e.author),(CLAIM_STM[x.status]||{}).label,uname(x.statusBy),fmtFull(x.statusAt),d.desc,(e.photos||[]).map((p,i)=>photoName(e,i)).join(" "),fmtFull(e.ts),e.geo?e.geo.lat:"",e.geo?e.geo.lng:""]);}
+  return toCSV(rows);
 }
 
 /* ================= Backup / account ================= */
@@ -1018,7 +1104,7 @@ async function loadBackups(){
 
 /* ================= point sheet + forms ================= */
 let draft=null;
-function newDraft(kind,scope,item){return {kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false};}
+function newDraft(kind,scope,item){return {kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:""};}
 function pushSheet(){try{if(!(history.state&&history.state.sheet))history.pushState({sheet:1},"");}catch(e){}}
 function openPoint(item,scope){pushSheet();ui.sheet={type:"point",item,scope:scope||ui.scope};draft=newDraft("point",ui.sheet.scope,item);renderSheet();$("#sheet").scrollTop=0;}
 function openNote(){pushSheet();const sc=ui.tab==="list"?ui.scope:(lsGet("sa.lastScope")||"s1");ui.sheet={type:"note"};draft=newDraft("note",sc,"");renderSheet();}
@@ -1057,6 +1143,9 @@ function renderSheet(){
      (p?p.entries.map(e=>entryCard(e)).join(""):'<div class="muted small">No entries yet. Either auditor can add the first one.</div>')+
      formHTML(it.sec)+'</div>'+
      '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save entry</button></div>';
+  }else if(ui.sheet.type==="expense"){
+    sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">New expense claim</div></div><div class="sh-body">'+expenseForm()+'</div>'+
+     '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save claim</button></div>';
   }else{
     const opts=SITES.map(s=>'<option value="'+s.id+'"'+(draft.scope===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("");
     const its=itemsFor(draft.scope);
@@ -1073,6 +1162,8 @@ function readDraft(){
   const b=$("#d-body");if(b)draft.body=b.value;
   const by=$("#d-by");if(by)draft.by=by.value;
   const rf=$("#d-ref");if(rf)draft.ref=rf.value;
+  const am=$("#x-amt");if(am)draft.amount=am.value;
+  const dt=$("#x-date");if(dt)draft.date=dt.value;
 }
 async function addPhotos(files){
   if(!draft)return;readDraft();
@@ -1091,6 +1182,12 @@ async function saveDraft(){
   const d=draft;if(!d||d.busy)return;
   if(ui.sheet.type==="note"&&!d.body.trim()&&!d.photos.length){toast("Write a note or add a photo.");return;}
   if(ui.sheet.type==="point"&&!d.status&&!d.body.trim()&&!d.photos.length&&!d.sev){toast("Pick a status, write a note or add a photo.");return;}
+  const amt=Number(String(d.amount).replace(/[₹,\s]/g,""));
+  if(ui.sheet.type==="expense"){
+    if(!d.cat){toast("Pick a category.");return;}
+    if(!(amt>0)){toast("Enter the amount.");return;}
+    if(!d.photos.length&&!confirm("No bill or screenshot attached. Save anyway? You can add one later as a new claim."))return;
+  }
   d.busy=true;const btn=$('[data-act="save"]');if(btn){btn.disabled=true;btn.textContent="Saving…";}
   const st=await stamp();
   const id=newId();
@@ -1102,7 +1199,9 @@ async function saveDraft(){
     photos.push({p:base+".jpg",t:base+"-t.jpg",w:p.w,h:p.h,kb:Math.round(p.full.size/1024)});
   }
   const e={id,author:STATE.user,kind:d.kind,scope:d.scope||null,item:d.item||null,status:d.status||null,sev:d.sev||null,evid:d.evid,body:d.body.trim()||null,by:d.by.trim()||null,ref:d.ref.trim()||null,photos,geo:st.geo,gerr:st.gerr||null,ts:st.ts};
+  if(d.kind==="expense"){e.item=d.cat;e.body=JSON.stringify({amount:amt,date:d.date,vendor:d.by.trim(),ref:d.ref.trim(),mode:d.mode,desc:d.body.trim()});}
   STATE.outbox.set(id,e);await dbPut("outbox",e);STATE.ver++;
+  if(d.kind==="expense"){ui.tab="info";ui.info="expenses";}
   toast(st.geo?"Saved · GPS ±"+Math.round(st.geo.acc)+" m":"Saved without GPS ("+st.gerr+")");
   if(ui.sheet.type==="point"){draft=newDraft("point",d.scope,d.item);derive();renderSheet();}
   else {draft=null;closeSheet(true);if(history.state&&history.state.sheet)history.back();}
@@ -1182,6 +1281,10 @@ document.addEventListener("click",async ev=>{
     case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
     case "qpri":ui.pri=v;lsSet("sa.pri",v);render();break;
     case "qwhen":ui.when=v;lsSet("sa.when",v);render();break;
+    case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
+    case "claimst":setClaim(v,t.dataset.k);break;
+    case "expwho":ui.expWho=v;render();break;
+    case "expcsv":download("selaqui_expense_claims_"+dayKey(new Date().toISOString())+".csv",expCSV());break;
     case "infosec":ui.info=v;window.scrollTo(0,0);render();break;
     case "photowho":ui.feedWho=v;ui.photoN=60;render();break;
     case "morephotos":ui.photoN+=60;render();break;
@@ -1224,6 +1327,7 @@ document.addEventListener("change",ev=>{
   const id=ev.target.id;
   if(id==="f-cat"){ui.cat=ev.target.value;renderRows();}
   else if(id==="f-status"){ui.st=ev.target.value;renderRows();}
+  else if(id==="exp-st"){ui.expSt=ev.target.value;render();}
   else if(id==="ph-site"){ui.feedSite=ev.target.value;ui.photoN=60;render();}
   else if(id==="f-who"){ui.who=ev.target.value;renderRows();}
   else if(id==="fd-site"){ui.feedSite=ev.target.value;ui.feedN=60;render();}
