@@ -52,7 +52,7 @@ first broken record. The trail is included in every hourly backup and can be exp
   3rd photo), `C-AD-05-P01` for common documents, `S2-NOTE-P01` for site notes, `EXP-P01` for bills. Shown on
   thumbnails, the gallery, full-size view, reports, CSV (Photo_Refs) and in downloaded file names.
 - **📷 Add photo** on any observation (either auditor, any device) attaches photos to that observation.
-- **✎ Edit** (author only) saves a new version; the card shows the latest version with "Edited by … – history",
+- **✎ Edit** (either auditor, on any observation) saves a new version stamped with the editor's name; the card shows the latest version with "Edited by … – history",
   and the original stays visible. Both are separate stamped records in the log and audit trail.
 
 ## Deliverables

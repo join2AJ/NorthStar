@@ -344,7 +344,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.10";
+const VERSION="2026-10-28.11";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1020,7 +1020,7 @@ function entryCard(e,opts){
    (e.revs&&e.revs.length?(()=>{const L=e.revs[e.revs.length-1];return '<details class="vers"><summary>✎ Edited by '+esc(uname(L.author))+' · '+fmtFull(L.ts)+' IST'+(e.revs.length>1?' ('+e.revs.length+' edits)':'')+' – history</summary>'+
      [e.orig].concat(e.revs.slice(0,-1)).map((v,i)=>'<div class="old"><b>'+(i?"Version "+(i+1):"Original")+'</b> · '+esc(uname(v.author))+' · '+fmtFull(v.ts)+' IST'+(v.status&&ST[v.status]?' · '+esc(ST[v.status].label):'')+(v.sev&&SEVM[v.sev]?' · '+esc(SEVM[v.sev].label):'')+'<br>'+esc(v.body||"(no text)")+(v.extra&&v.extra.rec?'<br><i>Rec: '+esc(v.extra.rec)+'</i>':'')+'</div>').join("")+'</details>';})():'')+
    (e.adds&&e.adds.length?'<div class="meta">'+e.adds.map(a=>'📷 '+(a.photos||[]).length+' photo'+((a.photos||[]).length===1?"":"s")+' added by '+esc(uname(a.author))+' · '+fmt(a.ts)+' IST'+(a.body?' – '+esc(a.body):'')+(a.local?' (waiting to upload)':'')).join('<br>')+'</div>':'')+
-   (isAudit(e)&&!isChild(e)&&!wd&&!e.local?'<div class="btn-row"><button class="btn sm" data-act="addph" data-v="'+esc(e.id)+'">📷 Add photo</button>'+(e.author===STATE.user?'<button class="btn sm" data-act="editobs" data-v="'+esc(e.id)+'">✎ Edit</button>':'')+
+   (isAudit(e)&&!isChild(e)&&!wd&&!e.local?'<div class="btn-row"><button class="btn sm" data-act="addph" data-v="'+esc(e.id)+'">📷 Add photo</button>'+('<button class="btn sm" data-act="editobs" data-v="'+esc(e.id)+'">✎ Edit</button>')+
      (e.author===STATE.user?'<button class="btn sm danger" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw</button>':'')+'</div>':
      (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?'<div class="meta"><a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw this entry</a></div>':''))+'</div>';
 }
@@ -1493,8 +1493,8 @@ function formHTML(sec){
     '<div class="thumbs" id="d-thumbs">'+draft.photos.map((p,i)=>'<span style="position:relative"><img src="'+p.url+'" alt=""><button type="button" class="rm" data-act="drm" data-v="'+i+'" aria-label="Remove">×</button></span>').join("")+(draft.busy?'<span class="ph" style="display:grid;place-items:center;font-size:12px">Processing…</span>':'')+'</div>'+
     '<span class="lbl">Note about these photos <span class="muted">(optional)</span></span><textarea id="d-body" placeholder="e.g. Close-up of the breach from outside the wall">'+esc(draft.body)+'</textarea>'+
     '<div class="btn-row"><button class="btn" data-act="cancelmode">Cancel</button></div></div>';
-  return '<div class="form" id="dform"><div class="form-h">'+av(STATE.user,"sm")+(draft.mode==="edit"?'✎ Editing your observation of '+(orig?fmt(orig.ts)+' IST':''):'Add as '+esc(uname(STATE.user)))+'</div>'+
-   (draft.mode==="edit"?'<div class="small muted" style="margin-top:4px">Saved as a new version; the original stays in the history. <a href="#" data-act="cancelmode">Cancel edit</a></div>':'')+
+  return '<div class="form" id="dform"><div class="form-h">'+av(STATE.user,"sm")+(draft.mode==="edit"?'✎ Editing '+(orig?esc(orig.author===STATE.user?"your":USERS[orig.author]?USERS[orig.author].short+"\u2019s":"the")+' observation of '+fmt(orig.ts)+' IST':'observation'):'Add as '+esc(uname(STATE.user)))+'</div>'+
+   (draft.mode==="edit"?'<div class="small muted" style="margin-top:4px">Saved as a new version stamped with your name; the original stays in the history. <a href="#" data-act="cancelmode">Cancel edit</a></div>':'')+
    '<div class="small muted" style="margin-top:4px">Stamped on save: '+esc(uname(STATE.user))+' · date &amp; time · '+(L&&Date.now()-L.t<60000?'GPS ±'+Math.round(L.acc)+' m':'<span class="nogps">GPS not fixed yet – tap the GPS chip</span>')+'</div>'+
    (sts?'<span class="lbl">Status <span class="muted">(optional; leave blank to add evidence only)</span></span><div class="opts" data-grp="status">'+sts.map(([k,l,c])=>'<button type="button" class="opt'+(draft.status===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="status" data-v="'+k+'">'+l+'</button>').join("")+'</div>':'')+
    (draft.status==="later"?'<div class="later-box"><b>Who will share it?</b><div class="small muted" style="margin:2px 0 8px">Pick an auditee or type a name. Mobile or email is needed so you can follow up after the audit.</div>'+

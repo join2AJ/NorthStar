@@ -218,9 +218,9 @@ async function handle(req: Request, b: any) {
           }
         }
         if ((e.kind === "point" || e.kind === "note") && e.extra?.mode) {
-          const t = await sql`select kind, author from selaqui.entries where id = ${e.target}`;
+          // Either auditor may edit or add to any observation; each version is stamped with who made it.
+          const t = await sql`select kind from selaqui.entries where id = ${e.target}`;
           if (!t.length || (t[0].kind !== "point" && t[0].kind !== "note")) throw new HttpError(400, "That observation was not found.");
-          if (e.extra.mode === "edit" && t[0].author !== me.username) throw new HttpError(403, "Only the person who logged an observation can edit it.");
         }
         if (e.kind === "claim") {
           if (!CLAIM_STATUS.has(String(e.status))) throw new HttpError(400, "Bad claim status");
