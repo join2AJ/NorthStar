@@ -345,7 +345,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.16";
+const VERSION="2026-10-28.17";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -733,7 +733,7 @@ function totals(){
 
 /* ================= UI state ================= */
 const ui={tab:lsGet("sa.tab")||"dash",scope:(lsGet("sa.scope")||"s1").replace(/^G$/,"s1"),sec:"doc",filter:"all",cat:"all",q:"",who:"all",
-  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,info:"contacts",expWho:"all",expSt:"all",pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
+  feedWho:"all",feedView:"entries",feedSite:"all",photoN:60,info:"sites",expWho:"all",expSt:"all",pri:lsGet("sa.pri")||"all",when:lsGet("sa.when")||"all",st:"all",feedKind:"all",feedN:60,sheet:null};
 
 /* ================= render: chrome ================= */
 const ICON={
@@ -1113,7 +1113,7 @@ function renderInfo(m){
   const groups=[];for(const c of RES.contacts||[]){let g=groups.find(x=>x.n===c.group);if(!g){g={n:c.group,l:[]};groups.push(g);}g.l.push(c);}
   const tcol={Train:"var(--s2)",Cab:"var(--s4)",Hotel:"var(--s6)","Audit day 1":"var(--s1)"};
   let h='<div class="h-page">Resources</div><div class="muted small">Who to contact for what, travel bookings and site addresses. Tap to call, WhatsApp or open in Maps. Saved on this phone for use without signal.</div>';
-  h+='<div class="seg" style="margin:10px 0 4px">'+[["contacts","Contacts"],["travel","Travel"],["expenses","Expenses"],["sites","Sites"],["about","Info"]].map(([k,l])=>'<button type="button" data-act="infosec" data-v="'+k+'" class="'+(ui.info===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  h+='<div class="seg" style="margin:10px 0 4px">'+[["sites","Schedule"],["contacts","Contacts"],["travel","Travel"],["expenses","Expenses"],["about","Info"]].map(([k,l])=>'<button type="button" data-act="infosec" data-v="'+k+'" class="'+(ui.info===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   if(ui.info==="contacts"){
     for(const g of groups){
       h+='<div class="sec-h">'+esc(g.n)+'</div>';
@@ -1133,9 +1133,17 @@ function renderInfo(m){
   }else if(ui.info==="expenses"){
     h+=renderExpenses();
   }else if(ui.info==="sites"){
-    for(const x of RES.sites||[]){const sid=SITE[x.site]?x.site:null;
-      h+='<div class="card'+(sid?' site-card':'')+'" style="'+(sid?'--sc:'+scol(sid):'')+'"><div style="display:flex;gap:10px;align-items:flex-start">'+(sid?badge(sid):'<span class="badge" style="--sc:var(--s0)">✈</span>')+'<div><div class="card-t">'+esc(x.name)+'</div><div class="small muted">'+esc(x.addr)+'</div></div></div>'+
-        '<div class="btn-row"><a class="btn sm" href="'+mapUrl(x.addr)+'" target="_blank" rel="noopener">📍 Directions</a>'+(sid?'<button class="btn sm" data-act="openscope" data-v="'+sid+'">Open checklist</button>':'')+'</div></div>';}
+    // Audit schedule: one card per site with date, reporting time, SPOC, checklist and status.
+    const ST_C={done:["Done","good"],progress:["In progress","warn"],next:["Upcoming","info"],tbc:["To be confirmed","neutral"]};
+    for(const x of RES.sites||[]){const sid=SITE[x.site]?x.site:null,st=ST_C[x.status];
+      h+='<div class="card'+(sid?' site-card':'')+'" style="'+(sid?'--sc:'+scol(sid):'')+'"><div style="display:flex;gap:10px;align-items:flex-start">'+(sid?badge(sid):'<span class="badge" style="--sc:var(--s0)">✈</span>')+
+        '<div style="flex:1;min-width:0"><div class="card-t">'+esc(x.name)+'</div>'+(x.date?'<div class="small" style="margin-top:2px"><b>'+esc(x.date)+(x.time?' · reporting '+esc(x.time):'')+'</b></div>':'')+'</div>'+(st?'<span class="pill" style="--pc:var(--'+st[1]+')">'+st[0]+'</span>':'')+'</div>'+
+        '<div class="stampbox" style="margin-top:9px"><div><span>Address</span><b>'+esc(x.addr)+'</b></div>'+
+        (x.spoc?'<div><span>SPOC</span><b>'+esc(x.spoc)+(x.spocPhone?' · '+esc(fmtPhone(x.spocPhone)):'')+'</b></div>':'')+
+        (x.checklist?'<div><span>Checklist</span><b>'+esc(x.checklist)+'</b></div>':'')+
+        (x.auditors?'<div><span>Auditors</span><b>'+esc(x.auditors)+'</b></div>':'')+'</div>'+
+        (x.note?'<div class="hint" style="margin-bottom:0">'+esc(x.note)+'</div>':'')+
+        '<div class="btn-row">'+(x.spocPhone?phoneBtns(x.spocPhone):'')+'<a class="btn sm" href="'+mapUrl(x.map||x.addr)+'" target="_blank" rel="noopener">📍 Directions</a>'+(sid?'<button class="btn sm" data-act="openscope" data-v="'+sid+'">Open checklist</button>':'')+'</div></div>';}
   }else{
     h+='<div class="card"><div class="stampbox" style="margin-top:0">'+(RES.engagement||[]).map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join("")+'</div></div>';
   }
