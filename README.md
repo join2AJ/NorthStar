@@ -68,6 +68,12 @@ record with an optional note, so the history stays visible. Totals per person an
 export for sending to Northstar. Travel cards with a booking (e.g. the Savaari cab) have a one-tap
 "Log as expense claim" that pre-fills the details.
 
+## Desktop
+
+At 1100 px and wider the app switches to a left sidebar, multi-column dashboard, grids for sites, entries,
+contacts and photos, and opens points / auditees / claims / reports in a right-hand panel beside the list.
+Keyboard: `/` jumps to checklist search, `Esc` closes the panel or photo. Phones keep the bottom tab bar.
+
 ## Where photos are stored
 
 Supabase → project **client-portal** → Storage → bucket **`selaqui-audit`** → `photos/ajay/` and `photos/anis/`.
