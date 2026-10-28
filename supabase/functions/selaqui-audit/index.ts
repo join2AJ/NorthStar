@@ -83,18 +83,28 @@ function cleanEntry(e: any, author: string) {
   }) : [];
   const geo = cleanGeo(e.geo);
   const evid = Array.isArray(e.evid) ? e.evid.slice(0, 10).map((x: unknown) => String(x).slice(0, 40)) : [];
+  // Optional structured extras: recommendation, risk likelihood x impact (1-5), SOP topics.
+  let extra: any = null;
+  if (e.extra && typeof e.extra === "object") {
+    const x = e.extra, lvl = (v: unknown) => { const n = Math.round(Number(v)); return n >= 1 && n <= 5 ? n : null; };
+    extra = {
+      rec: str(x.rec, 4000), li: lvl(x.li), im: lvl(x.im),
+      sop: Array.isArray(x.sop) ? x.sop.slice(0, 12).map((t: unknown) => String(t).slice(0, 40)) : [],
+    };
+    if (!extra.rec && !extra.li && !extra.im && !extra.sop.length) extra = null;
+  }
   return {
     id, author, kind: e.kind, scope,
     item_id: str(e.item, 16), status: str(e.status, 24), sev: str(e.sev, 12), evid,
     ref: str(e.ref, 400), provided_by: str(e.by, 200), body: str(e.body, 8000),
-    photos, geo, gerr: str(e.gerr, 80), target: str(e.target, 64), device_ts: ts.toISOString(),
+    photos, geo, gerr: str(e.gerr, 80), target: str(e.target, 64), device_ts: ts.toISOString(), extra,
   };
 }
 const outEntry = (r: any) => ({
   id: r.id, seq: Number(r.seq), author: r.author, kind: r.kind, scope: r.scope, item: r.item_id,
   status: r.status, sev: r.sev, evid: r.evid, ref: r.ref, by: r.provided_by, body: r.body,
   photos: r.photos, geo: r.geo, gerr: r.gerr, target: r.target,
-  ts: new Date(r.device_ts).toISOString(), sts: new Date(r.server_ts).toISOString(), hash: r.hash,
+  ts: new Date(r.device_ts).toISOString(), sts: new Date(r.server_ts).toISOString(), hash: r.hash, extra: r.extra,
 });
 const outActivity = (r: any) => ({
   id: Number(r.id), at: new Date(r.at).toISOString(), actor: r.actor, action: r.action, target: r.target,
@@ -220,8 +230,8 @@ async function handle(req: Request, b: any) {
       const saved: string[] = [];
       const m = reqMeta(req);
       for (const raw of clean) {
-        const e = { ...raw, photos: sql.json(raw.photos), geo: raw.geo ? sql.json(raw.geo) : null, ip: m.ip, ua: m.ua };
-        const ins = await sql`insert into selaqui.entries ${sql(e, "id", "author", "kind", "scope", "item_id", "status", "sev", "evid", "ref", "provided_by", "body", "photos", "geo", "gerr", "target", "device_ts", "ip", "ua")}
+        const e = { ...raw, photos: sql.json(raw.photos), geo: raw.geo ? sql.json(raw.geo) : null, extra: raw.extra ? sql.json(raw.extra) : null, ip: m.ip, ua: m.ua };
+        const ins = await sql`insert into selaqui.entries ${sql(e, "id", "author", "kind", "scope", "item_id", "status", "sev", "evid", "ref", "provided_by", "body", "photos", "geo", "gerr", "target", "device_ts", "ip", "ua", "extra")}
           on conflict (id) do nothing returning seq`;
         if (ins.length) {
           const action = raw.kind === "retract" ? "entry.withdrawn" : raw.kind === "visit" ? "site.check-" + (raw.status || "")
@@ -230,7 +240,8 @@ async function handle(req: Request, b: any) {
           await logActivity(req, me.username, action, raw.kind === "retract" || raw.kind === "claim" || (raw.kind === "person" && raw.target) ? raw.target : raw.id,
             raw.kind === "expense" ? { category: raw.item_id, ...JSON.parse(raw.body || "{}"), photos: raw.photos.length, deviceTime: raw.device_ts }
               : raw.kind === "person" ? { scope: raw.scope, ...JSON.parse(raw.body || "{}"), deviceTime: raw.device_ts }
-              : { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr },
+              : { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr,
+                  ...(raw.extra ? { risk: raw.extra.li && raw.extra.im ? raw.extra.li * raw.extra.im : null, recommendation: raw.extra.rec ? true : false, sop: raw.extra.sop } : {}) },
             raw.geo);
         }
         saved.push(raw.id);

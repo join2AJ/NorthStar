@@ -46,6 +46,19 @@ first broken record. The trail is included in every hourly backup and can be exp
   site visits, auditees, coverage, findings by severity, pending documents, status of every point, and the
   entry log with who / when / GPS / hash and photos. Opens the phone's print screen → *Save as PDF*.
 
+## Deliverables
+
+| # | Deliverable | Where it comes from |
+|---|---|---|
+| 1 | Security audit checklist | Report sheet → *Checklist PDF* (all 69 documents, 10 walkthrough areas, 12 interviews, rating scales, 5×5 risk matrix) |
+| 2 | Site audit report | Report sheet → *Create PDF* per site: findings with risk rating and recommendation, photos, coverage, pending documents |
+| 3 | Site Security Plan | Drafted from the exported log (walkthrough observations, auditees, guarding, findings) and finalised by the auditor |
+| 4 | Operational Requirement | Drafted from findings + recommendations + risk ratings, each requirement traced to its finding |
+| 5 | Corporate SOP set | Drafted per SOP topic from observations tagged with that topic across all sites |
+
+Every finding can carry a **recommendation**, a **risk rating** (likelihood × impact, 1–5 each) and one or
+more **SOP topics**; these are stored in `entries.extra` and exported in the CSV/JSON.
+
 ## Expense claims
 
 Resources → Expenses: log a reimbursement claim (category, amount, date, vendor, bill/booking no., payment
