@@ -45,6 +45,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:var(--brand)}
 [hidden]{display:none!important}
+#nl-badge-frame{display:none!important}
 h1,h2,h3{margin:0}
 .muted{color:var(--muted)}.small{font-size:13px}.tnum{font-variant-numeric:tabular-nums}
 
@@ -344,7 +345,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.13";
+const VERSION="2026-10-28.14";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -903,11 +904,27 @@ function haystack(it,p){
   return h;
 }
 // How many points in the current site/section each quick filter would show (respecting the other quick filter).
-function qcount(kind,v){
-  return viewItems(ui.scope,ui.sec).filter(it=>{
-    const pri=kind==="pri"?v:ui.pri,when=kind==="when"?v:ui.when;
-    return (pri==="all"||(it.mand?"M":"D")===pri)&&(when==="all"||it.when===when);
-  }).length;
+// One test for every checklist filter; o overrides a filter so each button can show what it would list.
+function rowPass(it,o){
+  const f=Object.assign({pri:ui.pri,when:ui.when,filter:ui.filter},o||{});
+  const sc=ui.scope,q=ui.q.trim().toLowerCase(),p=D.pts.get(pkey(sc,it)),s=stateOf(p);
+  if(ui.cat!=="all"&&it.cat!==ui.cat)return false;
+  if(f.pri!=="all"&&(it.mand?"M":"D")!==f.pri)return false;
+  if(f.when!=="all"&&it.when!==f.when)return false;
+  if(ui.who!=="all"&&!(p&&p.authors.has(ui.who)))return false;
+  if(ui.st==="none"&&p)return false;
+  if(ui.st==="notes"&&!(p&&!p.status))return false;
+  if(ui.st!=="all"&&ui.st!=="none"&&ui.st!=="notes"&&!(p&&p.status===ui.st))return false;
+  if(f.filter==="gaps"){if(!(p&&(p.status==="notavail"||p.status==="noncomp")))return false;}
+  else if(f.filter!=="all"&&s!==f.filter)return false;
+  if(q&&!q.split(/\s+/).every(w=>haystack(it,p).includes(w)))return false;
+  return true;
+}
+function qcount(kind,v){const o={};o[kind]=v;return viewItems(ui.scope,ui.sec).filter(it=>rowPass(it,o)).length;}
+function filtersHTML(){
+  return '<div class="seg" style="margin:8px 0 0">'+[["all","All"],["none","Not covered"],["progress","In progress"],["covered","Covered"],["gaps","Gaps"]].map(([k,l])=>'<button type="button" data-act="filter" data-v="'+k+'" class="'+(ui.filter===k?"on":"")+'">'+l+' <span class="small">'+qcount("filter",k)+'</span></button>').join("")+'</div>'+
+   '<div class="qf"><span class="qf-l">Priority</span>'+[["all","All"],["M","Mandatory"],["D","Other (desirable)"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.pri===k?" on":"")+'" data-act="qpri" data-v="'+k+'">'+l+' <b>'+qcount("pri",k)+'</b></button>').join("")+'</div>'+
+   '<div class="qf"><span class="qf-l">When</span>'+[["all","All"],["Pre-audit","Pre-audit"],["On-site","On-site"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.when===k?" on":"")+'" data-act="qwhen" data-v="'+k+'">'+l+' <b>'+qcount("when",k)+'</b></button>').join("")+'</div>';
 }
 function renderList(m){
   if(ui.scope==="G")ui.sec="doc";
@@ -920,9 +937,7 @@ function renderList(m){
    '<div class="h-page" style="display:flex;align-items:center;gap:8px">'+badge(ui.scope)+esc(SITE[ui.scope].name)+'</div><div class="muted small">'+r.covered+' of '+r.total+' covered · '+r.progress+' in progress</div>'+
    (ui.sec!=="doc"?'<div class="small muted" style="margin-top:4px">All '+(ui.sec==="walk"?"walkthrough areas":"interviews")+' are mandatory and on-site.</div>':'');
   if(ui.scope!=="G")h+='<div class="seg" style="margin:10px 0 0">'+SECTIONS.map(([k,l])=>{const x=scopeStats(ui.scope,k);return '<button type="button" data-act="sec" data-v="'+k+'" class="'+(ui.sec===k?"on":"")+'">'+l+' <span class="small">'+x.covered+'/'+x.total+'</span></button>';}).join("")+'</div>';
-  h+='<div class="seg" style="margin:8px 0 0">'+[["all","All"],["none","Not covered"],["progress","In progress"],["covered","Covered"],["gaps","Gaps"]].map(([k,l])=>'<button type="button" data-act="filter" data-v="'+k+'" class="'+(ui.filter===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
-   '<div class="qf"><span class="qf-l">Priority</span>'+[["all","All"],["M","Mandatory"],["D","Other (desirable)"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.pri===k?" on":"")+'" data-act="qpri" data-v="'+k+'">'+l+' <b>'+qcount("pri",k)+'</b></button>').join("")+'</div>'+
-   '<div class="qf"><span class="qf-l">When</span>'+[["all","All"],["Pre-audit","Pre-audit"],["On-site","On-site"]].map(([k,l])=>'<button type="button" class="qchip'+(ui.when===k?" on":"")+'" data-act="qwhen" data-v="'+k+'">'+l+' <b>'+qcount("when",k)+'</b></button>').join("")+'</div>'+
+  h+='<div id="qfs">'+filtersHTML()+'</div>'+
    '<div class="filters">'+
    sel("f-status","Status",ui.st,[["all","Any status"],["none","Not covered"],["notes","Notes only (no status)"]].concat(STATUS[ui.sec].map(([k,l])=>[k,l])))+
    sel("f-who","Logged by",ui.who,[["all","Logged by anyone"]].concat(Object.keys(USERS).map(u=>[u,"Logged by "+USERS[u].short])))+
@@ -931,21 +946,9 @@ function renderList(m){
   m.innerHTML=h;renderRows();
 }
 function renderRows(){
-  const sc=ui.scope,q=ui.q.trim().toLowerCase();
-  const rows=viewItems(sc,ui.sec).filter(it=>{
-    const p=D.pts.get(pkey(sc,it)),s=stateOf(p);
-    if(ui.cat!=="all"&&it.cat!==ui.cat)return false;
-    if(ui.pri!=="all"&&(it.mand?"M":"D")!==ui.pri)return false;
-    if(ui.when!=="all"&&it.when!==ui.when)return false;
-    if(ui.who!=="all"&&!(p&&p.authors.has(ui.who)))return false;
-    if(ui.st==="none"&&p)return false;
-    if(ui.st==="notes"&&!(p&&!p.status))return false;
-    if(ui.st!=="all"&&ui.st!=="none"&&ui.st!=="notes"&&!(p&&p.status===ui.st))return false;
-    if(ui.filter==="gaps"){if(!(p&&(p.status==="notavail"||p.status==="noncomp")))return false;}
-    else if(ui.filter!=="all"&&s!==ui.filter)return false;
-    if(q&&!q.split(/\s+/).every(w=>haystack(it,p).includes(w)))return false;
-    return true;
-  });
+  const sc=ui.scope;
+  const rows=viewItems(sc,ui.sec).filter(it=>rowPass(it));
+  const qf=$("#qfs");if(qf)qf.innerHTML=filtersHTML();
   // Mandatory first; inside each group, points with no entries yet stay on top and logged ones drop to the end.
   const order=new Map(ITEMS.map((it,i)=>[it.id,i]));
   rows.sort((a,b)=>{
