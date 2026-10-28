@@ -15,10 +15,10 @@ who, when and GPS, and can carry photos.
 
 ## Audit content
 
-- **Common documents**: 15 document points collected once for all sites.
-- **Each of the 6 sites**: 54 document points (AD-xx, from the 69-item requisition), 10 walkthrough
-  areas (W-xx, from the Scope of Work) and 12 stakeholder interviews (I-xx, from the requisition).
-- 471 points in total.
+- **1. DTSPL**: all 69 document points (the 15 group-level documents AD-05, 09, 11, 13, 15, 17, 18, 29, 30,
+  37, 51, 52, 56, 59, 68 are assessed here only), 10 walkthrough areas and 12 interviews = 91 points.
+- **Sites 2–6**: 54 document points, 10 walkthrough areas and 12 interviews = 76 points each.
+- 471 points in total. The former Common section was folded into 1. DTSPL on 28 Oct 2026.
 
 ## What every log records
 
