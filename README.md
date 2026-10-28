@@ -15,8 +15,9 @@ who, when and GPS, and can carry photos.
 
 ## Audit content
 
-- **Each of the 6 sites**: the same 54 document points, 10 walkthrough areas and 12 interviews = 76 points;
-  456 in total.
+- **Sites 2 (DTSPL – Lighting) and 3 (Dixon, Washing Machine)** follow their own Northstar requisition sheets
+  (11_27Oct and 09_26Oct): all 69 documents + 10 walkthrough + 12 interviews = 91 points each.
+- **1. DTSPL and sites 4–6**: 54 documents + 10 + 12 = 76 points each (sites 4–6 until their sheets arrive).
 - The 15 former group-level documents (AD-05, 09, 11, 13, 15, 17, 18, 29, 30, 37, 51, 52, 56, 59, 68) are retired.
   Findings logged against them on 28 Oct were copied into the closest DTSPL heading (e.g. AD-09 → AD-10),
   each note prefixed with its source document; the originals remain in the log as withdrawn.
