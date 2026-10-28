@@ -15,10 +15,11 @@ who, when and GPS, and can carry photos.
 
 ## Audit content
 
-- **1. DTSPL**: all 69 document points (the 15 group-level documents AD-05, 09, 11, 13, 15, 17, 18, 29, 30,
-  37, 51, 52, 56, 59, 68 are assessed here only), 10 walkthrough areas and 12 interviews = 91 points.
-- **Sites 2–6**: 54 document points, 10 walkthrough areas and 12 interviews = 76 points each.
-- 471 points in total. The former Common section was folded into 1. DTSPL on 28 Oct 2026.
+- **Each of the 6 sites**: the same 54 document points, 10 walkthrough areas and 12 interviews = 76 points;
+  456 in total.
+- The 15 former group-level documents (AD-05, 09, 11, 13, 15, 17, 18, 29, 30, 37, 51, 52, 56, 59, 68) are retired.
+  Findings logged against them on 28 Oct were copied into the closest DTSPL heading (e.g. AD-09 → AD-10),
+  each note prefixed with its source document; the originals remain in the log as withdrawn.
 
 ## What every log records
 
