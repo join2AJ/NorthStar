@@ -115,8 +115,20 @@ const outActivity = (r: any) => ({
 });
 
 /* ---------- backup ---------- */
+// Rolling backups (hourly + manual) keep the newest KEEP_ROLLING; the 10 PM daily backups are kept separately.
+const KEEP_ROLLING = 10;
+async function pruneRolling(req: Request) {
+  const old = await sql`select id, path from selaqui.backups where trigger <> 'daily' order by id desc offset ${KEEP_ROLLING}`;
+  if (!old.length) return 0;
+  const { error } = await sb.storage.from(BUCKET).remove(old.map((o: any) => o.path));
+  if (error) { console.error("prune", error.message); return 0; }
+  await sql`delete from selaqui.backups where id in ${sql(old.map((o: any) => o.id))}`;
+  await logActivity(req, null, "backup.deleted", null, { removed: old.length, kept: KEEP_ROLLING, paths: old.map((o: any) => o.path) }, null);
+  return old.length;
+}
 async function makeBackup(req: Request, actor: string | null, trigger: string, geo?: unknown) {
   const rows = await sql`select * from selaqui.entries order by seq`;
+  const maxSeq = rows.length ? Number(rows[rows.length - 1].seq) : 0;
   const acts = await sql`select * from selaqui.activity order by id`;
   const chk = await sql`select selaqui.verify_chains() v`;
   const users = await sql`select username, display_name from selaqui.users order by username`;
@@ -131,9 +143,10 @@ async function makeBackup(req: Request, actor: string | null, trigger: string, g
     contentType: "application/json", upsert: true,
   });
   if (error) throw new HttpError(500, "Backup upload failed: " + error.message);
-  await sql`insert into selaqui.backups(path, entries, bytes, trigger) values (${path}, ${rows.length}, ${body.length}, ${trigger})`;
+  await sql`insert into selaqui.backups(path, entries, bytes, trigger, max_seq) values (${path}, ${rows.length}, ${body.length}, ${trigger}, ${maxSeq})`;
   await logActivity(req, actor, "backup.created", path, { trigger, entries: rows.length, bytes: body.length }, geo);
-  return { path, entries: rows.length, bytes: body.length };
+  const pruned = trigger === "daily" ? 0 : await pruneRolling(req);
+  return { path, entries: rows.length, bytes: body.length, pruned };
 }
 
 /* ---------- handlers ---------- */
@@ -143,6 +156,11 @@ async function handle(req: Request, b: any) {
   if (action === "cron") {
     const cfg = await sql`select value from selaqui.config where key = 'cron_secret'`;
     if (!cfg.length || req.headers.get("x-cron-secret") !== cfg[0].value) throw new HttpError(403, "Forbidden");
+    if (b.type === "daily") return await makeBackup(req, null, "daily");
+    // Hourly: only when something was saved since the last backup.
+    const cur = await sql`select coalesce(max(seq), 0)::bigint s from selaqui.entries`;
+    const last = await sql`select coalesce(max(max_seq), -1)::bigint s from selaqui.backups`;
+    if (Number(cur[0].s) <= Number(last[0].s)) return { skipped: true, reason: "no changes since the last backup" };
     return await makeBackup(req, null, "hourly");
   }
 

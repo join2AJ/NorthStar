@@ -345,7 +345,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.17";
+const VERSION="2026-10-28.18";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1470,7 +1470,7 @@ function renderMore(m){
    '<div class="card"><div class="card-t">Sync</div><div class="small" style="margin-top:4px">'+(n?'<b>'+n+'</b> entr'+(n>1?"ies":"y")+' waiting to upload. They are safe on this phone and upload when there is signal.':'Everything on this phone is on the server.')+
    '<br><span class="muted">Last sync '+ago(STATE.lastSync)+(STATE.syncErr?" · "+esc(STATE.syncErr):"")+'</span></div>'+
    '<div class="btn-row"><button class="btn primary" data-act="syncnow">Sync now</button></div></div>'+
-   '<div class="card"><div class="card-t">Server backups</div><div class="small muted" style="margin:3px 0 8px">A full copy of all entries is saved on the server every hour, on the hour. Photos are stored separately and never deleted.</div>'+
+   '<div class="card"><div class="card-t">Server backups</div><div class="small muted" style="margin:3px 0 8px">Every hour, on the hour, a full copy of all entries is saved, but only if something changed since the last backup. The newest 10 of these hourly and manual backups are kept, and older ones are deleted automatically. In addition, a daily backup is taken at 10:00 PM IST and kept permanently. Photos are stored separately and never deleted.</div>'+
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
    '<div class="btn-row"><button class="btn primary" data-act="report">📄 Report (PDF)</button><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
@@ -1481,7 +1481,7 @@ function renderMore(m){
 async function loadBackups(){
   const el=$("#blist");if(!el)return;
   try{const {backups}=await api("backups");backupsCache=backups;
-    el.innerHTML=backups.length?backups.slice(0,24).map(b=>'<div><span>'+fmt(b.created_at)+' · '+esc(b.trigger.replace("manual-","by "))+'<br><span class="muted">'+b.entries+' entries · '+Math.max(1,Math.round(b.bytes/1024))+' KB</span></span><a href="#" data-act="dlbackup" data-v="'+esc(b.path)+'">Download</a></div>').join(""):'<div class="muted">No backups yet. The first runs at the top of the hour.</div>';
+    el.innerHTML=backups.length?backups.slice(0,40).map(b=>'<div><span>'+fmt(b.created_at)+' · '+esc(b.trigger==="daily"?"Daily 10 PM (kept)":b.trigger==="hourly"?"Hourly":b.trigger.replace("manual-","Manual, by "))+'<br><span class="muted">'+b.entries+' entries · '+Math.max(1,Math.round(b.bytes/1024))+' KB</span></span><a href="#" data-act="dlbackup" data-v="'+esc(b.path)+'">Download</a></div>').join(""):'<div class="muted">No backups yet. The first runs at the top of the hour.</div>';
   }catch(e){el.innerHTML='<div class="muted">Could not load backups ('+esc(e.message)+').</div>';}
 }
 

@@ -98,8 +98,9 @@ IST date/time, site, point, GPS and note, and downloads it with a readable name
 - Entries are append-only. Nothing is overwritten; a wrong entry is *withdrawn* by its author and stays visible.
 - Entries and photos save on the phone first (IndexedDB) and upload when there is signal.
 - Photos are compressed on the phone (about 1600 px, roughly 200–350 KB) with a small thumbnail.
-- A JSON snapshot of all entries is written to `selaqui-audit/backups/` every hour by `pg_cron`.
-  The Backup tab lists them and can trigger one on demand.
+- A JSON snapshot of all entries is written to `selaqui-audit/backups/` every hour by `pg_cron`, but only when
+  something was saved since the last backup. The newest 10 hourly/manual backups are kept; older ones are deleted.
+  A separate daily backup at 10:00 PM IST is kept permanently. The Backup tab lists them and can trigger one on demand.
 
 ## Deploy the app to Netlify
 
