@@ -46,6 +46,15 @@ first broken record. The trail is included in every hourly backup and can be exp
   site visits, auditees, coverage, findings by severity, pending documents, status of every point, and the
   entry log with who / when / GPS / hash and photos. Opens the phone's print screen → *Save as PDF*.
 
+## Photo references, editing and adding photos later
+
+- Every photo gets a reference number per site and point in upload order: `S1-AD-01-P03` (site 1, AD-01,
+  3rd photo), `C-AD-05-P01` for common documents, `S2-NOTE-P01` for site notes, `EXP-P01` for bills. Shown on
+  thumbnails, the gallery, full-size view, reports, CSV (Photo_Refs) and in downloaded file names.
+- **📷 Add photo** on any observation (either auditor, any device) attaches photos to that observation.
+- **✎ Edit** (author only) saves a new version; the card shows the latest version with "Edited by … – history",
+  and the original stays visible. Both are separate stamped records in the log and audit trail.
+
 ## Deliverables
 
 | # | Deliverable | Where it comes from |

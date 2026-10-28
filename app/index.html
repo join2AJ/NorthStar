@@ -211,6 +211,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .thumbs button{padding:0;border:0;background:none;position:relative}
 .thumbs img,.thumbs .ph{width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:block}
+.thumbs button{display:flex;flex-direction:column;align-items:center;gap:2px}
+.thumbs .pref{font-size:9.5px;font-weight:700;color:var(--ink2);letter-spacing:.2px;font-variant-numeric:tabular-nums}
+.vers{margin-top:8px;font-size:12.5px;color:var(--ink2);background:var(--surface2);border-radius:8px;padding:6px 9px}
+.vers summary{cursor:pointer;font-weight:600}
+.vers .old{border-left:3px solid var(--line);padding:3px 8px;margin:6px 0;white-space:pre-wrap}
 .thumbs .up{position:absolute;bottom:3px;left:3px;font-size:10px;background:rgba(0,0,0,.6);color:#fff;border-radius:5px;padding:0 4px}
 .thumbs .rm{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:var(--crit);color:#fff;font-size:14px;line-height:1;padding:0}
 
@@ -339,7 +344,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.9";
+const VERSION="2026-10-28.10";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -380,6 +385,16 @@ const CLAIM_ST=[["draft","Not submitted","neutral"],["submitted","Submitted","in
 const CLAIM_STM=Object.fromEntries(CLAIM_ST.map(([k,l,c])=>[k,{label:l,col:c}]));
 const PAY_MODES=["UPI","Cash","Card","Bank transfer","Paid by Northstar"];
 const isAudit=e=>e.kind==="point"||e.kind==="note";
+const isChild=e=>isAudit(e)&&!!e.target&&!!(e.extra&&e.extra.mode);
+const photoRef=path=>(D&&D.refs.get(path))||"";
+// The observation as it reads now: latest edit's content, plus every photo added to it later.
+function effObs(e){
+  const ch=(D&&D.kids?D.kids.get(e.id):null)||[];
+  const revs=ch.filter(c=>c.extra.mode==="edit"),adds=ch.filter(c=>c.extra.mode==="add"),last=revs[revs.length-1];
+  const v=Object.assign({},e,last?{body:last.body,status:last.status,sev:last.sev,evid:last.evid,by:last.by,ref:last.ref,extra:last.extra?Object.assign({},last.extra,{mode:null}):null}:{});
+  v.photos=(e.photos||[]).concat(...ch.map(c=>c.photos||[]));v.revs=revs;v.adds=adds;v.orig=e;
+  return v;
+}
 const peopleFor=sc=>(D.people[sc]||[]).concat(sc!=="G"?(D.people.G||[]):[]);
 function laterInfo(e){if(!e||e.status!=="later"||!e.ref||e.ref[0]!=="{")return null;try{return JSON.parse(e.ref).later||null;}catch(x){return null;}}
 const waNum=m=>{const d=String(m||"").replace(/[^0-9]/g,"");return d.length===10?"91"+d:(d.length===12&&d.startsWith("91")?d:"");};
@@ -611,7 +626,7 @@ async function flushThumbs(){
 function hydrateThumbs(root){$$("img[data-p]",root).forEach(im=>{if(im.src)return;if(io)io.observe(im);else queueThumb(im);});}
 function thumbsHTML(photos,localTag){
   if(!photos||!photos.length)return "";
-  return '<div class="thumbs">'+photos.map(p=>'<button type="button" data-act="zoom" data-v="'+esc(p.p)+'" aria-label="Open photo"><img data-p="'+esc(p.t)+'" alt="" loading="lazy">'+(localTag?'<span class="up">on phone</span>':'')+'</button>').join("")+'</div>';
+  return '<div class="thumbs">'+photos.map(p=>'<button type="button" data-act="zoom" data-v="'+esc(p.p)+'" aria-label="Open photo '+esc(photoRef(p.p))+'"><img data-p="'+esc(p.t)+'" alt="" loading="lazy">'+(localTag?'<span class="up">on phone</span>':'')+'<span class="pref">'+esc(photoRef(p.p))+'</span></button>').join("")+'</div>';
 }
 
 /* ================= geolocation ================= */
@@ -647,7 +662,18 @@ function derive(){
   for(const e of STATE.outbox.values())if(!STATE.synced.has(e.id))all.push(Object.assign({local:true},e));
   all.sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:(a.id<b.id?-1:1));
   const withdrawn=new Set(all.filter(e=>e.kind==="retract").map(e=>e.target));
-  const live=all.filter(e=>e.kind!=="retract"&&!withdrawn.has(e.id));
+  let live=all.filter(e=>e.kind!=="retract"&&!withdrawn.has(e.id));
+  // An edit (new version) or an add (more photos) points at its observation; drop them if that observation was withdrawn.
+  const liveIds=new Set(live.map(e=>e.id));
+  live=live.filter(e=>!isChild(e)||liveIds.has(e.target));
+  const kids=new Map();
+  for(const e of live)if(isChild(e))(kids.get(e.target)||kids.set(e.target,[]).get(e.target)).push(e);
+  // Photo reference numbers: per site and point in upload order (server sequence), e.g. S1-AD-01-P03; bills EXP-P01.
+  const refs=new Map(),cnt={};
+  for(const e of all.filter(x=>x.kind!=="retract"&&(x.photos||[]).length).sort((a,b)=>((a.seq||1e15)-(b.seq||1e15))||(a.ts<b.ts?-1:1))){
+    const g=e.kind==="expense"?"EXP":(e.scope==="G"?"C":e.scope&&SITE[e.scope]?"S"+SITE[e.scope].no:"X")+"-"+(e.item||"NOTE");
+    e.photos.forEach(ph=>{cnt[g]=(cnt[g]||0)+1;const r=g+"-P"+pad(cnt[g]);refs.set(ph.p,r);refs.set(ph.t,r);});
+  }
   const pts=new Map(),visits={};
   for(const e of live){
     if(e.kind==="visit"){(visits[e.scope]=visits[e.scope]||[]).push(e);continue;}
@@ -679,7 +705,8 @@ function derive(){
     (people[e.scope||"G"]=people[e.scope||"G"]||[]).push({e,d});
   }
   for(const k in people)people[k].sort((a,b)=>(a.d.func||"").localeCompare(b.d.func||"")||(a.d.name||"").localeCompare(b.d.name||""));
-  D={all,live,withdrawn,pts,visits,exp,people};Dver=STATE.ver;return D;
+  D={all,live,withdrawn,pts,visits,exp,people,kids,refs};
+  D.obs=live.filter(e=>isAudit(e)&&!isChild(e)).map(effObs);Dver=STATE.ver;return D;
 }
 // "covered" = a final status is recorded; "progress" = entries exist but nothing final yet.
 function stateOf(p){if(!p)return "none";if(p.status&&!IN_PROGRESS.has(p.status))return "covered";return "progress";}
@@ -830,7 +857,7 @@ function renderDash(m){
 
   // open mandatory gaps
   const gaps=[];for(const [sc,it] of ALL_POINTS){if(!it.mand||it.sec!=="doc")continue;const p=D.pts.get(sc+"|"+it.id);if(p&&(p.status==="notavail"))gaps.push([sc,it,p]);}
-  const hi=D.live.filter(e=>e.sev==="high").slice(-12).reverse();
+  const hi=D.obs.filter(e=>e.sev==="high").slice(-12).reverse();
   h+='<div class="sec-h">Needs attention</div><div class="card"><div class="card-t">High findings</div>'+
      (hi.length?hi.map(e=>'<button type="button" class="gap-li" data-act="open" data-v="'+esc(e.item||"")+'" data-s="'+esc(e.scope||"")+'">'+badge(e.scope||"G",1)+'<span style="flex:1;min-width:0"><b>'+esc(e.item||"Note")+'</b> '+esc((e.body||"").slice(0,120))+'<span class="meta" style="display:block;margin-top:2px">'+esc(uname(e.author))+' · '+fmt(e.ts)+'</span></span></button>').join(""):'<div class="muted small" style="padding:6px 0">No high findings logged.</div>')+'</div>'+
      (()=>{const pg=pendingGroups(null),n=pg.reduce((a,g)=>a+g.items.length,0);
@@ -868,7 +895,7 @@ function haystack(it,p){
   let h=(it.id+" "+it.text+" "+it.cat+" "+(it.mand?"mandatory":"desirable")+" "+it.when).toLowerCase();
   if(p){
     h+=" "+(p.status?ST[p.status].label:"notes only");
-    for(const e of p.entries)h+=" "+[e.body,e.extra&&e.extra.rec,e.extra&&(e.extra.sop||[]).join(" "),e.by,e.ref,(e.evid||[]).join(" "),e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",uname(e.author)].join(" ").toLowerCase();
+    for(const e of p.entries)h+=" "+[(e.photos||[]).map(x=>photoRef(x.p)).join(" "),e.body,e.extra&&e.extra.rec,e.extra&&(e.extra.sop||[]).join(" "),e.by,e.ref,(e.evid||[]).join(" "),e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",uname(e.author)].join(" ").toLowerCase();
   }else h+=" not covered";
   return h;
 }
@@ -952,6 +979,8 @@ function allPhotos(){
   return out.reverse();
 }
 function photoName(e,i){
+  const r=e.photos&&e.photos[i]?photoRef(e.photos[i].p):"";
+  if(r)return r+"_"+(USERS[e.author]?USERS[e.author].short:e.author)+"_"+dayKey(e.ts)+"_"+fmtFull(e.ts).slice(12,20).replace(/:/g,"")+".jpg";
   const site=e.kind==="expense"?"Claim":e.scope?(e.scope==="G"?"Common":"Site"+SITE[e.scope].no):"NoSite";
   return [site,e.item||"note",USERS[e.author]?USERS[e.author].short:e.author,dayKey(e.ts),fmtFull(e.ts).slice(12,20).replace(/:/g,""),i+1].join("_")+".jpg";
 }
@@ -964,7 +993,7 @@ function renderPhotos(m){
    '<div class="seg" style="margin:10px 0 0">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="photowho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
    '<div class="filters"><select id="ph-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(ui.feedSite===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select><div class="small muted" style="align-self:center">'+list.length+' photo'+(list.length===1?"":"s")+'</div></div>'+
    (shown.length?'<div class="gal">'+shown.map(x=>'<button type="button" class="gi" style="--ac:var(--'+esc(x.e.author)+')" data-act="zoom" data-v="'+esc(x.ph.p)+'"><img data-p="'+esc(x.ph.t)+'" alt="" loading="lazy">'+
-     '<span class="gc">'+av(x.e.author,"sm")+'<span>'+(x.e.scope?badge(x.e.scope,1):'')+' '+esc(x.e.item||"Note")+'<br>'+fmt(x.e.ts)+'</span></span></button>').join("")+'</div>':'<div class="empty">No photos yet.</div>')+
+     '<span class="gc">'+av(x.e.author,"sm")+'<span><b>'+esc(photoRef(x.ph.p))+'</b><br>'+fmt(x.e.ts)+' IST</span></span></button>').join("")+'</div>':'<div class="empty">No photos yet.</div>')+
    (list.length>shown.length?'<div class="btn-row" style="justify-content:center"><button class="btn" data-act="morephotos">Show more</button></div>':'');
 }
 
@@ -972,7 +1001,7 @@ function renderPhotos(m){
 function entryCard(e,opts){
   opts=opts||{};
   const it=e.item?ITEM[e.item]:null;const wd=D.withdrawn.has(e.id);
-  const kindL=e.kind==="visit"?(e.status==="in"?"Checked in":"Checked out"):e.kind==="note"?"Note":"Update";
+  const kindL=e.kind==="visit"?(e.status==="in"?"Checked in":"Checked out"):e.extra&&e.extra.mode==="edit"?"Edited observation":e.extra&&e.extra.mode==="add"?"Photos added":e.kind==="note"?"Note":"Update";
   return '<div class="ent'+(wd?" withdrawn":"")+'" style="--ac:var(--'+esc(e.author)+')"><div class="ent-h">'+av(e.author,"sm")+'<b>'+esc(uname(e.author))+'</b><span class="muted">'+fmt(e.ts)+'</span>'+
    (opts.site&&e.scope?badge(e.scope,1):'')+(opts.site&&it?'<b>'+it.id+'</b>':'')+
    '<span class="muted">'+kindL+'</span>'+stPill(e.kind!=="visit"&&e.status)+sevPill(e.sev)+(e.local?(e.rejected?'<span class="pill" style="--pc:var(--crit)">Not accepted: '+esc(e.rejected)+'</span>':'<span class="pill" style="--pc:var(--warn)">Waiting to upload</span>'):'')+(wd?'<span class="pill outline">Withdrawn</span>':'')+'</div>'+
@@ -988,7 +1017,12 @@ function entryCard(e,opts){
    '<div><span>Received</span><b class="tnum">'+(e.sts?fmtFull(e.sts)+' IST':'Waiting to upload')+'</b></div>'+
    '<div><span>GPS</span><b>'+geoLink(e.geo,e.gerr)+'</b></div>'+
    '<div><span>Record</span><b class="tnum">'+esc(e.id)+(e.hash?' · #'+esc(e.hash.slice(0,10)):'')+'</b></div></div>'+
-   (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?'<div class="meta"><a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw this entry</a></div>':'')+'</div>';
+   (e.revs&&e.revs.length?(()=>{const L=e.revs[e.revs.length-1];return '<details class="vers"><summary>✎ Edited by '+esc(uname(L.author))+' · '+fmtFull(L.ts)+' IST'+(e.revs.length>1?' ('+e.revs.length+' edits)':'')+' – history</summary>'+
+     [e.orig].concat(e.revs.slice(0,-1)).map((v,i)=>'<div class="old"><b>'+(i?"Version "+(i+1):"Original")+'</b> · '+esc(uname(v.author))+' · '+fmtFull(v.ts)+' IST'+(v.status&&ST[v.status]?' · '+esc(ST[v.status].label):'')+(v.sev&&SEVM[v.sev]?' · '+esc(SEVM[v.sev].label):'')+'<br>'+esc(v.body||"(no text)")+(v.extra&&v.extra.rec?'<br><i>Rec: '+esc(v.extra.rec)+'</i>':'')+'</div>').join("")+'</details>';})():'')+
+   (e.adds&&e.adds.length?'<div class="meta">'+e.adds.map(a=>'📷 '+(a.photos||[]).length+' photo'+((a.photos||[]).length===1?"":"s")+' added by '+esc(uname(a.author))+' · '+fmt(a.ts)+' IST'+(a.body?' – '+esc(a.body):'')+(a.local?' (waiting to upload)':'')).join('<br>')+'</div>':'')+
+   (isAudit(e)&&!isChild(e)&&!wd&&!e.local?'<div class="btn-row"><button class="btn sm" data-act="addph" data-v="'+esc(e.id)+'">📷 Add photo</button>'+(e.author===STATE.user?'<button class="btn sm" data-act="editobs" data-v="'+esc(e.id)+'">✎ Edit</button>':'')+
+     (e.author===STATE.user?'<button class="btn sm danger" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw</button>':'')+'</div>':
+     (e.author===STATE.user&&!wd&&!e.local&&e.kind!=="retract"?'<div class="meta"><a href="#" data-act="withdraw" data-v="'+esc(e.id)+'">Withdraw this entry</a></div>':''))+'</div>';
 }
 function renderFeed(m){
   let list=D.all.filter(e=>e.kind!=="retract"&&e.kind!=="expense"&&e.kind!=="claim").slice().reverse();
@@ -1099,6 +1133,21 @@ function renderInfo(m){
   }
   h+='<div class="small muted" style="text-align:center;margin:6px 0 14px">Updated '+esc(RES.updated||"")+(RES._at?' · fetched '+ago(RES._at):'')+'</div>';
   m.innerHTML=h;
+}
+
+/* ================= Edit / add photos to an observation ================= */
+function openEdit(id,mode){
+  const e=D.all.find(x=>x.id===id);if(!e)return;
+  const v=effObs(e);
+  if(v.item&&v.scope)openPoint(v.item,v.scope);else{openNote();draft.scope=v.scope||draft.scope;}
+  draft.kind=e.kind;draft.item=v.item||"";draft.mode=mode;draft.target=id;
+  if(mode==="edit"){
+    Object.assign(draft,{status:v.status||"",sev:v.sev||"",evid:(v.evid||[]).slice(),body:v.body||"",by:v.by||"",ref:v.ref||""});
+    const x=v.extra||{};Object.assign(draft,{rec:x.rec||"",li:x.li?String(x.li):"",im:x.im?String(x.im):"",sop:(x.sop||[]).slice()});
+    const L=laterInfo(v);if(L){Object.assign(draft,{lname:L.name||"",lmob:L.mobile||"",lmail:L.email||"",ldue:L.due||"",by:"",ref:""});}
+  }
+  renderSheet();
+  setTimeout(()=>{const f=$("#dform");if(f)f.scrollIntoView({behavior:"smooth",block:"start"});},60);
 }
 
 /* ================= Auditees ================= */
@@ -1219,7 +1268,7 @@ async function makeReport(){
   w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing report…</p>');
   const scopes=r.site==="all"?SITES.map(s=>s.id):[r.site];
   const inPeriod=e=>r.period==="all"||dayKey(e.ts)===r.period;
-  const ents=D.live.filter(e=>isAudit(e)&&scopes.includes(e.scope)&&inPeriod(e));
+  const ents=D.obs.filter(e=>scopes.includes(e.scope)&&(inPeriod(e)||e.revs.some(inPeriod)||e.adds.some(inPeriod)));
   const urls={};
   if(r.photos){
     const paths=[];ents.forEach(e=>(e.photos||[]).forEach(p=>paths.push(p.t)));
@@ -1295,14 +1344,14 @@ function reportHTML(r,scopes,ents,urls){
     const se=ents.filter(e=>e.scope===sc);
     b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
       return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
-       '<div class="meta">'+E(uname(e.author))+' · '+fmtFull(e.ts)+' IST · '+(e.geo?'GPS '+e.geo.lat.toFixed(5)+', '+e.geo.lng.toFixed(5)+' ±'+Math.round(e.geo.acc)+' m':'No GPS')+(e.hash?' · #'+E(e.hash.slice(0,12)):'')+'</div>'+
+       '<div class="meta">'+E(uname(e.author))+' · '+fmtFull(e.ts)+' IST'+(e.revs&&e.revs.length?' · edited by '+E(uname(e.revs[e.revs.length-1].author))+' '+fmtFull(e.revs[e.revs.length-1].ts)+' IST':'')+' · '+(e.geo?'GPS '+e.geo.lat.toFixed(5)+', '+e.geo.lng.toFixed(5)+' ±'+Math.round(e.geo.acc)+' m':'No GPS')+(e.hash?' · #'+E(e.hash.slice(0,12)):'')+'</div>'+
        ((e.status&&ST[e.status])||e.sev?'<div><b>'+[e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?"Severity: "+SEVM[e.sev].label:""].filter(Boolean).join(" · ")+'</b></div>':'')+
        (e.body?'<div class="body">'+E(e.body)+'</div>':'')+
        (e.extra&&e.extra.rec?'<div class="body"><b>Recommendation:</b> '+E(e.extra.rec)+'</div>':'')+
        (e.extra&&(e.extra.li||(e.extra.sop&&e.extra.sop.length))?'<div class="muted">'+[e.extra.li&&e.extra.im?"Risk "+(e.extra.li*e.extra.im)+" ("+riskBand(e.extra.li*e.extra.im)[0]+", L"+e.extra.li+" × I"+e.extra.im+")":"",(e.extra.sop||[]).length?"SOP: "+E(e.extra.sop.join(", ")):""].filter(Boolean).join(" · ")+'</div>':'')+
        (L?'<div class="muted">Will be shared by '+E(L.name)+(L.mobile?' · '+E(L.mobile):'')+(L.email?' · '+E(L.email):'')+(L.due?' · expected '+E(fmtDate(L.due)):'')+'</div>':
          ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="muted">'+[E((e.evid||[]).join(", ")),e.by?"From "+E(e.by):"",e.ref?"Ref "+E(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
-       (r.photos&&e.photos&&e.photos.length?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<img src="'+E(urls[p.t])+'">':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
+       (r.photos&&e.photos&&e.photos.length?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
     b+='</section>';
   }
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selaqui audit report '+E(period)+'</title><style>'+
@@ -1312,7 +1361,7 @@ function reportHTML(r,scopes,ents,urls){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:9pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#E6EDEB}'+
    '.kv th{width:28%}.muted{color:#5E7079;font-size:8.5pt}.badge{display:inline-block;background:#0E5A61;color:#fff;border-radius:5px;padding:0 7px}'+
    '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}'+
-   '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph img{width:31%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}'+
+   '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
    '</style></head><body>'+b+'</body></html>';
@@ -1393,8 +1442,8 @@ function statusCSV(){
   return toCSV(rows);
 }
 function logCSV(){
-  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn","Record_Hash","Recommendation","Likelihood","Impact","Risk_Score","Risk_Band","SOP_Topics"]];
-  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":"",e.hash||"",...(()=>{const x=e.extra||{},n=x.li&&x.im?x.li*x.im:"";return [x.rec||"",x.li||"",x.im||"",n,n?riskBand(n)[0]:"",(x.sop||[]).join("; ")];})()]);}
+  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn","Record_Hash","Recommendation","Likelihood","Impact","Risk_Score","Risk_Band","SOP_Topics","Photo_Refs","Change_Type","Changes_Entry"]];
+  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":"",e.hash||"",...(()=>{const x=e.extra||{},n=x.li&&x.im?x.li*x.im:"";return [x.rec||"",x.li||"",x.im||"",n,n?riskBand(n)[0]:"",(x.sop||[]).join("; "),(e.photos||[]).map(p=>photoRef(p.p)).join(" "),x.mode==="edit"?"Edit":x.mode==="add"?"Photos added":"",x.mode?e.target:""];})()]);}
   return toCSV(rows);
 }
 function renderMore(m){
@@ -1422,7 +1471,7 @@ async function loadBackups(){
 
 /* ================= point sheet + forms ================= */
 let draft=null;
-function newDraft(kind,scope,item){return {kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:"",lname:"",lmob:"",lmail:"",ldue:"",rec:"",li:"",im:"",sop:[]};}
+function newDraft(kind,scope,item){return {mode:"",target:"",kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:"",lname:"",lmob:"",lmail:"",ldue:"",rec:"",li:"",im:"",sop:[]};}
 function pushSheet(){try{if(!(history.state&&history.state.sheet))history.pushState({sheet:1},"");}catch(e){}}
 function openPoint(item,scope){pushSheet();ui.sheet={type:"point",item,scope:scope||ui.scope};draft=newDraft("point",ui.sheet.scope,item);renderSheet();$("#sheet").scrollTop=0;}
 function openNote(){pushSheet();const sc=ui.tab==="list"?ui.scope:(lsGet("sa.lastScope")||"s1");ui.sheet={type:"note"};draft=newDraft("note",sc,"");renderSheet();}
@@ -1437,7 +1486,15 @@ function readDraftSafe(){if(!$("#sheet").hidden)readDraft();}
 function formHTML(sec){
   const sts=sec?STATUS[sec]:null;
   const L=GEO.last;
-  return '<div class="form"><div class="form-h">'+av(STATE.user,"sm")+'Add as '+esc(uname(STATE.user))+'</div>'+
+  const orig=draft.target?D.all.find(x=>x.id===draft.target):null;
+  if(draft.mode==="add")return '<div class="form" id="dform"><div class="form-h">'+av(STATE.user,"sm")+'📷 Add photos to an observation</div>'+
+    (orig?'<div class="later-box" style="background:var(--surface2);border-color:var(--line)"><b>'+esc(uname(orig.author))+' · '+fmt(orig.ts)+' IST</b><br>'+esc((effObs(orig).body||"(no text)").slice(0,300))+'</div>':'')+
+    '<span class="lbl">Photos <span class="muted">('+draft.photos.length+'/12)</span></span><div class="btn-row" style="margin-top:0"><button type="button" class="btn" data-act="cam">📷 Take photo</button><button type="button" class="btn" data-act="gal">Add from gallery</button></div>'+
+    '<div class="thumbs" id="d-thumbs">'+draft.photos.map((p,i)=>'<span style="position:relative"><img src="'+p.url+'" alt=""><button type="button" class="rm" data-act="drm" data-v="'+i+'" aria-label="Remove">×</button></span>').join("")+(draft.busy?'<span class="ph" style="display:grid;place-items:center;font-size:12px">Processing…</span>':'')+'</div>'+
+    '<span class="lbl">Note about these photos <span class="muted">(optional)</span></span><textarea id="d-body" placeholder="e.g. Close-up of the breach from outside the wall">'+esc(draft.body)+'</textarea>'+
+    '<div class="btn-row"><button class="btn" data-act="cancelmode">Cancel</button></div></div>';
+  return '<div class="form" id="dform"><div class="form-h">'+av(STATE.user,"sm")+(draft.mode==="edit"?'✎ Editing your observation of '+(orig?fmt(orig.ts)+' IST':''):'Add as '+esc(uname(STATE.user)))+'</div>'+
+   (draft.mode==="edit"?'<div class="small muted" style="margin-top:4px">Saved as a new version; the original stays in the history. <a href="#" data-act="cancelmode">Cancel edit</a></div>':'')+
    '<div class="small muted" style="margin-top:4px">Stamped on save: '+esc(uname(STATE.user))+' · date &amp; time · '+(L&&Date.now()-L.t<60000?'GPS ±'+Math.round(L.acc)+' m':'<span class="nogps">GPS not fixed yet – tap the GPS chip</span>')+'</div>'+
    (sts?'<span class="lbl">Status <span class="muted">(optional; leave blank to add evidence only)</span></span><div class="opts" data-grp="status">'+sts.map(([k,l,c])=>'<button type="button" class="opt'+(draft.status===k?" on":"")+'" style="--pc:'+cv(c)+'" data-act="dset" data-f="status" data-v="'+k+'">'+l+'</button>').join("")+'</div>':'')+
    (draft.status==="later"?'<div class="later-box"><b>Who will share it?</b><div class="small muted" style="margin:2px 0 8px">Pick an auditee or type a name. Mobile or email is needed so you can follow up after the audit.</div>'+
@@ -1476,7 +1533,7 @@ function renderSheet(){
      '<div class="req">'+esc(it.text)+'</div>'+(it.hint?'<div class="hint">'+esc(it.hint)+'</div>':'')+
      '<div class="small" style="margin-top:8px">Current: '+(p&&p.status?stPill(p.status)+' by '+esc(uname(p.statusBy)):p?'<span class="pill" style="--pc:var(--warn)">Notes only</span>':'<span class="pill outline">Not covered</span>')+'</div>'+
      '<div class="sec-h">Entries ('+(p?p.entries.length:0)+')</div>'+
-     (p?p.entries.map(e=>entryCard(e)).join(""):'<div class="muted small">No entries yet. Either auditor can add the first one.</div>')+
+     (p?p.entries.filter(e=>!isChild(e)).map(e=>entryCard(effObs(e))).join(""):'<div class="muted small">No entries yet. Either auditor can add the first one.</div>')+
      formHTML(it.sec)+'</div>'+
      '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save entry</button></div>';
   }else if(ui.sheet.type==="people"){
@@ -1491,7 +1548,7 @@ function renderSheet(){
   }else{
     const opts=SITES.map(s=>'<option value="'+s.id+'"'+(draft.scope===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("");
     const its=itemsFor(draft.scope);
-    sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">New note</div></div><div class="sh-body">'+
+    sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">'+(draft.mode==="edit"?"Edit note":draft.mode==="add"?"Add photos to note":"New note")+'</div></div><div class="sh-body">'+
      '<div class="muted small">A quick observation while walking. Link it to a point if it belongs to one; it then appears in that point\'s entries.</div>'+
      '<span class="lbl">Site</span><select id="n-scope">'+opts+'</select>'+
      '<span class="lbl">Point <span class="muted">(optional)</span></span><select id="n-item"><option value="">Not linked to a point</option>'+its.map(i=>'<option value="'+i.id+'"'+(draft.item===i.id?" selected":"")+'>'+i.id+' · '+esc(i.text.slice(0,70))+'</option>').join("")+'</select>'+
@@ -1524,9 +1581,10 @@ async function addPhotos(files){
 async function saveDraft(){
   readDraft();
   const d=draft;if(!d||d.busy)return;
-  if(ui.sheet.type==="note"&&!d.body.trim()&&!d.photos.length){toast("Write a note or add a photo.");return;}
-  if(ui.sheet.type==="point"&&!d.status&&!d.body.trim()&&!d.photos.length&&!d.sev&&!d.rec.trim()){toast("Pick a status, write a note or add a photo.");return;}
-  if((d.sev==="high"||d.sev==="med"||d.sev==="low")&&!d.rec.trim()&&!confirm("This finding has no recommendation yet. Save anyway? You can add one later as a new entry."))return;
+  if(d.mode==="add"&&!d.photos.length){toast("Add at least one photo.");return;}
+  if(ui.sheet.type==="note"&&!d.mode&&!d.body.trim()&&!d.photos.length){toast("Write a note or add a photo.");return;}
+  if(ui.sheet.type==="point"&&!d.mode&&!d.status&&!d.body.trim()&&!d.photos.length&&!d.sev&&!d.rec.trim()){toast("Pick a status, write a note or add a photo.");return;}
+  if(d.mode!=="add"&&(d.sev==="high"||d.sev==="med"||d.sev==="low")&&!d.rec.trim()&&!confirm("This finding has no recommendation yet. Save anyway? You can add one later as a new entry."))return;
   if(ui.sheet.type==="point"&&d.status==="later"){
     if(!d.lname.trim()){toast("Enter who will share it.");return;}
     if(!d.lmob.trim()&&!d.lmail.trim()){toast("Enter their mobile or email.");return;}
@@ -1549,12 +1607,13 @@ async function saveDraft(){
   }
   const e={id,author:STATE.user,kind:d.kind,scope:d.scope||null,item:d.item||null,status:d.status||null,sev:d.sev||null,evid:d.evid,body:d.body.trim()||null,by:d.by.trim()||null,ref:d.ref.trim()||null,photos,geo:st.geo,gerr:st.gerr||null,ts:st.ts};
   if(d.rec.trim()||d.li||d.im||d.sop.length)e.extra={rec:d.rec.trim()||null,li:Number(d.li)||null,im:Number(d.im)||null,sop:d.sop};
-  if(d.kind==="point"&&d.status==="later"){e.by=d.lname.trim();e.ref=JSON.stringify({later:{name:d.lname.trim(),mobile:d.lmob.trim(),email:d.lmail.trim(),due:d.ldue||""}});}
+  if(d.mode){e.target=d.target;e.extra=Object.assign({},e.extra||{},{mode:d.mode});if(d.mode==="add"){e.status=null;e.sev=null;e.evid=[];e.by=null;e.ref=null;}}
+  if(d.kind==="point"&&d.status==="later"&&d.mode!=="add"){e.by=d.lname.trim();e.ref=JSON.stringify({later:{name:d.lname.trim(),mobile:d.lmob.trim(),email:d.lmail.trim(),due:d.ldue||""}});}
   if(d.kind==="expense"){e.item=d.cat;e.body=JSON.stringify({amount:amt,date:d.date,vendor:d.by.trim(),ref:d.ref.trim(),mode:d.mode,desc:d.body.trim()});}
   STATE.outbox.set(id,e);await dbPut("outbox",e);STATE.ver++;
   if(d.kind==="expense"){ui.tab="info";ui.info="expenses";}
   toast(st.geo?"Saved · GPS ±"+Math.round(st.geo.acc)+" m":"Saved without GPS ("+st.gerr+")");
-  if(ui.sheet.type==="point"){draft=newDraft("point",d.scope,d.item);derive();renderSheet();}
+  if(ui.sheet.type==="point"){draft=newDraft("point",d.scope,d.item);derive();renderSheet();if(d.mode)toast(d.mode==="add"?"Photos added to the observation.":"Observation updated.");}
   else {draft=null;closeSheet(true);if(history.state&&history.state.sheet)history.back();}
   render();scheduleSync(100);
 }
@@ -1579,7 +1638,7 @@ async function zoom(path){
   const u=await fullUrl(path),o=photoOwner(path);
   let info="";
   if(o){const e=o.e,it=e.item?ITEM[e.item]:null;
-    info='<div class="lb-info"><b>'+esc(uname(e.author))+'</b> · '+fmtFull(e.ts)+' IST<br>'+
+    info='<div class="lb-info"><b style="font-size:15px">'+esc(photoRef(path))+'</b><br><b>'+esc(uname(e.author))+'</b> · '+fmtFull(e.ts)+' IST<br>'+
      (e.scope?esc(SITE[e.scope].name):'')+(it?' · '+esc(it.id)+' '+esc(it.text.slice(0,80)):'')+'<br>GPS '+geoLink(e.geo,e.gerr)+
      (e.body?'<br><span style="opacity:.85">'+esc(e.body.slice(0,200))+'</span>':'')+'<br><span style="opacity:.7">Photo '+(o.i+1)+' of '+e.photos.length+' · '+esc(path)+'</span></div>';}
   lb.innerHTML=u?'<img src="'+esc(u)+'" alt="">'+info+'<div class="lb-btns"><button class="btn" data-act="dlphoto" data-v="'+esc(path)+'">Download</button><button class="btn">Close</button></div>':'<div>Photo not available yet. It will appear once uploaded.</div>';
@@ -1667,6 +1726,9 @@ document.addEventListener("click",async ev=>{
     case "trailwho":ui.feedWho=v;render();break;
     case "csv3":try{const r=await api("trail");download("selaqui_audit_trail_"+dayKey(new Date().toISOString())+".csv",trailCSV(r.activity));}catch(e){toast(e.message);}break;
     case "dset":readDraft();draft[t.dataset.f]=draft[t.dataset.f]===v?"":v;renderSheet();break;
+    case "addph":openEdit(v,"add");break;
+    case "editobs":openEdit(v,"edit");break;
+    case "cancelmode":readDraft();{const d=draft;draft=newDraft(d.kind==="note"&&ui.sheet.type==="point"?"point":d.kind,d.scope,d.item);}renderSheet();break;
     case "dsop":readDraft();draft.sop=draft.sop.includes(v)?draft.sop.filter(x=>x!==v):draft.sop.concat(v);renderSheet();break;
     case "devid":readDraft();draft.evid=draft.evid.includes(v)?draft.evid.filter(x=>x!==v):draft.evid.concat(v);renderSheet();break;
     case "drm":readDraft();{const p=draft.photos.splice(Number(v),1)[0];if(p)URL.revokeObjectURL(p.url);}renderSheet();break;

@@ -90,8 +90,11 @@ function cleanEntry(e: any, author: string) {
     extra = {
       rec: str(x.rec, 4000), li: lvl(x.li), im: lvl(x.im),
       sop: Array.isArray(x.sop) ? x.sop.slice(0, 12).map((t: unknown) => String(t).slice(0, 40)) : [],
+      // mode: "edit" = new version of the target observation, "add" = photos/notes added to it
+      mode: x.mode === "edit" || x.mode === "add" ? x.mode : null,
     };
-    if (!extra.rec && !extra.li && !extra.im && !extra.sop.length) extra = null;
+    if (!extra.mode) delete extra.mode;
+    if (!extra.rec && !extra.li && !extra.im && !extra.sop.length && !extra.mode) extra = null;
   }
   return {
     id, author, kind: e.kind, scope,
@@ -214,6 +217,11 @@ async function handle(req: Request, b: any) {
             if (!t.length || t[0].kind !== "person") throw new HttpError(400, "That auditee was not found.");
           }
         }
+        if ((e.kind === "point" || e.kind === "note") && e.extra?.mode) {
+          const t = await sql`select kind, author from selaqui.entries where id = ${e.target}`;
+          if (!t.length || (t[0].kind !== "point" && t[0].kind !== "note")) throw new HttpError(400, "That observation was not found.");
+          if (e.extra.mode === "edit" && t[0].author !== me.username) throw new HttpError(403, "Only the person who logged an observation can edit it.");
+        }
         if (e.kind === "claim") {
           if (!CLAIM_STATUS.has(String(e.status))) throw new HttpError(400, "Bad claim status");
           const t = await sql`select kind from selaqui.entries where id = ${e.target}`;
@@ -236,8 +244,9 @@ async function handle(req: Request, b: any) {
         if (ins.length) {
           const action = raw.kind === "retract" ? "entry.withdrawn" : raw.kind === "visit" ? "site.check-" + (raw.status || "")
             : raw.kind === "note" ? "note.added" : raw.kind === "expense" ? "expense.added" : raw.kind === "claim" ? "claim." + raw.status
-            : raw.kind === "person" ? (raw.target ? (JSON.parse(raw.body || "{}").removed ? "auditee.removed" : "auditee.updated") : "auditee.added") : "entry.added";
-          await logActivity(req, me.username, action, raw.kind === "retract" || raw.kind === "claim" || (raw.kind === "person" && raw.target) ? raw.target : raw.id,
+            : raw.kind === "person" ? (raw.target ? (JSON.parse(raw.body || "{}").removed ? "auditee.removed" : "auditee.updated") : "auditee.added")
+            : raw.extra?.mode === "edit" ? "entry.edited" : raw.extra?.mode === "add" ? "entry.photos-added" : "entry.added";
+          await logActivity(req, me.username, action, raw.kind === "retract" || raw.kind === "claim" || (raw.kind === "person" && raw.target) || raw.extra?.mode ? raw.target : raw.id,
             raw.kind === "expense" ? { category: raw.item_id, ...JSON.parse(raw.body || "{}"), photos: raw.photos.length, deviceTime: raw.device_ts }
               : raw.kind === "person" ? { scope: raw.scope, ...JSON.parse(raw.body || "{}"), deviceTime: raw.device_ts }
               : { scope: raw.scope, point: raw.item_id, status: raw.status, severity: raw.sev, photos: raw.photos.length, deviceTime: raw.device_ts, gpsError: raw.gerr,
