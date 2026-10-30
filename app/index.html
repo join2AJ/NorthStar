@@ -367,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.26";
+const VERSION="2026-10-30.27";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -375,9 +375,9 @@ const SITES=[
  {id:"s1",no:1,name:"DTSPL",addr:"Khasra No. 122 & 265, Central Hopetown, Selaqui",checklist:"08_26Oct requisition · SPOC Pankaj 9690650668 · audit 28–29 Oct"},
  {id:"s2",no:2,name:"DTSPL – Lighting",addr:"Khasra No. 323 MIN, Central Hope Town, Selaqui Industrial Area, Pargana Pachwadoon",checklist:"11_27Oct requisition · SPOC Pankaj 9690650668 · audit 29 Oct, 10:30 AM"},
  {id:"s3",no:3,name:"Dixon (Washing Machine)",addr:"Plot 261, 262, C-2, C-3, Industrial Area Selaqui, Central Hope Town, Dehradun 248011",checklist:"09_26Oct requisition · SPOC Abhishek 8887595898 · audit 30 Oct, 10:30 AM"},
- {id:"s4",no:4,name:"Lightanium",addr:"Khasra No. 1050, Selaqui"},
- {id:"s5",no:5,name:"Dixon WM Co. Plant",addr:"C-8, WM, Selaqui"},
- {id:"s6",no:6,name:"DTSPL – Washing Machine",addr:"Khasra No. 323 MI, Pargana Pachhwadoon, Selaqui"}
+ {id:"s4",no:4,name:"Lightanium",addr:"Khasra No. 1050, Central Hope Town, Selaqui Industrial Area, Tehsil Vikas Nagar, Dehradun 248011",checklist:"14_28Oct requisition · SPOC Munna 7668630498 · audit 31 Oct, 10:30 AM"},
+ {id:"s5",no:5,name:"Dixon WM Co. Plant",addr:"Plot C-8, SIDCUL Industrial Area, Selaqui, Dehradun",checklist:"Site-specific documents logged at C-8; common documents verified at site 3 · audit 30 Oct"},
+ {id:"s6",no:6,name:"DTSPL – Washing Machine",addr:"Khasra No. 323 MI, Central Hope Town, Pargana Pachhwadoon, Selaqui, Dehradun",checklist:"Site-specific documents logged at 323 MI; common documents verified at site 3 · audit 30 Oct"}
 ];
 // "G" is kept only for corporate/common auditees and for older entries that were logged under Common.
 const CORP={id:"G",no:"C",name:"Corporate / common",addr:"Head-office and group-level people."};
@@ -532,7 +532,7 @@ const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 // Points at a site: the 54 site documents, walkthrough and interviews. The 15 former group-level documents (scope "X")
 // are retired: kept only so older entries still show their titles; their findings were folded into the 54 at DTSPL.
 // Sites whose own requisition sheet from Northstar lists all 69 documents (the retired 15 included).
-const FULL69=new Set(["s1","s2","s3"]);
+const FULL69=new Set(["s1","s2","s3","s4","s5","s6"]);
 const itemsFor=(scope,sec)=>ITEMS.filter(i=>(i.scope==="S"||i.scope===scope||(i.scope==="X"&&FULL69.has(scope)))&&(!sec||i.sec===sec));
 // What a site's checklist shows: all its own points plus the corporate-level documents, which are logged once
 // under Common and mirrored into every site. ALL_POINTS (unique points) stays the basis for overall totals.
