@@ -367,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.25";
+const VERSION="2026-10-30.26";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1141,6 +1141,7 @@ function renderPhotos(m){
   m.innerHTML=feedSwitch()+'<div class="h-page">Photos</div><div class="muted small">Every photo from both auditors, newest first. Tap one for full size, details and download.</div>'+
    '<div class="seg" style="margin:10px 0 0">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="photowho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>'+
    '<div class="filters"><select id="ph-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(ui.feedSite===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select><div class="small muted" style="align-self:center">'+list.length+' photo'+(list.length===1?"":"s")+'</div></div>'+
+   (list.length?'<div class="btn-row" style="margin:0 0 10px"><button class="btn primary" data-act="photozip">📦 Download these '+list.length+' photos (ZIP)</button></div>':'')+
    (shown.length?'<div class="gal">'+shown.map(x=>'<button type="button" class="gi" style="--ac:var(--'+esc(x.e.author)+')" data-act="zoom" data-v="'+esc(x.ph.p)+'"><img data-p="'+esc(x.ph.t)+'" alt="" loading="lazy">'+
      '<span class="gc">'+av(x.e.author,"sm")+'<span><b>'+esc(photoRef(x.ph.p))+'</b><br>'+fmt(x.e.ts)+' IST</span></span></button>').join("")+'</div>':'<div class="empty">No photos yet.</div>')+
    (list.length>shown.length?'<div class="btn-row" style="justify-content:center"><button class="btn" data-act="morephotos">Show more</button></div>':'');
@@ -1417,7 +1418,6 @@ function reportSheet(){
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
    '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
-   '<div class="card" style="margin-top:12px"><div class="card-t">Photographic evidence (ZIP)</div><div class="small muted" style="margin:3px 0 8px">All photos for the site and period above in one ZIP, named by reference (e.g. S2-AD-09-P01) in a folder per site, with an index sheet listing point, observation, risk, auditor, time and GPS.</div><button class="btn" data-act="photozip">📦 Download photos (ZIP)</button></div>'+
    '<div class="card" style="margin-top:12px"><div class="card-t">Deliverables 3–5 · Site Security Plan, Operational Requirement, SOP set</div><div class="small muted" style="margin:3px 0 8px">Built from the audit log, risk ratings, schedule and site perimeters. Pick a site above for the SSP and OR (Deliverable 2 is the audit report above). Regenerate any time – later sites work the same way.</div>'+
    '<div class="btn-row" style="margin-top:0"><button class="btn" data-act="mkssp">3 · Site Security Plan</button><button class="btn" data-act="mkor">4 · Operational Requirement</button><button class="btn" data-act="mksop">5 · Corporate SOP set</button></div></div>'+
    '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
@@ -1561,12 +1561,10 @@ function zipBlob(files){
   return new Blob(parts.concat(cen,[e.buffer]),{type:"application/zip"});
 }
 let zipBusy=false;
-async function photosZip(){
-  if(zipBusy)return;const sc=$("#r-site").value,period=$("#r-period").value;
-  const scopes=sc==="all"?SITES.map(s=>s.id):[sc],inP=e=>period==="all"||dayKey(e.ts)===period;
-  const obs=D.obs.filter(e=>scopes.includes(e.scope)&&(inP(e)||e.adds.some(inP)||e.revs.some(inP))&&(e.photos||[]).length);
-  const list=[];obs.forEach(e=>e.photos.forEach((ph,i)=>list.push({e,ph,i,name:(e.scope?"Site"+SITE[e.scope].no+"_"+SITE[e.scope].name.replace(/[^A-Za-z0-9]+/g,"-")+"/":"")+photoName(e,i)})));
-  if(!list.length){toast("No photos for this site and period.");return;}
+async function photosZip(list,fname){
+  list=list.map(x=>({...x,o:D.obs.find(o=>o.id===(isChild(x.e)?x.e.target:x.e.id))||x.e,name:(x.e.scope&&SITE[x.e.scope]?"Site"+SITE[x.e.scope].no+"_"+SITE[x.e.scope].name.replace(/[^A-Za-z0-9]+/g,"-")+"/":"")+photoName(x.e,x.i)}));
+  if(zipBusy)return;
+  if(!list.length){toast("No photos to download.");return;}
   zipBusy=true;
   try{
     const urls={},need=[];
@@ -1577,12 +1575,12 @@ async function photosZip(){
       toast("Packing photos… "+(++done)+" / "+list.length,60000);
       try{let b=await dbGet("blobs",x.ph.p);if(!b){const r=await fetch(urls[x.ph.p]);if(!r.ok)throw 0;b=await r.blob();}
         files.push({name:x.name,data:new Uint8Array(await b.arrayBuffer())});}catch(err){fail++;continue;}
-      const e=x.e,rk=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:"";
-      rows.push([photoRef(x.ph.p),x.name,e.scope?SITE[e.scope].name:"",e.item||"Other observation",e.item&&ITEM[e.item]?ITEM[e.item].text:"",e.body||"",e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",rk?rk+" "+riskBand(rk)[0]:"",uname(e.author),fmtFull(e.ts),e.geo?e.geo.lat.toFixed(5)+", "+e.geo.lng.toFixed(5):""]);}
+      const e=x.o,rk=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:"";
+      rows.push([photoRef(x.ph.p),x.name,e.scope?SITE[e.scope].name:"",e.item||"Other observation",e.item&&ITEM[e.item]?ITEM[e.item].text:"",e.body||"",e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",rk?rk+" "+riskBand(rk)[0]:"",uname(x.e.author),fmtFull(x.e.ts),x.e.geo?x.e.geo.lat.toFixed(5)+", "+x.e.geo.lng.toFixed(5):""]);}
     const csv="﻿"+rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
     files.unshift({name:"Photo_index.csv",data:new TextEncoder().encode(csv)});
     const blob=zipBlob(files),a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);a.download="Selaqui_photos_"+(sc==="all"?"all-sites":"site"+SITE[sc].no)+"_"+(period==="all"?"whole-audit":period)+".zip";
+    a.href=URL.createObjectURL(blob);a.download=fname;
     document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
     toast((files.length-1)+" photos zipped"+(fail?" · "+fail+" could not be downloaded":"")+".",4000);
   }catch(err){toast("Could not build the ZIP: "+(err.message||err),5000);}
@@ -2144,7 +2142,8 @@ document.addEventListener("click",async ev=>{
     case "mkchecklist":makeChecklist();break;
     case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
     case "mksop":makeSOPSet();break;
-    case "photozip":photosZip();break;
+    case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
+      photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
     case "claimst":setClaim(v,t.dataset.k);break;
     case "expwho":ui.expWho=v;render();break;
