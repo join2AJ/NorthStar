@@ -119,6 +119,24 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .tile .s{font-size:12.5px;color:var(--ink2);margin-top:3px}
 .hero{display:flex;align-items:center;gap:16px}
 .ring{flex:none;width:92px;height:92px}
+.cb-ctls{display:flex;flex-direction:column;gap:6px}.cb-ctl{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.cb-ctl::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.cb-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0 10px}.cb-sum div{background:var(--surface2);border-radius:10px;padding:8px 6px;text-align:center}
+.cb-sum b{display:block;font-size:20px}.cb-sum span{font-size:11px;color:var(--muted)}
+.cb-wrap{overflow-x:auto;margin:0 -4px}.cb-t{border-collapse:separate;border-spacing:4px;width:100%;min-width:0}
+.cb-t thead th{font-size:12px;color:var(--muted);font-weight:600;text-align:center;white-space:nowrap}.cb-t thead th:first-child{text-align:left}
+.cb-t tbody th{text-align:left;font-size:13px;font-weight:600;color:var(--ink2);min-width:120px;padding-right:4px}.cb-t tbody th .muted{margin-left:6px;font-size:11px}
+.cb-t td{padding:0;min-width:58px}.cb-na{text-align:center;color:var(--muted)}
+.cb-cell{position:relative;width:100%;height:46px;border:1px solid var(--line);border-radius:9px;cursor:pointer;font:inherit;color:var(--ink);
+  background:linear-gradient(to right,color-mix(in srgb,var(--fc) 30%,transparent) var(--pct),var(--surface) var(--pct));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.cb-cell b{font-size:15px}.cb-cell b span{font-weight:500;color:var(--muted);font-size:12px}.cb-cell.sel{outline:2.5px solid var(--brand);outline-offset:1px}
+.cb-r{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 1.5px var(--surface)}.cb-g{font-style:normal;font-size:10.5px;font-weight:700;color:var(--crit)}
+.cb-left{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.cb-pts{display:grid;gap:6px;margin-top:10px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.cb-pt{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:9px;background:var(--surface);padding:7px 9px;font:inherit;font-size:13px;color:var(--ink);text-align:left;cursor:pointer;min-width:0}
+.cb-pt span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.cb-pt i{font-style:normal;font-size:11px;font-weight:700;color:#14212B;border-radius:5px;padding:0 5px}
+.linkbtn{background:none;border:0;color:var(--brand);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px}
+@media (max-width:520px){.cb-sum{grid-template-columns:repeat(3,1fr)}.cb-sum div:nth-child(n+4){display:none}}
 .brow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm num" "bar bar";gap:5px 10px;align-items:center;padding:8px 0}
 .brow .nm{grid-area:nm}.brow .bar{grid-area:bar}.brow .num{grid-area:num}
 @media (min-width:600px){.brow{grid-template-columns:minmax(150px,30%) 1fr auto;grid-template-areas:"nm bar num"}}
@@ -345,7 +363,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.19";
+const VERSION="2026-10-30.20";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -390,10 +408,12 @@ const IM_DEF=["",["Minor","First aid only","< ₹1 lakh","< 1 hour, no output lo
 const BAND_DEF=[["Critical","20–25","crit","Intolerable. Immediate action; interim controls within 24–72 hours; senior management owns closure within 30 days."],["High","10–19","serious","Treat as priority. Corrective action plan within 2 weeks; close within 60–90 days; monthly review."],["Medium","5–9","warn","Treat in the normal improvement plan within 3–6 months; monitor."],["Low","1–4","good","Tolerate / accept with routine monitoring; improve when the opportunity arises."]];
 // 5x5 colours: green Low, yellow Medium, orange High, red Critical (print-safe).
 const RISK_CSS='.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#9BD27A}.r-warn{background:#FFE066}.r-serious{background:#F7A35C}.r-crit{background:#E5534B;color:#fff}.r-crit .muted,.r-crit span{color:#fff}';
-function riskMatrixHTML(counts){
-  return '<table class="rm"><tr><th>Likelihood ↓ / Impact →</th>'+[1,2,3,4,5].map(n=>'<th>'+n+' '+IM_L[n]+'</th>').join("")+'</tr>'+
-   [5,4,3,2,1].map(l=>'<tr><th>'+l+' '+LI_L[l]+'</th>'+[1,2,3,4,5].map(i=>{const n=l*i,bd=riskBand(n),c=counts?counts[l+"x"+i]||0:null;
-     return '<td class="r-'+bd[1]+'">'+(counts?(c?'<b class="cnt">'+c+'</b><br>':'<span class="cnt0">·</span><br>'):'')+n+'<br><span>'+bd[0]+'</span></td>';}).join("")+'</tr>').join("")+'</table>';
+// cells: optional {"LxI":[point ids]} – the heat map lists which points sit in each cell, with the score in the corner.
+function riskMatrixHTML(cells){
+  return '<table class="rm'+(cells?" hm":"")+'"><tr><th class="ax">Likelihood ↓ &nbsp; Impact →</th>'+[1,2,3,4,5].map(n=>'<th>'+n+'<br><span>'+IM_L[n]+'</span></th>').join("")+'</tr>'+
+   [5,4,3,2,1].map(l=>'<tr><th>'+l+' <span>'+LI_L[l]+'</span></th>'+[1,2,3,4,5].map(i=>{const n=l*i,bd=riskBand(n),ids=cells?cells[l+"x"+i]||[]:null;
+     return cells?'<td class="r-'+bd[1]+'"><div class="sc">'+n+'</div>'+(ids.length?'<div class="n">'+ids.length+'</div><div class="ids">'+Array.from(new Set(ids)).map(id=>{const c=ids.filter(x=>x===id).length;return id+(c>1?" ×"+c:"");}).join(", ")+'</div>':'')+'</td>'
+       :'<td class="r-'+bd[1]+'">'+n+'<br><span>'+bd[0]+'</span></td>';}).join("")+'</tr>').join("")+'</table>';
 }
 function riskMethodHTML(){
   return '<h3>Risk matrix (likelihood × impact)</h3>'+riskMatrixHTML()+
@@ -775,8 +795,10 @@ function derive(){
   for(const k in people)people[k].sort((a,b)=>(a.d.func||"").localeCompare(b.d.func||"")||(a.d.name||"").localeCompare(b.d.name||""));
   D={all,live,withdrawn,pts,visits,exp,people,kids,refs};
   D.obs=live.filter(e=>isAudit(e)&&!isChild(e)).map(effObs);
-  const SR={high:3,med:2,low:1};for(const p of pts.values())p.sev=null;
-  for(const o of D.obs){const p=o.item&&o.scope?pts.get(o.scope+"|"+o.item):null;if(p&&SR[o.sev]&&(!p.sev||SR[o.sev]>SR[p.sev]))p.sev=o.sev;}
+  const SR={high:3,med:2,low:1};for(const p of pts.values()){p.sev=null;p.risk=0;p.trisk=0;p.rx=null;}
+  for(const o of D.obs){const p=o.item&&o.scope?pts.get(o.scope+"|"+o.item):null;if(!p)continue;
+    if(SR[o.sev]&&(!p.sev||SR[o.sev]>SR[p.sev]))p.sev=o.sev;
+    const x=o.extra;if(x&&x.li&&x.im&&x.li*x.im>p.risk){p.risk=x.li*x.im;p.rx=x;p.trisk=x.tli&&x.tim?x.tli*x.tim:0;}}
   Dver=STATE.ver;return D;
 }
 // "covered" = a final status is recorded; "progress" = entries exist but nothing final yet.
@@ -857,6 +879,47 @@ function ring(pct,label){
    '<circle cx="46" cy="46" r="'+r+'" fill="none" stroke="var(--good)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+d.toFixed(1)+' '+c.toFixed(1)+'" transform="rotate(-90 46 46)"/>'+
    '<text x="46" y="52" text-anchor="middle" font-size="20" font-weight="700" fill="var(--ink)">'+esc(label||pct)+'%</text></svg>';
 }
+// Category-wise status for any combination of site, type, priority and timing; cells open the points left.
+function catOf(it){return it.sec==="doc"?it.cat:it.sec==="walk"?"Walkthrough":"Stakeholder interviews";}
+function catBoardHTML(){
+  const f={site:ui.dcSite||"all",sec:ui.dcSec||"all",pri:ui.dcPri||"all",when:ui.dcWhen||"all",show:ui.dcShow||"left"};
+  const sites=f.site==="all"?SITES.map(s=>s.id):[f.site];
+  const pass=it=>(f.sec==="all"||it.sec===f.sec)&&(f.pri==="all"||(it.mand?"M":"D")===f.pri)&&(f.when==="all"||it.sec!=="doc"||it.when===f.when);
+  const cats=[];const cell={};let all={t:0,c:0,p:0,g:0};
+  for(const sc of sites)for(const it of itemsFor(sc)){if(!pass(it))continue;const c=catOf(it);if(!cats.includes(c))cats.push(c);
+    const k=c+"|"+sc,x=cell[k]=cell[k]||{t:0,c:0,p:0,g:0,r:0,items:[]},pt=D.pts.get(pkey(sc,it)),st=stateOf(pt);
+    x.t++;all.t++;if(st==="covered"){x.c++;all.c++;}else if(st==="progress"){x.p++;all.p++;}
+    if(pt&&(pt.status==="notavail"||pt.status==="noncomp")){x.g++;all.g++;}
+    if(pt&&pt.risk>x.r)x.r=pt.risk;x.items.push({sc,it,pt,st});}
+  const chips=(key,cur,opts)=>'<div class="cb-ctl">'+opts.map(([v,l])=>'<button type="button" class="chip'+(cur===v?" on":"")+'" data-act="dcset" data-k="'+key+'" data-v="'+v+'">'+l+'</button>').join("")+'</div>';
+  const pctCol=x=>!x.t?"transparent":x.c===x.t?"var(--good)":x.c+x.p?"var(--warn)":"var(--crit)";
+  const cellHTML=(x,c,sc)=>{if(!x)return '<td class="cb-na">–</td>';const pc=Math.round(x.c*100/x.t),sel=ui.dcSel===c+"|"+sc;
+    return '<td><button type="button" class="cb-cell'+(sel?" sel":"")+'" data-act="dcsel" data-v="'+esc(c+"|"+sc)+'" style="--pct:'+pc+'%;--fc:'+pctCol(x)+'" data-tip="'+esc((sc==="all"?"All sites":SITE[sc].name)+" · "+c+": "+x.c+" of "+x.t+" covered"+(x.p?", "+x.p+" in progress":"")+(x.g?", "+x.g+" gaps":"")+(x.r?", highest risk "+x.r:""))+'">'+
+      '<b class="tnum">'+x.c+'<span>/'+x.t+'</span></b>'+(x.r?'<i class="cb-r" style="background:var(--'+riskBand(x.r)[1]+')" title="Highest risk '+x.r+'"></i>':'')+(x.g?'<em class="cb-g">'+x.g+' gap'+(x.g>1?"s":"")+'</em>':'')+'</button></td>';};
+  const sum=(c,list)=>{const r={t:0,c:0,p:0,g:0,r:0,items:[]};for(const sc of list){const x=cell[c+"|"+sc];if(!x)continue;r.t+=x.t;r.c+=x.c;r.p+=x.p;r.g+=x.g;r.r=Math.max(r.r,x.r);r.items=r.items.concat(x.items);}return r.t?r:null;};
+  let h='<div class="sec-h">Status by category</div><div class="card cb">'+
+   '<div class="cb-ctls">'+
+   chips("dcSite",f.site,[["all","All sites"]].concat(SITES.map(s=>[s.id,s.no+". "+s.name])))+
+   chips("dcSec",f.sec,[["all","All types"]].concat(SECTIONS))+
+   chips("dcPri",f.pri,[["all","Any priority"],["M","Mandatory"],["D","Other (desirable)"]])+
+   chips("dcWhen",f.when,[["all","Any timing"],["Pre-audit","Pre-audit"],["On-site","On-site"]])+'</div>'+
+   '<div class="cb-sum"><div><b class="tnum">'+all.c+'</b><span>covered</span></div><div><b class="tnum">'+all.p+'</b><span>in progress</span></div><div><b class="tnum">'+(all.t-all.c-all.p)+'</b><span>not covered</span></div><div><b class="tnum" style="color:var(--crit)">'+all.g+'</b><span>gaps</span></div><div><b class="tnum">'+(all.t?Math.round(all.c*100/all.t):0)+'%</b><span>of '+all.t+' points</span></div></div>'+
+   '<div class="cb-wrap"><table class="cb-t"><thead><tr><th>Category</th>'+(sites.length>1?sites.map(sc=>'<th>'+badge(sc,1)+'</th>').join("")+'<th>All</th>':'<th>'+badge(sites[0],1)+' '+esc(SITE[sites[0]].name)+'</th>')+'</tr></thead><tbody>'+
+   cats.map(c=>'<tr><th>'+esc(c.replace(/^[A-M]\. /,""))+'<span class="muted">'+esc((c.match(/^[A-M]/)||[""])[0])+'</span></th>'+sites.map(sc=>cellHTML(cell[c+"|"+sc],c,sc)).join("")+(sites.length>1?cellHTML(sum(c,sites),c,"all"):'')+'</tr>').join("")+
+   '</tbody></table></div>'+
+   '<div class="legend" style="margin-top:8px"><span><i style="--pc:var(--good)"></i>All covered</span><span><i style="--pc:var(--warn)"></i>Partly covered</span><span><i style="--pc:var(--crit)"></i>Nothing yet</span><span>● dot = highest risk in the cell</span></div>';
+  // what is left in the selected cell (or everything in the filter)
+  let sel=null,selLbl="";
+  if(ui.dcSel){const [c,sc]=ui.dcSel.split("|");sel=sc==="all"?sum(c,sites):cell[ui.dcSel];selLbl=(sc==="all"?"All sites":SITE[sc]?SITE[sc].no+". "+SITE[sc].name:"")+" · "+c;}
+  const pool=sel?sel.items:Object.values(cell).reduce((a,x)=>a.concat(x.items),[]);
+  const sh=f.show,show=pool.filter(x=>sh==="all"||(sh==="left"&&x.st!=="covered")||(sh==="gaps"&&x.pt&&(x.pt.status==="notavail"||x.pt.status==="noncomp"))||(sh==="covered"&&x.st==="covered"));
+  h+='<div class="cb-left"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div class="card-t">'+(sel?esc(selLbl):"All categories in this view")+(sel?' <button type="button" class="linkbtn" data-act="dcsel" data-v="">Clear</button>':'')+'</div>'+
+   chips("dcShow",sh,[["left","Left to do"],["gaps","Gaps"],["covered","Covered"],["all","All"]])+'</div>'+
+   (!sel&&show.length>24?'<div class="muted small" style="margin-top:8px">'+show.length+' points match. Showing the first 24 – tap a cell above to see one category and site.</div>':'')+
+   (show.length?'<div class="cb-pts">'+(sel?show:show.slice(0,24)).map(x=>{const col=x.st==="covered"?(x.pt.status==="notavail"||x.pt.status==="noncomp"?"crit":"good"):x.st==="progress"?"warn":"line";
+     return '<button type="button" class="cb-pt" style="--pc:var(--'+col+')" data-act="open" data-v="'+x.it.id+'" data-s="'+x.sc+'" title="'+esc(x.it.text)+'">'+(sites.length>1?badge(x.sc,1):'')+'<b>'+x.it.id+'</b>'+(x.pt&&x.pt.risk?'<i style="background:var(--'+riskBand(x.pt.risk)[1]+')">'+x.pt.risk+'</i>':'')+'<span>'+esc(x.it.text.slice(0,60))+'</span></button>';}).join("")+'</div>':'<div class="muted small" style="padding:8px 0">Nothing here – all done for this selection.</div>')+'</div></div>';
+  return h;
+}
 function audStats(u){
   const r={entries:0,points:new Set(),covered:0,photos:0,findings:{high:0,med:0,low:0},last:null,bySite:{},days:{}};
   for(const e of D.live){if(e.author!==u||!isAudit(e))continue;
@@ -898,6 +961,8 @@ function renderDash(m){
     for(const [sc,it] of ALL_POINTS){if(it.sec!==k)continue;r.total++;r[stateOf(D.pts.get(sc+"|"+it.id))]++;}
     h+='<div class="brow"><span class="nm"><span>'+l+'</span></span>'+parts(r,l)+'<span class="num tnum">'+r.covered+'/'+r.total+'</span></div>';}
   h+='</div>';
+
+  h+=catBoardHTML();
 
   // auditors
   const A={ajay:audStats("ajay"),anis:audStats("anis")};
@@ -1419,18 +1484,22 @@ function reportHTML(r,scopes,ents,urls){
       SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+x.gaps+'</td></tr>';}).join("")+'</table>';
     const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
     const f=ents.filter(e=>e.scope===sc&&sevOrder[e.sev]!=null).sort((a,b2)=>rs(b2)-rs(a)||sevOrder[a.sev]-sevOrder[b2.sev]||(a.ts<b2.ts?-1:1));
-    const cnt={},bc={Critical:0,High:0,Medium:0,Low:0};f.forEach(e=>{if(rs(e)){cnt[e.extra.li+"x"+e.extra.im]=(cnt[e.extra.li+"x"+e.extra.im]||0)+1;bc[riskBand(rs(e))[0]]++;}});
-    if(f.some(rs))b+='<h3>Risk profile – current risk of the findings</h3><div class="hm">'+riskMatrixHTML(cnt)+'</div><div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
+    const rated=ents.filter(e=>e.scope===sc&&rs(e)),cells={},bc={Critical:0,High:0,Medium:0,Low:0};
+    rated.forEach(e=>{const k=e.extra.li+"x"+e.extra.im;(cells[k]=cells[k]||[]).push(e.item||"Other");bc[riskBand(rs(e))[0]]++;});
+    if(rated.length)b+='<h3>Risk profile – current risk of every rated observation ('+rated.length+')</h3><div class="muted">Each cell shows its risk score (top left), the number of observations (large figure) and the point IDs.</div>'+riskMatrixHTML(cells)+'<div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
     const sevCls={high:"serious",med:"warn",low:"good"};
     b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target risk</th></tr>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
       '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+'</td><td>'+E(e.body||"")+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
+    const gp=ents.filter(e=>e.scope===sc&&(e.sev==="good"||e.sev==="info")&&rs(e)).sort((a,b2)=>(a.item||"zz").localeCompare(b2.item||"zz"));
+    if(gp.length)b+='<h3>Good practices and compliant points ('+gp.length+')</h3><div class="muted">Controls found in place. The rating is the residual risk with the control working as observed.</div><table class="fd"><tr><th>Risk</th><th>Point</th><th>Observation</th><th>To sustain</th></tr>'+
+      gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
-    b+='<h3>Status of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Last update</th></tr>'+
+    b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th><th>Last update</th></tr>'+
       its.map(it=>{const p=D.pts.get(pkey(sc,it));const last=p?p.entries[p.entries.length-1]:null;
-        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td><td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
+        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td>'+(p&&p.rx?riskCellHTML(p.rx.li,p.rx.im)+(p.rx.tli&&p.rx.tim?riskCellHTML(p.rx.tli,p.rx.tim):'<td class="muted">–</td>'):'<td class="muted">'+(p&&p.status==="notapp"?"N/A":"Not rated")+'</td><td class="muted">–</td>')+'<td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
     const se=ents.filter(e=>e.scope===sc);
     b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
       return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
@@ -1453,8 +1522,8 @@ function reportHTML(r,scopes,ents,urls){
    '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}'+
    '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
-   RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.hm{max-width:520px}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
-   '.rtag{padding:0 5px;border-radius:4px;font-weight:700}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
+   RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
+   '.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
    '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
@@ -1783,6 +1852,8 @@ document.addEventListener("click",async ev=>{
   if(t.tagName==="A")ev.preventDefault();
   switch(a){
     case "tab":ui.tab=v;lsSet("sa.tab",v);window.scrollTo(0,0);render();break;
+    case "dcset":ui[t.dataset.k]=v;if(t.dataset.k!=="dcShow")ui.dcSel="";render();break;
+    case "dcsel":ui.dcSel=ui.dcSel===v?"":v;render();break;
     case "openscope":ui.scope=v;ui.tab="list";ui.filter="all";ui.cat="all";lsSet("sa.scope",v);lsSet("sa.tab","list");window.scrollTo(0,0);render();break;
     case "scope":ui.scope=v;ui.cat="all";lsSet("sa.scope",v);render();break;
     case "sec":ui.sec=v;ui.cat="all";ui.st="all";render();break;
