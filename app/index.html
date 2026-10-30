@@ -363,7 +363,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.20";
+const VERSION="2026-10-30.21";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1406,6 +1406,8 @@ function reportSheet(){
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
    '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
+   '<div class="card" style="margin-top:12px"><div class="card-t">Deliverables 3–5 · Site Security Plan, Operational Requirement, SOP set</div><div class="small muted" style="margin:3px 0 8px">Built from the audit log, risk ratings, schedule and site perimeters. Pick a site above for the SSP and OR (Deliverable 2 is the audit report above). Regenerate any time – later sites work the same way.</div>'+
+   '<div class="btn-row" style="margin-top:0"><button class="btn" data-act="mkssp">3 · Site Security Plan</button><button class="btn" data-act="mkor">4 · Operational Requirement</button><button class="btn" data-act="mksop">5 · Corporate SOP set</button></div></div>'+
    '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
 }
 async function makeReport(){
@@ -1526,6 +1528,213 @@ function reportHTML(r,scopes,ents,urls){
    '.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
    '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
+}
+
+/* ================= Deliverables 3–5: Site Security Plan, Operational Requirement, corporate SOP set ================= */
+// Built from the audit log, the site schedule (Resources) and the KML perimeters, so every site can be produced the same way.
+const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10.5pt/1.45 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
+ 'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:18px 0 6px;color:#0E3F45;border-bottom:2px solid #0E5A61;padding-bottom:3px}h3{font-size:11.5pt;margin:14px 0 5px;color:#0E5A61}'+
+ '.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55}p{margin:5px 0}ul,ol{margin:4px 0 6px;padding-left:20px}li{margin:2px 0}'+
+ 'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:9pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}'+
+ '.kv th{width:26%}.muted{color:#5E7079;font-size:8.6pt}.pb{page-break-before:always}.tag{display:inline-block;border-radius:4px;padding:0 5px;font-size:8pt;font-weight:700;background:#E6EDEB}'+
+ RISK_CSS+'.rc{width:70px;text-align:center}.rc div{font-size:7.8pt}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.smap img{max-width:none}.box{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid}'+
+ '.rm th span{font-weight:400;font-size:8pt}.hm td{position:relative;height:54px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:14pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600}'+
+ '.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
+ 'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
+function docShell(title,body){
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+'</style></head><body>'+body+
+   '<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
+}
+async function openDoc(title,build){
+  const w=window.open("","_blank");if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
+  w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing '+esc(title)+'…</p>');
+  try{await loadResources();}catch(e){}
+  derive();
+  w.document.open();w.document.write(docShell(title,build()));w.document.close();
+  const imgs=Array.from(w.document.images);
+  await Promise.race([Promise.all(imgs.map(im=>im.complete?1:new Promise(res=>{im.onload=im.onerror=res;}))),new Promise(res=>setTimeout(res,15000))]);
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
+}
+const resSite=sc=>((RES&&RES.sites)||[]).find(x=>x.site===sc)||{};
+const docCover=(kind,sub,extra)=>'<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1>'+esc(kind)+'</h1><h2 style="border:0">'+sub+'</h2>'+
+  '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
+  '<tr><th>Version</th><td>Draft for client review · generated '+fmtFull(new Date().toISOString())+' IST</td></tr><tr><th>Classification</th><td>Confidential – for Dixon management and Northstar only</td></tr></table>'+
+  '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
+// All Dixon pockets in Selaqui on one satellite view (sites whose perimeter has been marked).
+function sitesMapHTML(hl,W,H){
+  W=W||680;H=H||340;
+  const list=SITES.map(s=>({s,g:resGeo(s.id)})).filter(x=>x.g&&x.g.poly);
+  if(!list.length)return "";
+  const pts=list.flatMap(x=>x.g.poly);const lats=pts.map(p=>p[0]),lngs=pts.map(p=>p[1]);
+  const wx=(lng,z)=>(lng+180)/360*256*Math.pow(2,z),wy=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*Math.pow(2,z);};
+  let z=18;while(z>10&&((wx(Math.max(...lngs),z)-wx(Math.min(...lngs),z))>W*0.75||(wy(Math.min(...lats),z)-wy(Math.max(...lats),z))>H*0.7))z--;
+  const cx=(wx(Math.max(...lngs),z)+wx(Math.min(...lngs),z))/2,cy=(wy(Math.min(...lats),z)+wy(Math.max(...lats),z))/2,x0=cx-W/2,y0=cy-H/2;
+  let tiles="";
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)
+    tiles+='<img alt="" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx+'" style="position:absolute;left:'+(tx*256-x0).toFixed(1)+'px;top:'+(ty*256-y0).toFixed(1)+'px;width:256px;height:256px">';
+  const COL={s1:"#1baf7a",s2:"#9085e9",s3:"#d4558a",s4:"#e09a00",s5:"#21b021",s6:"#22a3b8"};
+  const shapes=list.map(x=>{const P=x.g.poly.map(p=>[wx(p[1],z)-x0,wy(p[0],z)-y0]);const c=P.reduce((a,p)=>[a[0]+p[0]/P.length,a[1]+p[1]/P.length],[0,0]);const on=!hl||hl===x.s.id;
+    return '<polygon points="'+P.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+'" fill="'+COL[x.s.id]+(on?"55":"22")+'" stroke="'+COL[x.s.id]+'" stroke-width="'+(on?3:2)+'"/>'+
+     '<g transform="translate('+c[0].toFixed(1)+','+(c[1]-14).toFixed(1)+')"><rect x="-10" y="-10" width="20" height="20" rx="5" fill="'+COL[x.s.id]+'" stroke="#fff" stroke-width="1.5"/><text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Arial">'+x.s.no+'</text></g>';}).join("");
+  // straight-line distances between marked sites
+  const dist=[];for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){const a=list[i].g.pin||list[i].g.poly[0],b=list[j].g.pin||list[j].g.poly[0];
+    const dy=(a[0]-b[0])*111.32,dx=(a[1]-b[1])*111.32*Math.cos(a[0]*Math.PI/180);dist.push(list[i].s.no+"–"+list[j].s.no+": "+Math.hypot(dx,dy).toFixed(1)+" km");}
+  return '<div class="smap" style="position:relative;width:100%;max-width:'+W+'px;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f"><div class="smap-in" data-w="'+W+'" style="position:absolute;inset:0;transform-origin:0 0"><div style="position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px">'+tiles+
+   '<svg width="'+W+'" height="'+H+'" style="position:absolute;left:0;top:0">'+shapes+'</svg></div></div><div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeters from KML</div></div>'+
+   '<div class="muted" style="margin-top:4px">Marked: '+list.map(x=>x.s.no+". "+esc(x.s.name)).join(" · ")+(dist.length?' · straight-line distance '+dist.join(", "):'')+'. Sites not yet marked: '+(SITES.filter(s=>!list.some(x=>x.s.id===s.id)).map(s=>s.no+". "+esc(s.name)).join(", ")||"none")+'.</div>';
+}
+// Site observations, findings and good points as they read now.
+function siteData(sc){
+  const obs=D.obs.filter(e=>e.scope===sc);
+  const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
+  const findings=obs.filter(e=>["high","med","low"].includes(e.sev)&&rs(e)).sort((a,b)=>rs(b)-rs(a)||(a.item||"zz").localeCompare(b.item||"zz"));
+  const good=obs.filter(e=>(e.sev==="good")&&e.body);
+  const pts=itemsFor(sc).map(it=>({it,p:D.pts.get(pkey(sc,it))}));
+  return {obs,findings,good,pts,rs,people:D.people[sc]||[]};
+}
+const findBody=(sd,id)=>sd.obs.filter(e=>e.item===id&&e.body).map(e=>e.body);
+const obsLine=(sd,ids)=>{const t=[].concat(ids).flatMap(id=>findBody(sd,id).map(b=>'<li><b>'+id+':</b> '+esc(b)+'</li>'));return t.length?'<ul>'+t.join("")+'</ul>':'<p class="muted">Not recorded during the audit.</p>';};
+// Context common to every Dixon site in Selaqui (ISO 28000 / ISO 31000 "context of the organisation").
+const PESTLE=[
+ ["Political","Industrial policy of the Government of Uttarakhand and SIIDCUL support for the Selaqui industrial area; central incentives for electronics manufacturing (PLI) that raise output and the value of material on site; elections, bandhs and local agitations that can block roads and gates.","Plan for road blockades and gate agitations in the ERP; keep liaison with the local police station and the industrial association."],
+ ["Economic","High-value electronic components (ICs, LEDs, drivers, PCBs, motors) and finished goods are attractive for pilferage and resale; cost pressure in EMS contracts; contract-labour heavy workforce; dependence on a few large brand customers whose audits decide repeat business.","Loss prevention at stores, SMT and dispatch; seal and vehicle control; customer-audit readiness."],
+ ["Social","Large contract and migrant workforce across several plants; local employment expectations; shift-change crowding at gates; possibility of labour unrest spreading between neighbouring units in the same cluster.","Background verification, ID discipline, crowd handling at shift change, labour-unrest response SOP."],
+ ["Technological","Growing use of CCTV, HikVision access control and face recognition, SAP-based gate passes and GPS tracking; risk of footage and data leakage through USB export; IP and product designs of customers on the shop floor.","CCTV and data-handling SOP, USB control, system health monitoring, mobile / media policy."],
+ ["Legal","PSARA 2005 (security agency licensing), Contract Labour (R&A) Act, Factories Act, Fire NOC conditions, E-Waste (Management) Rules 2022, Digital Personal Data Protection Act 2023 (CCTV and biometric data of workers and visitors), customer codes of conduct.","Licence and NOC tracking, contract SLAs, privacy notice and retention rules for CCTV / biometric data."],
+ ["Environmental","Heavy monsoon rain and cloudbursts in the Doon valley; sites close to the Dunga Dhara watercourse; Seismic Zone IV (IS 1893-1:2016); landslides and road closures on hill routes affecting supply and staff movement; summer heat and power demand peaks.","Flood / earthquake scenarios in the ERP and BCP, drain and culvert checks before monsoon, critical equipment above flood level."]];
+const DEPENDENCIES=[
+ ["Electricity","Grid supply from UPCL through the local feeder and the plant HV panel / transformer; DG sets as backup; UPS for IT, CCTV and access control.","Feeder trips, voltage fluctuation in monsoon storms, diesel availability for DG, unauthorised access to HV panel, DG yard and HSD storage.","Line stoppage, loss of CCTV / access control if UPS or DG fails, doors that stay locked without fail-safe release."],
+ ["Water","Process, canteen and fire-fighting water (underground tank and fire pump, as recorded in the Fire NOC). Source and storage capacity to be confirmed with the site.","Contamination or tampering of storage tanks, pump failure, low groundwater in summer.","Fire-fighting capability and sanitation; production stops if water-cooled equipment is affected."],
+ ["Traffic and access roads","Chakrata Road (Dehradun – Vikasnagar) and the internal roads of the Selaqui industrial area serve all Dixon pockets; inbound RM and outbound FG trucks share these roads with staff buses and two-wheelers.","Congestion at shift change, accidents, road blockades or agitations, monsoon water-logging, landslides on connecting hill routes.","Late shift starts, delayed dispatch and inward, crowding and tailgating at gates, emergency services delayed."],
+ ["Telecom and IT","Internet / leased line for SAP, Vizmo, Allora and GPS portals; mobile network for guards.","Link failure, no walkie-talkies on some sites, phones as the only communication during emergencies.","Gate passes and visitor records cannot be raised; slower emergency communication."],
+ ["People and transport","Contract manpower from local agencies; company-arranged pick-up and drop for some staff.","Agency strikes, transport disruption, festival absenteeism.","Short-manned posts and lines."]];
+const ISSUES_EXT=["Proximity of several Dixon plants and other factories in the same industrial cluster – incidents (labour unrest, fire, theft gangs) can spread between neighbours.","Dependence on grid power, a single access road and local transporters.","Natural hazards: monsoon flooding (Dunga Dhara watercourse), Seismic Zone IV, landslides on hill routes.","Customer security and social-compliance audits, including possible TAPA-style requirements for high-value goods.","Regulatory obligations: PSARA, CLRA, Factories Act, Fire NOC, E-waste rules and data-protection law for CCTV and biometrics.","Organised theft and resale markets for electronic components and finished appliances."];
+const PARTIES=[["Dixon management and plant heads","Business continuity, cost, customer retention"],["Brand customers (OEMs)","Product and IP protection, on-time delivery, audit compliance"],["Employees and contract workers","Safe workplace, fair and respectful screening, privacy of personal data"],["Security agency (SIS) and guards","Clear post orders, training, fair SLAs"],["Transporters and suppliers","Predictable gate procedures and turnaround time"],["Regulators (Fire, Factories, Labour, Police)","Compliance, incident reporting, cooperation"],["Neighbouring units and local community","No spill-over of incidents, traffic and nuisance"]];
+const SEC_ROLE=["Keeps production running: controlled, fast gate throughput at shift change, vehicle turnaround for inward RM and outward FG.","Protects material and margin: prevents pilferage of high-value components at stores, SMT and assembly lines, and ensures sealed, tracked dispatch.","Protects customers' IP and confidential products through zoning, mobile / media control and controlled visitor access – a condition for winning and keeping brand business.","Supports compliance and audits: licences, registers, verification records and incident data that customer and statutory audits ask for.","Protects people: emergency response, evacuation and headcount, first response to fire and medical events, labour-unrest management.","Provides information: CCTV, access logs and incident reports for investigations and continuous improvement."];
+// Requirement owner and indicative performance criteria by SOP topic (feeds the Operational Requirement).
+const OR_TOPIC={
+ "Access control":["Admin / Security + IT","Only authorised roles can open each restricted zone; every entry logged against a named person; door-held / forced alarms answered within 2 minutes; access list reviewed quarterly."],
+ "ID cards & access passes":["HR + Security","100 % of persons on site display a valid ID; lost cards deactivated within 1 hour of report."],
+ "Visitor & contractor management":["Admin / Security","Every visitor registered with photo ID, host and escort; contractor tools declared at entry and exit."],
+ "Vehicle movement":["Logistics + Security","Only listed vehicles and drivers admitted; 100 % vehicle checks recorded with time in / out."],
+ "Material gate pass":["Logistics + Stores","No material leaves without an approved SAP gate pass; open RGPs reconciled weekly."],
+ "Dispatch & inward":["Logistics + Security","Seal number recorded and verified for 100 % of inbound and outbound loads; mismatches escalated immediately."],
+ "Scrap & e-waste":["Stores + EHS","Scrap weighed and documented; certificates of destruction on file for every disposal."],
+ "Key control":["Security","Every key issue / return recorded; key audit monthly with zero unexplained keys."],
+ "CCTV & control room":["Security + IT","Recognition-quality images at entry and exit points; recording 24×7 with ≥ 90 days retention; health / video-loss alerts acted on within 1 hour; footage export only on approved request."],
+ "Guarding & post orders":["Security + SIS","Every post manned as per the deployment plan; post orders signed, current and known by guards."],
+ "Patrolling":["Security + SIS","Planned and surprise rounds completed and recorded; exceptions closed."],
+ "Frisking & prohibited items":["Security + HR","Defined frisking at production exits; prohibited items stopped and recorded."],
+ "High-value stores":["Stores + Security","Restricted access, CCTV on entry and racks, cycle-count variances investigated."],
+ "Perimeter security":["Admin / Projects","Continuous barrier of at least 2.4 m with anti-climb topping; no climb aids within 2 m; breaches located by wall-segment number."],
+ "Incident reporting & response":["Security + HR","Every incident and near-miss reported within 1 hour, investigated and closed with CAPA."],
+ "Emergency response":["EHS + Security","Escape doors release on alarm and power failure; evacuation and headcount within the drill target; scenario drills held yearly."],
+ "Security equipment checks":["Security + Maintenance","Daily function test of DFMD / HHMD and weekly checks of security systems recorded; faults fixed within agreed time."],
+ "Background verification":["HR","BGV and police verification complete before deployment for 100 % of staff, guards and contractors."],
+ "Security training":["HR + Security","Induction and refresher training as per calendar; attendance and assessment recorded."]};
+const BAND_TIME={Critical:"Interim control within 72 hours; permanent fix within 30 days",High:"Action plan within 2 weeks; close within 90 days",Medium:"Close within 6 months",Low:"Close within 12 months or at the next opportunity"};
+function topicOf(e){const s=(e.extra&&e.extra.sop)||[];return s[0]||(e.item&&sopSuggest(ITEM[e.item])[0])||"Guarding & post orders";}
+function siteHeader(sc){const S=SITE[sc],R=resSite(sc),g=resGeo(sc);
+  return '<tr><th>Site</th><td>'+esc(S.no+". "+S.name)+'</td></tr><tr><th>Address</th><td>'+esc(R.addr||S.addr)+'</td></tr>'+(R.date?'<tr><th>Audit</th><td>'+esc(R.date)+'</td></tr>':'')+(R.spoc?'<tr><th>Site SPOC</th><td>'+esc(R.spoc)+'</td></tr>':'')+(g?'':'');}
+function contextHTML(sc){
+  return '<h3>Dixon in Selaqui – operations in pockets</h3><p>Dixon operates several plants spread across the Selaqui industrial area of Dehradun (sites 1–6 of this engagement). They are separate pockets, each with its own gate, guard force and utilities, but they share the same roads, power network, labour pool, transporters and security agency. A disruption in one pocket – a road blockade, a power failure, labour unrest or a flood – can affect several plants at once, so each site plan is written to work on its own and also with the other Dixon sites nearby.</p>'+
+   sitesMapHTML(sc,680,320)+
+   '<h3>Dependence on utilities and access – how they can hamper operations</h3><table><tr><th>Dependency</th><th>How the site depends on it</th><th>What can go wrong</th><th>Effect on operations and security</th></tr>'+DEPENDENCIES.map(r=>'<tr>'+r.map((c,i)=>i?'<td>'+esc(c)+'</td>':'<td><b>'+esc(c)+'</b></td>').join("")+'</tr>').join("")+'</table>'+
+   '<h3>PESTLE analysis</h3><table><tr><th>Factor</th><th>What applies to Dixon Selaqui</th><th>What security must cover</th></tr>'+PESTLE.map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join("")+'</table>';
+}
+function issuesHTML(sd){
+  const internal=sd.findings.filter(e=>sd.rs(e)>=10).slice(0,8).map(e=>'<li>'+esc((e.item?e.item+": ":"")+(e.body||"").split(". ")[0])+'.</li>').join("");
+  return '<h3>Internal and external issues</h3><table><tr><th style="width:50%">Internal issues (from this audit)</th><th>External issues</th></tr><tr><td><ul>'+(internal||'<li>No high-risk internal issue recorded.</li>')+'</ul></td><td><ul>'+ISSUES_EXT.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></td></tr></table>'+
+   '<h3>Interested parties and their expectations</h3><table><tr><th>Party</th><th>Expectations relevant to security</th></tr>'+PARTIES.map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>').join("")+'</table>'+
+   '<h3>How security supports production</h3><ul>'+SEC_ROLE.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
+}
+function heatHTML(sd){const cells={};sd.obs.filter(sd.rs).forEach(e=>{const k=e.extra.li+"x"+e.extra.im;(cells[k]=cells[k]||[]).push(e.item||"Other");});return riskMatrixHTML(cells);}
+
+function makeSSP(sc){
+  const S=SITE[sc];
+  openDoc("Site Security Plan – "+S.name,()=>{
+    const sd=siteData(sc),R=resSite(sc),g=resGeo(sc),st=(id)=>{const p=D.pts.get(sc+"|"+id);return p&&p.status?ST[p.status].label:"Not covered";};
+    let b=docCover("Site Security Plan (SSP)",esc(S.no+". "+S.name),siteHeader(sc));
+    b+='<section class="pb"><h2>1. Purpose, scope and use of this plan</h2><p>This Site Security Plan sets out how '+esc(S.name)+' protects its people, material, information and production against security threats, and how it responds when something goes wrong. It is based on the on-site security audit, document review, walkthrough and stakeholder interviews carried out by the Northstar audit team, and on the risk ratings in the audit report. It covers the whole premises inside the boundary shown below, all employees, contract workers, visitors, vehicles and material.</p>'+
+     '<p>Owner: Plant Head. Custodian: Security In-charge. Review: annually, and after any significant incident, change of layout or change of customer requirement.</p>'+
+     '<h2>2. Site profile</h2><table class="kv">'+siteHeader(sc)+(R.checklist?'<tr><th>Checklist</th><td>'+esc(R.checklist)+'</td></tr>':'')+'</table>'+(g?siteMapHTML(g,680,300):'<p class="muted">Perimeter not yet marked – add the KML to show the site plan here.</p>')+
+     '<h3>Profile as recorded</h3>'+obsLine(sd,["AD-01","AD-02","AD-03","AD-07","AD-08"])+
+     (sd.people.length?'<h3>People met during the audit</h3><table><tr><th>Name</th><th>Designation</th><th>Function</th></tr>'+sd.people.map(x=>'<tr><td>'+esc(x.d.name)+'</td><td>'+esc(x.d.designation||"")+'</td><td>'+esc(x.d.func||"")+'</td></tr>').join("")+'</table>':'')+'</section>';
+    b+='<section class="pb"><h2>3. Context of the organisation</h2>'+contextHTML(sc)+issuesHTML(sd)+'</section>';
+    b+='<section class="pb"><h2>4. Threat and risk assessment</h2><p>Threats considered: theft and pilferage of components and finished goods, unauthorised entry and tailgating, insider misuse of access, leakage of customer IP and footage, sabotage of utilities, labour unrest and road blockades, fire and life-safety failures, flood and earthquake. Each observation was rated on the 5 × 5 likelihood × impact matrix (methodology in the audit report).</p>'+heatHTML(sd)+
+     '<h3>Priority risks</h3><table><tr><th>#</th><th>Current risk</th><th>Point</th><th>Risk</th><th>Target</th></tr>'+sd.findings.filter(e=>sd.rs(e)>=10).map((e,i)=>'<tr><td>'+(i+1)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+'<td><b>'+esc(e.item||"Other")+'</b></td><td>'+esc(e.body||"")+'</td>'+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'</tr>').join("")+'</table></section>';
+    b+='<section class="pb"><h2>5. Critical assets and security zoning</h2><table><tr><th>Zone</th><th>Areas at this site</th><th>Who may enter</th><th>Minimum controls</th></tr>'+
+     [["Zone 0 – Public / approach","Approach road, parking outside the gate","Anyone","CCTV on approach and gate, lighting, no parking against the boundary wall"],
+      ["Zone 1 – Controlled (inside the boundary)","Security office, open yard, canteen, offices","Employees, contract workers, escorted visitors","Gate ID check, visitor registration, vehicle checks, perimeter barrier and patrols"],
+      ["Zone 2 – Restricted (operations)","Production floors (ground-floor machine lines, first-floor manual production), stores, dispatch, maintenance","Staff assigned to the area","Card / face access with anti-tailgating, CCTV on entries, frisking at production exits, mobile / media rules"],
+      ["Zone 3 – High security","Server / CCTV room, HV panel room, transformer and DG yard, HSD storage, high-value store, customer-confidential areas","Named authorised persons only","Access list on the door, card / face access or key with register, CCTV, alarms, fire suppression where needed"]].map(r=>'<tr>'+r.map((c,i)=>'<td>'+(i?esc(c):'<b>'+esc(c)+'</b>')+'</td>').join("")+'</tr>').join("")+'</table>'+
+     '<h3>Status of zone controls at this site</h3>'+obsLine(sd,["AD-31","AD-07","W-02","W-07","W-10"])+'</section>';
+    b+='<section class="pb"><h2>6. Security organisation and deployment</h2>'+obsLine(sd,["AD-08","AD-13","AD-17","AD-18","AD-19","AD-12"])+
+     '<h3>Required arrangement</h3><ul><li>Security In-charge (on-roll) accountable to the Plant Head, with a nominated trained deputy.</li><li>Security agency (PSARA-licensed) supervisor per shift; post-wise deployment chart signed daily (sanctioned vs actual, incl. female guards).</li><li>Posts: main gate (people), material / vehicle gate, production exit frisking, patrol, CCTV monitoring, as per the deployment chart.</li><li>Signed, version-controlled post orders at every post; guards trained and assessed on them.</li></ul></section>';
+    b+='<section class="pb"><h2>7. Physical and electronic security measures</h2><table><tr><th>Area</th><th>Status</th><th>Observed</th></tr>'+itemsFor(sc,"walk").map(it=>'<tr><td><b>'+it.id+'</b> '+esc(it.area)+'</td><td>'+esc(st(it.id))+'</td><td>'+findBody(sd,it.id).map(esc).join("<br>")+'</td></tr>').join("")+'</table>'+
+     '<h3>Technology</h3>'+obsLine(sd,["AD-35","AD-36","AD-38","AD-32","AD-64","AD-66"])+'</section>';
+    b+='<section class="pb"><h2>8. Security procedures</h2><p>The site follows the Corporate-Level Security SOP Set (Deliverable 5). Site-specific details (post names, phone numbers, zone list) are added as annexures. Current status:</p><table><tr><th>Area</th><th>Status at this site</th></tr>'+
+     [["Policy and security manual",["AD-09","AD-10","AD-11"]],["Visitor and contractor",["AD-40","AD-41"]],["Material, vehicle and dispatch",["AD-42","AD-44","AD-45","AD-46"]],["Key control",["AD-34"]],["CCTV",["AD-37"]],["Frisking",["AD-51"]],["Incidents",["AD-15","AD-53","AD-54"]]].map(([l,ids])=>'<tr><td>'+l+'</td><td>'+ids.map(id=>'<b>'+id+'</b> '+esc(st(id))).join(" · ")+'</td></tr>').join("")+'</table></section>';
+    b+='<section class="pb"><h2>9. Emergency and incident response</h2>'+obsLine(sd,["AD-55","AD-56","AD-57","AD-58","AD-62","W-09"])+
+     '<h3>Scenarios to be covered</h3><ul><li>Fire and evacuation (escape doors must release on alarm and power failure).</li><li>Intrusion, theft in progress, bomb threat, sabotage of utilities.</li><li>Labour unrest, gate blockade, road blockade on the access road.</li><li>Flood / water-logging and earthquake (see context).</li><li>Medical emergency and road accident near the gate.</li></ul></section>';
+    const prio=sd.findings.map(e=>({e,b:riskBand(sd.rs(e))[0]}));
+    b+='<section class="pb"><h2>10. Implementation plan</h2><p>Actions come from the Operational Requirement for this site (Deliverable 4). Timelines follow the risk band.</p><table><tr><th>Band</th><th>Timeline</th><th>Actions</th></tr>'+["Critical","High","Medium","Low"].map(bd=>{const xs=prio.filter(x=>x.b===bd);return xs.length?'<tr><td class="r-'+BAND_DEF.find(r=>r[0]===bd)[2]+'"><b>'+bd+'</b></td><td>'+BAND_TIME[bd]+'</td><td><ul>'+xs.map(x=>'<li><b>'+esc(x.e.item||"Other")+':</b> '+esc(x.e.extra.rec||"")+'</li>').join("")+'</ul></td></tr>':'';}).join("")+'</table>'+
+     '<h2>11. Review and maintenance</h2><ul><li>Monthly security review by the Plant Head: incidents, open actions, deployment, system health.</li><li>Quarterly access-list review and key audit.</li><li>Annual review of this plan and of the risk assessment, or sooner after a significant incident or change.</li></ul></section>';
+    return b;});
+}
+function makeOR(sc){
+  const S=SITE[sc];
+  openDoc("Operational Requirement – "+S.name,()=>{
+    const sd=siteData(sc);
+    let b=docCover("Operational Requirement (OR)",esc(S.no+". "+S.name),siteHeader(sc));
+    b+='<section class="pb"><h2>1. Purpose</h2><p>This Operational Requirement states what the site needs its security measures to achieve, in terms that can be designed, procured and tested. Each requirement comes from an audit finding, carries the current and target risk, an owner, a timeline by risk band and acceptance criteria. Technical specifications (camera models, reader types) are left to the design stage; the OR fixes the outcome to be achieved.</p>'+
+     '<h2>2. Operational context</h2><ul><li>'+esc(S.name)+' runs shift-based production with a large contract workforce; peak gate load is at shift change.</li><li>Material of high value (components, finished goods) moves through stores, production and dispatch daily.</li><li>The site depends on grid power with DG backup, local transporters and Chakrata Road access (see the Site Security Plan for the PESTLE and dependency analysis).</li><li>Security is delivered by an on-roll Security In-charge and an outsourced PSARA-licensed agency.</li></ul>'+
+     '<h2>3. Summary</h2><table><tr><th>Band</th><th>Requirements</th><th>Timeline</th></tr>'+["Critical","High","Medium","Low"].map(bd=>'<tr><td class="r-'+BAND_DEF.find(r=>r[0]===bd)[2]+'"><b>'+bd+'</b></td><td>'+sd.findings.filter(e=>riskBand(sd.rs(e))[0]===bd).length+'</td><td>'+BAND_TIME[bd]+'</td></tr>').join("")+'</table></section>';
+    const groups={};sd.findings.forEach(e=>{const t=topicOf(e);(groups[t]=groups[t]||[]).push(e);});
+    let n=0;
+    b+='<section class="pb"><h2>4. Requirements by security function</h2>'+Object.keys(groups).sort((a,b2)=>Math.max(...groups[b2].map(sd.rs))-Math.max(...groups[a].map(sd.rs))).map(t=>{const O=OR_TOPIC[t]||["Security In-charge","Requirement met and verified on site."];
+      return '<h3>'+esc(t)+'</h3><div class="muted">Owner: '+esc(O[0])+' · Acceptance: '+esc(O[1])+'</div><table><tr><th>Ref</th><th>Requirement (the site shall …)</th><th>Why – audit finding</th><th>Current</th><th>Target</th><th>Timeline</th></tr>'+
+        groups[t].map(e=>{n++;const bd=riskBand(sd.rs(e))[0];return '<tr><td><b>OR-'+S.no+'-'+String(n).padStart(2,"0")+'</b></td><td>'+esc(e.extra.rec||"Close the gap described.")+'</td><td><b>'+esc(e.item||"Other")+'</b> '+esc(e.body||"")+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'<td>'+BAND_TIME[bd]+'</td></tr>';}).join("")+'</table>';}).join("")+'</section>';
+    b+='<section class="pb"><h2>5. Controls to sustain</h2><p>These controls were found in place and must be kept working; they are part of the requirement baseline.</p><table><tr><th>Point</th><th>Control in place</th><th>Residual risk</th></tr>'+
+      sd.obs.filter(e=>(e.sev==="good"||e.sev==="info")&&sd.rs(e)&&e.body).map(e=>'<tr><td><b>'+esc(e.item||"Other")+'</b></td><td>'+esc(e.body)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+'</tr>').join("")+'</table>'+
+      '<h2>6. Verification</h2><ul><li>Each requirement is closed only with evidence (photo, record, test report) reviewed by the Security In-charge and accepted by the Plant Head.</li><li>Electronic systems are accepted after a witnessed test against the acceptance criteria above.</li><li>Closure status is reported monthly against this OR until all Critical and High items are closed.</li></ul></section>';
+    return b;});
+}
+// Corporate SOP set: one controlled procedure per topic, with the gaps that drove it at each audited site.
+const SOPS=[
+ ["SOP-01","Security governance, policy and document control",null,["Plant Head approves the security policy; Security In-charge maintains the manual, SOP master list and post orders.","Every SOP carries number, revision, date, owner, approver and next review date.","Changes are made only through revision with the reason recorded; old copies withdrawn from posts.","Annual management review of policy, SOPs, risks and incidents; minutes kept."],["Security policy (signed)","SOP master list","Revision history"],["AD-09","AD-10","AD-11"]],
+ ["SOP-02","Guarding, deployment and post orders","Guarding & post orders",["Agency supervisor prepares the daily post-wise deployment chart (sanctioned vs actual) and signs it at shift start.","Each post has a signed post order kept at the post; guards sign that they have read it.","Absent guards are replaced within 30 minutes; shortfall escalated to the Security In-charge.","Handover at shift change covers incidents, keys, open gate passes and equipment status.","Guard alertness checks by supervisor every 2 hours; findings recorded."],["Deployment chart","Post orders","Handover register"],["AD-12","AD-19","W-04"]],
+ ["SOP-03","Patrolling and surprise checks","Patrolling",["Patrol routes cover the full boundary, critical areas and parking at defined intervals, varied in timing.","Each round recorded (register or guard-tour system) with exceptions.","On-roll manager carries out at least one documented surprise night check per month.","Exceptions (breach, light failure, open door) reported immediately and closed."],["Patrol register","Surprise check report"],["AD-23","W-08"]],
+ ["SOP-04","Access control and zoning","Access control",["Zones 0–3 defined per site; access matrix (zone vs role) approved by the Plant Head.","Access granted only on a written request approved by the zone owner; IT / Security implements and records.","Each person presents their own card / face; tailgating is a disciplinary offence.","Door-held-open and door-forced alarms monitored and answered within 2 minutes.","Access lists reviewed quarterly; leavers deactivated on the last working day."],["Access matrix","Access request records","Quarterly review"],["AD-31","AD-32","AD-33","W-02"]],
+ ["SOP-05","ID cards and passes","ID cards & access passes",["Photo ID issued after BGV; colour coding by category (employee, contract, trainee, visitor).","ID worn visibly at all times inside the boundary.","Lost card reported immediately; card blocked and replacement recorded in the lost-card register.","Cards and passes collected at exit / separation."],["ID issue register","Lost card register"],["AD-29","AD-30"]],
+ ["SOP-06","Visitor and contractor management","Visitor & contractor management",["Visitors pre-registered by the host; photo ID checked and recorded in the VMS.","Visitors escorted in Zone 2 and 3; photography only with written permission.","Contractor workers verified, inducted and listed; tools declared at entry and checked at exit.","Hot work and work at height only under a valid work permit."],["VMS records","Tool declaration register"],["AD-40","AD-41"]],
+ ["SOP-07","Vehicle movement and parking","Vehicle movement",["Only vehicles on the approved transporter list are admitted; unlisted vehicles need written approval from Logistics.","Driver ID checked and recorded; vehicle searched against a checklist.","Time in / out recorded; vehicles parked only in marked areas away from the boundary wall."],["Vehicle register","Approved vehicle list","Search checklist"],["AD-42","AD-43","W-03"]],
+ ["SOP-08","Material gate pass, inward and dispatch","Dispatch & inward",["No material leaves without an approved SAP gate pass checked against the load.","Inward: seal number recorded and verified against invoice / e-way bill before unloading; mismatch escalated.","Outward: vehicle sealed after loading; seal number on the gate pass; GPS tracking active.","Open RGPs reconciled weekly by Logistics."],["Gate pass copies","Seal register","RGP tracker"],["AD-44","AD-45","AD-46"]],
+ ["SOP-09","Scrap and e-waste disposal","Scrap & e-waste",["Scrap moved only with a gate pass and weighment slip, under security witness.","E-waste and rejected units handed only to authorised recyclers; certificate of destruction on file."],["Weighment slips","Manifests","Destruction certificates"],["AD-47","AD-48"]],
+ ["SOP-10","Key control","Key control",["All keys numbered and tagged; kept in a locked key box at the security office.","Issue and return recorded with name, time and purpose; master and duplicate keys sealed.","Utility keys (DG, HV panel, HSD) issued only to persons on the authorised list.","Monthly key audit by the Security In-charge."],["Key register","Key audit sheet"],["AD-34","W-07","W-10"]],
+ ["SOP-11","CCTV operation, footage handling and control room","CCTV & control room",["Control room manned as per the deployment plan; operator logs events and faults.","Recording 24×7 with at least 90 days retention; system health and video-loss alerts configured.","Footage viewed or exported only against an approved request in the footage register; USB export restricted to authorised users; chain of custody kept.","Camera faults fixed within agreed time; monthly coverage check against the camera schedule."],["Monitoring log","Fault log","Footage request register"],["AD-35","AD-36","AD-37","AD-38"]],
+ ["SOP-12","Frisking and prohibited items","Frisking & prohibited items",["Prohibited-items list displayed at gates; mobile / camera / storage-media rules per zone.","Frisking at production exits by same-gender guards with HHMD / DFMD; exceptions recorded.","Items found are recorded and escalated as per the incident SOP."],["Frisking register","Exception register"],["AD-51","W-07"]],
+ ["SOP-13","Incident reporting, investigation and CAPA","Incident reporting & response",["Every incident and near-miss reported to the Security In-charge within 1 hour.","Scene and CCTV footage preserved; police informed where required.","Investigation by a nominated investigator using the standard report format; root cause and CAPA recorded.","Monthly incident and trend review with the Plant Head."],["Incident register","Investigation reports","CAPA tracker"],["AD-15","AD-53","AD-54"]],
+ ["SOP-14","Emergency response (security role)","Emergency response",["Security roles in fire, evacuation, intrusion, bomb threat, sabotage, civil disturbance, labour unrest, flood and earthquake.","Escape doors on access control release on fire alarm and power failure (fail-safe); tested quarterly.","Gate control during emergencies: emergency vehicles prioritised, headcount at the assembly point reconciled with attendance.","At least one security scenario drilled every year; lessons learnt recorded."],["Drill reports","Fail-safe test record"],["AD-55","AD-56","AD-57","AD-58","AD-62","W-09"]],
+ ["SOP-15","Security equipment checks and maintenance","Security equipment checks",["DFMD / HHMD function-tested at the start of each shift and recorded.","Preventive maintenance schedule for CCTV, access control, barriers and alarms, signed off by the vendor and Security.","Communication equipment (walkie-talkies, PA) checked daily."],["Function-test register","PM records"],["AD-39","AD-64","AD-65","AD-66"]],
+ ["SOP-16","Background verification and security training","Background verification",["BGV and police verification completed before deployment for employees, contract workers and guards.","Security induction for all new joiners; refresher training for guards as per the calendar.","Training attendance and assessment recorded."],["BGV records","Training calendar and attendance"],["AD-21","AD-22","AD-27","AD-68","AD-69"]]];
+function makeSOPSet(){
+  openDoc("Corporate Security SOP Set",()=>{
+    const done=SITES.filter(s=>D.obs.some(e=>e.scope===s.id));
+    let b=docCover("Corporate-Level Security SOP Set","Dixon Technologies – Selaqui operations",'<tr><th>Applies to</th><td>'+SITES.map(s=>esc(s.no+". "+s.name)).join("; ")+'</td></tr><tr><th>Sites audited so far</th><td>'+done.map(s=>esc(s.no+". "+s.name)).join(", ")+'</td></tr>');
+    b+='<section class="pb"><h2>How to use this set</h2><p>One consolidated set of security SOPs for all Dixon sites in Selaqui. Each site adds a short annexure with its own post names, zone list, contact numbers and equipment. The audit gaps that each SOP closes are listed under every SOP so that the set can be checked against the findings.</p>'+
+     '<table><tr><th>No.</th><th>SOP</th><th>Closes gaps at</th></tr>'+SOPS.map(x=>{const hits=done.filter(s=>x[5].some(id=>{const p=D.pts.get(s.id+"|"+id);return p&&p.risk>=5;}));return '<tr><td>'+x[0]+'</td><td>'+esc(x[1])+'</td><td>'+(hits.map(s=>s.no+". "+esc(s.name)).join(", ")||'<span class="muted">–</span>')+'</td></tr>';}).join("")+'</table></section>';
+    for(const [no,title,topic,steps,records,ids] of SOPS){
+      const gaps=done.flatMap(s=>ids.map(id=>({s,id,p:D.pts.get(s.id+"|"+id)})).filter(x=>x.p&&x.p.risk>=5));
+      const O=topic?OR_TOPIC[topic]:null;
+      b+='<section class="sop"><h2>'+no+' · '+esc(title)+'</h2><table class="hd"><tr><th>Document no.</th><td>DIX-SEL-SEC-'+no.slice(4)+'</td><th>Revision</th><td>00 (draft)</td></tr><tr><th>Owner</th><td>'+esc(O?O[0]:"Plant Head / Security In-charge")+'</td><th>Approved by</th><td>Plant Head</td></tr></table>'+
+        '<h3>Purpose and scope</h3><p>To define how '+esc(title.toLowerCase())+' is carried out at every Dixon site in Selaqui, by on-roll staff and the security agency.</p>'+
+        '<h3>Procedure</h3><ol>'+steps.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ol>'+
+        (O?'<h3>Performance standard</h3><p>'+esc(O[1])+'</p>':'')+
+        '<h3>Records</h3><ul>'+records.map(r=>'<li>'+esc(r)+'</li>').join("")+'</ul>'+
+        '<h3>Audit gaps this SOP closes</h3>'+(gaps.length?'<table><tr><th>Site</th><th>Point</th><th>Current risk</th></tr>'+gaps.map(x=>'<tr><td>'+esc(x.s.no+". "+x.s.name)+'</td><td><b>'+x.id+'</b> '+esc(ITEM[x.id].text.slice(0,80))+'</td>'+riskCellHTML(x.p.rx.li,x.p.rx.im)+'</tr>').join("")+'</table>':'<p class="muted">No rated gap at the sites audited so far.</p>')+'</section>';
+    }
+    return b;});
 }
 
 /* ================= Expenses / reimbursement claims ================= */
@@ -1871,6 +2080,8 @@ document.addEventListener("click",async ev=>{
     case "report":openReport(v||null);break;
     case "mkreport":makeReport();break;
     case "mkchecklist":makeChecklist();break;
+    case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
+    case "mksop":makeSOPSet();break;
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
     case "claimst":setClaim(v,t.dataset.k);break;
     case "expwho":ui.expWho=v;render();break;
