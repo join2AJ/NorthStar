@@ -135,6 +135,10 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .cb-left{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.cb-pts{display:grid;gap:6px;margin-top:10px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
 .cb-pt{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:9px;background:var(--surface);padding:7px 9px;font:inherit;font-size:13px;color:var(--ink);text-align:left;cursor:pointer;min-width:0}
 .cb-pt span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}.cb-pt i{font-style:normal;font-size:11px;font-weight:700;color:#14212B;border-radius:5px;padding:0 5px}
+.cb-lsum{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.tagm{font-style:normal;font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px;white-space:nowrap;flex:0 0 auto}
+.tagm.m{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}.tagm.d{background:var(--surface2);color:var(--muted)}
+.cb-pt .tagm{padding:1px 6px;font-size:10.5px}
 .linkbtn{background:none;border:0;color:var(--brand);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px}
 @media (max-width:520px){.cb-sum{grid-template-columns:repeat(3,1fr)}.cb-sum div:nth-child(n+4){display:none}}
 .brow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm num" "bar bar";gap:5px 10px;align-items:center;padding:8px 0}
@@ -363,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.23";
+const VERSION="2026-10-30.24";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -915,9 +919,14 @@ function catBoardHTML(){
   const sh=f.show,show=pool.filter(x=>sh==="all"||(sh==="left"&&x.st!=="covered")||(sh==="gaps"&&x.pt&&(x.pt.status==="notavail"||x.pt.status==="noncomp"))||(sh==="covered"&&x.st==="covered"));
   h+='<div class="cb-left"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div class="card-t">'+(sel?esc(selLbl):"All categories in this view")+(sel?' <button type="button" class="linkbtn" data-act="dcsel" data-v="">Clear</button>':'')+'</div>'+
    chips("dcShow",sh,[["left","Left to do"],["gaps","Gaps"],["covered","Covered"],["all","All"]])+'</div>'+
+   (()=>{const L=pool.filter(x=>x.st!=="covered");if(!L.length)return "";const g={};
+     L.forEach(x=>{const k=(x.it.mand?"Mandatory":"Desirable")+"|"+(x.it.sec==="doc"?x.it.when:x.it.sec==="walk"?"Walkthrough":"Interview");g[k]=(g[k]||0)+1;});
+     const sk=new Set(sites.flatMap(sc=>skippedDesirable(sc).map(it=>sc+"|"+it.id)));const nSk=L.filter(x=>sk.has(x.sc+"|"+x.it.id)).length;
+     return '<div class="cb-lsum"><span class="muted small">Left to do:</span>'+Object.keys(g).sort().map(k=>{const [pr,w]=k.split("|");return '<span class="tagm '+(pr==="Mandatory"?"m":"d")+'"><b>'+g[k]+'</b> '+pr+' · '+w+'</span>';}).join("")+
+       (nSk?'<span class="muted small">'+nSk+' desirable skipped for time at completed sites</span>':'')+'</div>';})()+
    (!sel&&show.length>24?'<div class="muted small" style="margin-top:8px">'+show.length+' points match. Showing the first 24 – tap a cell above to see one category and site.</div>':'')+
    (show.length?'<div class="cb-pts">'+(sel?show:show.slice(0,24)).map(x=>{const col=x.st==="covered"?(x.pt.status==="notavail"||x.pt.status==="noncomp"?"crit":"good"):x.st==="progress"?"warn":"line";
-     return '<button type="button" class="cb-pt" style="--pc:var(--'+col+')" data-act="open" data-v="'+x.it.id+'" data-s="'+x.sc+'" title="'+esc(x.it.text)+'">'+(sites.length>1?badge(x.sc,1):'')+'<b>'+x.it.id+'</b>'+(x.pt&&x.pt.risk?'<i style="background:var(--'+riskBand(x.pt.risk)[1]+')">'+x.pt.risk+'</i>':'')+'<span>'+esc(x.it.text.slice(0,60))+'</span></button>';}).join("")+'</div>':'<div class="muted small" style="padding:8px 0">Nothing here – all done for this selection.</div>')+'</div></div>';
+     return '<button type="button" class="cb-pt" style="--pc:var(--'+col+')" data-act="open" data-v="'+x.it.id+'" data-s="'+x.sc+'" title="'+esc(x.it.text)+'">'+(sites.length>1?badge(x.sc,1):'')+'<b>'+x.it.id+'</b>'+(x.pt&&x.pt.risk?'<i style="background:var(--'+riskBand(x.pt.risk)[1]+')">'+x.pt.risk+'</i>':'')+'<span>'+esc(x.it.text.slice(0,60))+'</span><em class="tagm '+(x.it.mand?"m":"d")+'">'+(x.it.mand?"Mandatory":"Desirable")+' · '+(x.it.sec==="doc"?x.it.when:x.it.sec==="walk"?"Walk":"Interview")+'</em></button>';}).join("")+'</div>':'<div class="muted small" style="padding:8px 0">Nothing here – all done for this selection.</div>')+'</div></div>';
   return h;
 }
 function audStats(u){
