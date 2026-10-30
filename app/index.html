@@ -363,7 +363,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.22";
+const VERSION="2026-10-30.23";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1484,6 +1484,8 @@ function reportHTML(r,scopes,ents,urls){
     b+='<h3>Auditees</h3>'+(ppl.length?'<table><tr><th>Name</th><th>Designation</th><th>Function</th><th>Email</th><th>Mobile</th></tr>'+ppl.map(x=>'<tr><td>'+E(x.d.name)+'</td><td>'+E(x.d.designation)+'</td><td>'+E(x.d.func)+'</td><td>'+E(x.d.email)+'</td><td>'+E(x.d.mobile)+'</td></tr>').join("")+'</table>':'<p class="muted">None recorded.</p>');
     b+='<h3>Coverage</h3><table><tr><th>Type</th><th>Points</th><th>Covered</th><th>In progress</th><th>Not covered</th><th>Gaps</th></tr>'+
       SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+x.gaps+'</td></tr>';}).join("")+'</table>';
+    const skip=skippedDesirable(sc);
+    if(skip.length)b+='<div class="note" style="border:1px solid #D0DAD7;border-left:4px solid #9A9A93;border-radius:6px;padding:6px 9px;margin:6px 0"><b>Scope limitation:</b> the audit concentrated on mandatory points. '+skip.length+' desirable document'+(skip.length>1?"s were":" was")+' not assessed due to time constraints ('+skip.map(it=>it.id).join(", ")+'). They are not rated and are not counted as gaps.</div>';
     const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
     const f=ents.filter(e=>e.scope===sc&&sevOrder[e.sev]!=null).sort((a,b2)=>rs(b2)-rs(a)||sevOrder[a.sev]-sevOrder[b2.sev]||(a.ts<b2.ts?-1:1));
     const rated=ents.filter(e=>e.scope===sc&&rs(e)),cells={},bc={Critical:0,High:0,Medium:0,Low:0};
@@ -1501,7 +1503,7 @@ function reportHTML(r,scopes,ents,urls){
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
     b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th><th>Last update</th></tr>'+
       its.map(it=>{const p=D.pts.get(pkey(sc,it));const last=p?p.entries[p.entries.length-1]:null;
-        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">Not covered</span>')+'</td>'+(p&&p.rx?riskCellHTML(p.rx.li,p.rx.im)+(p.rx.tli&&p.rx.tim?riskCellHTML(p.rx.tli,p.rx.tim):'<td class="muted">–</td>'):'<td class="muted">'+(p&&p.status==="notapp"?"N/A":"Not rated")+'</td><td class="muted">–</td>')+'<td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
+        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">'+(skip.includes(it)?"Not assessed (desirable – time constraint)":"Not covered")+'</span>')+'</td>'+(p&&p.rx?riskCellHTML(p.rx.li,p.rx.im)+(p.rx.tli&&p.rx.tim?riskCellHTML(p.rx.tli,p.rx.tim):'<td class="muted">–</td>'):'<td class="muted">'+(p&&p.status==="notapp"?"N/A":"Not rated")+'</td><td class="muted">–</td>')+'<td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
     const se=ents.filter(e=>e.scope===sc);
     b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
       return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
@@ -1555,6 +1557,8 @@ async function openDoc(title,build){
   await Promise.race([Promise.all(imgs.map(im=>im.complete?1:new Promise(res=>{im.onload=im.onerror=res;}))),new Promise(res=>setTimeout(res,15000))]);
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
 }
+// Desirable documents left unlogged at a site whose audit is marked done: reported once as a scope limitation.
+const skippedDesirable=sc=>resSite(sc).status==="done"?itemsFor(sc,"doc").filter(it=>!it.mand&&!D.pts.get(pkey(sc,it))):[];
 const resSite=sc=>((RES&&RES.sites)||[]).find(x=>x.site===sc)||{};
 const docCover=(kind,sub,extra)=>'<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1>'+esc(kind)+'</h1><h2 style="border:0">'+sub+'</h2>'+
   '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
