@@ -363,7 +363,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.21";
+const VERSION="2026-10-30.22";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1613,6 +1613,7 @@ const PARTIES=[["Dixon management and plant heads","Business continuity, cost, c
 const SEC_ROLE=["Keeps production running: controlled, fast gate throughput at shift change, vehicle turnaround for inward RM and outward FG.","Protects material and margin: prevents pilferage of high-value components at stores, SMT and assembly lines, and ensures sealed, tracked dispatch.","Protects customers' IP and confidential products through zoning, mobile / media control and controlled visitor access – a condition for winning and keeping brand business.","Supports compliance and audits: licences, registers, verification records and incident data that customer and statutory audits ask for.","Protects people: emergency response, evacuation and headcount, first response to fire and medical events, labour-unrest management.","Provides information: CCTV, access logs and incident reports for investigations and continuous improvement."];
 // Requirement owner and indicative performance criteria by SOP topic (feeds the Operational Requirement).
 const OR_TOPIC={
+ "Security governance":["Plant Head + Security In-charge","Signed policy, plant SSP and controlled SOP set in place, each with owner, revision and review date; annual management review held."],
  "Access control":["Admin / Security + IT","Only authorised roles can open each restricted zone; every entry logged against a named person; door-held / forced alarms answered within 2 minutes; access list reviewed quarterly."],
  "ID cards & access passes":["HR + Security","100 % of persons on site display a valid ID; lost cards deactivated within 1 hour of report."],
  "Visitor & contractor management":["Admin / Security","Every visitor registered with photo ID, host and escort; contractor tools declared at entry and exit."],
@@ -1633,7 +1634,7 @@ const OR_TOPIC={
  "Background verification":["HR","BGV and police verification complete before deployment for 100 % of staff, guards and contractors."],
  "Security training":["HR + Security","Induction and refresher training as per calendar; attendance and assessment recorded."]};
 const BAND_TIME={Critical:"Interim control within 72 hours; permanent fix within 30 days",High:"Action plan within 2 weeks; close within 90 days",Medium:"Close within 6 months",Low:"Close within 12 months or at the next opportunity"};
-function topicOf(e){const s=(e.extra&&e.extra.sop)||[];return s[0]||(e.item&&sopSuggest(ITEM[e.item])[0])||"Guarding & post orders";}
+function topicOf(e){if(["AD-09","AD-10","AD-11"].includes(e.item))return "Security governance";const s=(e.extra&&e.extra.sop)||[];return s[0]||(e.item&&sopSuggest(ITEM[e.item])[0])||"Guarding & post orders";}
 function siteHeader(sc){const S=SITE[sc],R=resSite(sc),g=resGeo(sc);
   return '<tr><th>Site</th><td>'+esc(S.no+". "+S.name)+'</td></tr><tr><th>Address</th><td>'+esc(R.addr||S.addr)+'</td></tr>'+(R.date?'<tr><th>Audit</th><td>'+esc(R.date)+'</td></tr>':'')+(R.spoc?'<tr><th>Site SPOC</th><td>'+esc(R.spoc)+'</td></tr>':'')+(g?'':'');}
 function contextHTML(sc){
@@ -1643,7 +1644,7 @@ function contextHTML(sc){
    '<h3>PESTLE analysis</h3><table><tr><th>Factor</th><th>What applies to Dixon Selaqui</th><th>What security must cover</th></tr>'+PESTLE.map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join("")+'</table>';
 }
 function issuesHTML(sd){
-  const internal=sd.findings.filter(e=>sd.rs(e)>=10).slice(0,8).map(e=>'<li>'+esc((e.item?e.item+": ":"")+(e.body||"").split(". ")[0])+'.</li>').join("");
+  const internal=sd.findings.filter(e=>sd.rs(e)>=10).slice(0,8).map(e=>{const t=(e.body||"").replace(/\s*\(photos?( attached)?\)\.?/g,"");return '<li>'+esc((e.item?e.item+": ":"")+(t.length>200?t.slice(0,t.lastIndexOf(" ",200))+" …":t))+'</li>';}).join("");
   return '<h3>Internal and external issues</h3><table><tr><th style="width:50%">Internal issues (from this audit)</th><th>External issues</th></tr><tr><td><ul>'+(internal||'<li>No high-risk internal issue recorded.</li>')+'</ul></td><td><ul>'+ISSUES_EXT.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></td></tr></table>'+
    '<h3>Interested parties and their expectations</h3><table><tr><th>Party</th><th>Expectations relevant to security</th></tr>'+PARTIES.map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>').join("")+'</table>'+
    '<h3>How security supports production</h3><ul>'+SEC_ROLE.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
