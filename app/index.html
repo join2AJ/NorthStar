@@ -367,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.24";
+const VERSION="2026-10-30.25";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -436,6 +436,8 @@ function riskMethodHTML(){
     ["Inherent risk","Risk before any control is applied; not scored separately in this report."]].map(([k,v])=>'<tr><th>'+k+'</th><td>'+v+'</td></tr>').join("")+'</table>'+
    '<h3>References</h3><ul class="refs"><li>ISO 31000:2018 – Risk management – Guidelines</li><li>IEC 31010:2019 – Risk management – Risk assessment techniques (consequence / likelihood matrix)</li><li>ISO 31073:2022 – Risk management – Vocabulary</li><li>ISO 28000:2022 – Security and resilience – Security management systems</li><li>ANSI/ASIS/RIMS RA.1-2015 – Risk Assessment standard</li><li>ANSI/ASIS PAP.1-2012 – Management System for Quality of Private Security Company Operations / ASIS Physical Asset Protection guideline</li><li>Private Security Agencies (Regulation) Act, 2005 (PSARA) and Uttarakhand rules</li><li>IS 1893 (Part 1):2016 – Criteria for earthquake resistant design of structures (seismic zoning)</li><li>NDMA National Disaster Management Guidelines – Management of Floods (2008)</li></ul>';
 }
+// "Photographic evidence" line listing the photo references of an observation.
+const evidLine=e=>{const r=(e.photos||[]).map(p=>photoRef(p.p)).filter(Boolean);return r.length?'<div class="evd">📷 Photographic evidence: '+r.length+' photo'+(r.length>1?"s":"")+' ('+esc(r.length>3?r.slice(0,3).join(", ")+" …":r.join(", "))+')</div>':'';};
 // Risk cell for report tables: background in the 5x5 band colour.
 function riskCellHTML(li,im,lbl){if(!li||!im)return '<td class="muted">–</td>';const n=li*im,b=riskBand(n);return '<td class="r-'+b[1]+' rc"><b>'+n+'</b> '+b[0]+'<div>L'+li+' × I'+im+(lbl?'<br>'+lbl:'')+'</div></td>';}
 // Site perimeter from Google Earth (KML) drawn over satellite tiles; plain SVG fallback when tiles do not load.
@@ -1415,6 +1417,7 @@ function reportSheet(){
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
    '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
+   '<div class="card" style="margin-top:12px"><div class="card-t">Photographic evidence (ZIP)</div><div class="small muted" style="margin:3px 0 8px">All photos for the site and period above in one ZIP, named by reference (e.g. S2-AD-09-P01) in a folder per site, with an index sheet listing point, observation, risk, auditor, time and GPS.</div><button class="btn" data-act="photozip">📦 Download photos (ZIP)</button></div>'+
    '<div class="card" style="margin-top:12px"><div class="card-t">Deliverables 3–5 · Site Security Plan, Operational Requirement, SOP set</div><div class="small muted" style="margin:3px 0 8px">Built from the audit log, risk ratings, schedule and site perimeters. Pick a site above for the SSP and OR (Deliverable 2 is the audit report above). Regenerate any time – later sites work the same way.</div>'+
    '<div class="btn-row" style="margin-top:0"><button class="btn" data-act="mkssp">3 · Site Security Plan</button><button class="btn" data-act="mkor">4 · Operational Requirement</button><button class="btn" data-act="mksop">5 · Corporate SOP set</button></div></div>'+
    '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
@@ -1503,11 +1506,11 @@ function reportHTML(r,scopes,ents,urls){
     const sevCls={high:"serious",med:"warn",low:"good"};
     b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target risk</th></tr>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
-      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+'</td><td>'+E(e.body||"")+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
+      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
     const gp=ents.filter(e=>e.scope===sc&&(e.sev==="good"||e.sev==="info")&&rs(e)).sort((a,b2)=>(a.item||"zz").localeCompare(b2.item||"zz"));
     if(gp.length)b+='<h3>Good practices and compliant points ('+gp.length+')</h3><div class="muted">Controls found in place. The rating is the residual risk with the control working as observed.</div><table class="fd"><tr><th>Risk</th><th>Point</th><th>Observation</th><th>To sustain</th></tr>'+
-      gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
+      gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
     b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th><th>Last update</th></tr>'+
@@ -1536,9 +1539,54 @@ function reportHTML(r,scopes,ents,urls){
    '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
    RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
-   '.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
+   '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
    '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
+}
+
+
+/* ================= Photos as one ZIP (store-only zip, no library) ================= */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC_T[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function zipBlob(files){
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  const d=new Date(),dt=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1)),dd=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate());
+  for(const f of files){const nm=enc.encode(f.name),c=crc32(f.data),n=f.data.length;
+    const h=new DataView(new ArrayBuffer(30));[[0,0x04034b50,4],[4,20,2],[6,0x0800,2],[8,0,2],[10,dt,2],[12,dd,2],[14,c,4],[18,n,4],[22,n,4],[26,nm.length,2],[28,0,2]].forEach(([o,v,l])=>l===4?h.setUint32(o,v,true):h.setUint16(o,v,true));
+    parts.push(h.buffer,nm,f.data);
+    const ch=new DataView(new ArrayBuffer(46));[[0,0x02014b50,4],[4,20,2],[6,20,2],[8,0x0800,2],[10,0,2],[12,dt,2],[14,dd,2],[16,c,4],[20,n,4],[24,n,4],[28,nm.length,2],[30,0,2],[32,0,2],[34,0,2],[36,0,2],[38,0,4],[42,off,4]].forEach(([o,v,l])=>l===4?ch.setUint32(o,v,true):ch.setUint16(o,v,true));
+    cen.push(ch.buffer,nm);off+=30+nm.length+n;}
+  const cs=cen.reduce((a,b)=>a+b.byteLength,0),e=new DataView(new ArrayBuffer(22));
+  [[0,0x06054b50,4],[4,0,2],[6,0,2],[8,files.length,2],[10,files.length,2],[12,cs,4],[16,off,4],[20,0,2]].forEach(([o,v,l])=>l===4?e.setUint32(o,v,true):e.setUint16(o,v,true));
+  return new Blob(parts.concat(cen,[e.buffer]),{type:"application/zip"});
+}
+let zipBusy=false;
+async function photosZip(){
+  if(zipBusy)return;const sc=$("#r-site").value,period=$("#r-period").value;
+  const scopes=sc==="all"?SITES.map(s=>s.id):[sc],inP=e=>period==="all"||dayKey(e.ts)===period;
+  const obs=D.obs.filter(e=>scopes.includes(e.scope)&&(inP(e)||e.adds.some(inP)||e.revs.some(inP))&&(e.photos||[]).length);
+  const list=[];obs.forEach(e=>e.photos.forEach((ph,i)=>list.push({e,ph,i,name:(e.scope?"Site"+SITE[e.scope].no+"_"+SITE[e.scope].name.replace(/[^A-Za-z0-9]+/g,"-")+"/":"")+photoName(e,i)})));
+  if(!list.length){toast("No photos for this site and period.");return;}
+  zipBusy=true;
+  try{
+    const urls={},need=[];
+    for(const x of list){if(!(await dbGet("blobs",x.ph.p)))need.push(x.ph.p);}
+    for(let i=0;i<need.length;i+=200){const r=await api("signRead",{paths:need.slice(i,i+200)});Object.assign(urls,r.urls);}
+    const files=[],rows=[["Photo_Ref","File","Site","Point","Requirement","Observation","Status","Severity","Risk","Auditor","Logged_IST","GPS"]];let done=0,fail=0;
+    for(const x of list){
+      toast("Packing photos… "+(++done)+" / "+list.length,60000);
+      try{let b=await dbGet("blobs",x.ph.p);if(!b){const r=await fetch(urls[x.ph.p]);if(!r.ok)throw 0;b=await r.blob();}
+        files.push({name:x.name,data:new Uint8Array(await b.arrayBuffer())});}catch(err){fail++;continue;}
+      const e=x.e,rk=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:"";
+      rows.push([photoRef(x.ph.p),x.name,e.scope?SITE[e.scope].name:"",e.item||"Other observation",e.item&&ITEM[e.item]?ITEM[e.item].text:"",e.body||"",e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",rk?rk+" "+riskBand(rk)[0]:"",uname(e.author),fmtFull(e.ts),e.geo?e.geo.lat.toFixed(5)+", "+e.geo.lng.toFixed(5):""]);}
+    const csv="﻿"+rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    files.unshift({name:"Photo_index.csv",data:new TextEncoder().encode(csv)});
+    const blob=zipBlob(files),a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="Selaqui_photos_"+(sc==="all"?"all-sites":"site"+SITE[sc].no)+"_"+(period==="all"?"whole-audit":period)+".zip";
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
+    toast((files.length-1)+" photos zipped"+(fail?" · "+fail+" could not be downloaded":"")+".",4000);
+  }catch(err){toast("Could not build the ZIP: "+(err.message||err),5000);}
+  finally{zipBusy=false;}
 }
 
 /* ================= Deliverables 3–5: Site Security Plan, Operational Requirement, corporate SOP set ================= */
@@ -1550,7 +1598,7 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
  '.kv th{width:26%}.muted{color:#5E7079;font-size:8.6pt}.pb{page-break-before:always}.tag{display:inline-block;border-radius:4px;padding:0 5px;font-size:8pt;font-weight:700;background:#E6EDEB}'+
  RISK_CSS+'.rc{width:70px;text-align:center}.rc div{font-size:7.8pt}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.smap img{max-width:none}.box{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid}'+
  '.rm th span{font-weight:400;font-size:8pt}.hm td{position:relative;height:54px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:14pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600}'+
- '.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
+ '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
 function docShell(title,body){
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+'</style></head><body>'+body+
@@ -1708,7 +1756,7 @@ function makeOR(sc){
     let n=0;
     b+='<section class="pb"><h2>4. Requirements by security function</h2>'+Object.keys(groups).sort((a,b2)=>Math.max(...groups[b2].map(sd.rs))-Math.max(...groups[a].map(sd.rs))).map(t=>{const O=OR_TOPIC[t]||["Security In-charge","Requirement met and verified on site."];
       return '<h3>'+esc(t)+'</h3><div class="muted">Owner: '+esc(O[0])+' · Acceptance: '+esc(O[1])+'</div><table><tr><th>Ref</th><th>Requirement (the site shall …)</th><th>Why – audit finding</th><th>Current</th><th>Target</th><th>Timeline</th></tr>'+
-        groups[t].map(e=>{n++;const bd=riskBand(sd.rs(e))[0];return '<tr><td><b>OR-'+S.no+'-'+String(n).padStart(2,"0")+'</b></td><td>'+esc(e.extra.rec||"Close the gap described.")+'</td><td><b>'+esc(e.item||"Other")+'</b> '+esc(e.body||"")+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'<td>'+BAND_TIME[bd]+'</td></tr>';}).join("")+'</table>';}).join("")+'</section>';
+        groups[t].map(e=>{n++;const bd=riskBand(sd.rs(e))[0];return '<tr><td><b>OR-'+S.no+'-'+String(n).padStart(2,"0")+'</b></td><td>'+esc(e.extra.rec||"Close the gap described.")+'</td><td><b>'+esc(e.item||"Other")+'</b> '+esc(e.body||"")+evidLine(e)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'<td>'+BAND_TIME[bd]+'</td></tr>';}).join("")+'</table>';}).join("")+'</section>';
     b+='<section class="pb"><h2>5. Controls to sustain</h2><p>These controls were found in place and must be kept working; they are part of the requirement baseline.</p><table><tr><th>Point</th><th>Control in place</th><th>Residual risk</th></tr>'+
       sd.obs.filter(e=>(e.sev==="good"||e.sev==="info")&&sd.rs(e)&&e.body).map(e=>'<tr><td><b>'+esc(e.item||"Other")+'</b></td><td>'+esc(e.body)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+'</tr>').join("")+'</table>'+
       '<h2>6. Verification</h2><ul><li>Each requirement is closed only with evidence (photo, record, test report) reviewed by the Security In-charge and accepted by the Plant Head.</li><li>Electronic systems are accepted after a witnessed test against the acceptance criteria above.</li><li>Closure status is reported monthly against this OR until all Critical and High items are closed.</li></ul></section>';
@@ -2096,6 +2144,7 @@ document.addEventListener("click",async ev=>{
     case "mkchecklist":makeChecklist();break;
     case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
     case "mksop":makeSOPSet();break;
+    case "photozip":photosZip();break;
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
     case "claimst":setClaim(v,t.dataset.k);break;
     case "expwho":ui.expWho=v;render();break;
