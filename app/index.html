@@ -367,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.27";
+const VERSION="2026-10-30.28";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1242,7 +1242,7 @@ async function loadResources(force){
   catch(e){if(!RES)RES={_err:e.message};}
   finally{resLoading=false;if(ui.tab==="info"&&!ui.sheet)render();}
 }
-const mapUrl=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+const mapUrl=q=>/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|www\.google\.com\/maps)\//.test(q||"")?q:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
 function phoneBtns(ph){
   if(!ph)return "";
   const d=ph.replace(/[^0-9+]/g,""),wa=/^\+91\d{10}$/.test(d)?d.slice(1):"";
