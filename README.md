@@ -107,3 +107,12 @@ IST date/time, site, point, GPS and note, and downloads it with a readable name
 Netlify → Add new site → Import from Git → pick this repo and branch. Build command: none.
 Publish directory: `app` (already set in `netlify.toml`). Or drag the `app` folder onto
 app.netlify.com/drop.
+
+## Risk rating
+
+Findings are rated on a 5 × 5 likelihood × impact matrix (Low 1–4 green, Medium 5–9 yellow, High 10–19 orange,
+Critical 20–25 red). Each finding can also carry a target risk after treatment. The report opens with the methodology
+(scales, treatment response times, qualitative / semi-quantitative / quantitative and reputational risk, references
+ISO 31000, IEC 31010, ISO 28000, ANSI/ASIS/RIMS RA.1) and shows a colour-coded heat map and findings table per site.
+Site perimeters (from the Google Earth KML) are stored with the schedule in Resources and drawn on satellite imagery
+in the Resources tab and the report.

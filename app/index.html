@@ -345,7 +345,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-28.18";
+const VERSION="2026-10-30.19";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -380,7 +380,69 @@ const sopSuggest=it=>it?(CAT_SOP[it.id]||CAT_SOP[it.cat]||[]):[];
 // 5x5 risk matrix: likelihood x impact.
 const LI_L=["","Rare","Unlikely","Possible","Likely","Almost certain"],IM_L=["","Minor","Moderate","Significant","Major","Severe"];
 function riskBand(n){return !n?null:n>=20?["Critical","crit"]:n>=10?["High","serious"]:n>=5?["Medium","warn"]:["Low","good"];}
-function riskPill(x){if(!x||!x.li||!x.im)return "";const n=x.li*x.im,b=riskBand(n);return '<span class="pill" style="--pc:var(--'+b[1]+')">Risk '+n+' · '+b[0]+'</span>';}
+function riskPill(x){if(!x||!x.li||!x.im)return "";const n=x.li*x.im,b=riskBand(n);return '<span class="pill" style="--pc:var(--'+b[1]+')">Risk '+n+' · '+b[0]+'</span>'+(x.tli&&x.tim?' <span class="pill" style="--pc:var(--'+riskBand(x.tli*x.tim)[1]+')">After treatment '+(x.tli*x.tim)+' · '+riskBand(x.tli*x.tim)[0]+'</span>':'');}
+// Severity a finding should carry for a given risk score (keeps the two ratings consistent).
+const sevForRisk=n=>n>=10?"high":n>=5?"med":"low";
+// Likelihood and impact scales of the 5x5 matrix: qualitative descriptor, frequency and probability (semi-quantitative),
+// and impact per consequence area incl. an indicative financial (quantitative) band and reputation.
+const LI_DEF=["",["Rare","May occur only in exceptional circumstances","Less than once in 10 years","< 5 %"],["Unlikely","Could occur at some time; not expected","Once in 5–10 years","5–20 %"],["Possible","Might occur; has happened in the industry / region","Once in 1–5 years","20–50 %"],["Likely","Will probably occur; weakness is open to exploitation","About once a year","50–80 %"],["Almost certain","Expected to occur, or the gap is being exploited now","Several times a year","> 80 %"]];
+const IM_DEF=["",["Minor","First aid only","< ₹1 lakh","< 1 hour, no output loss","Internal only, no external awareness","Minor procedural lapse"],["Moderate","Medical treatment case","₹1–10 lakh","Up to 1 shift","Local / single customer query","Observation in a customer or statutory audit"],["Significant","Reportable / lost-time injury","₹10–50 lakh","Up to 1 day; partial line stoppage","Regional media; customer escalation","Major NC in customer audit; statutory notice"],["Major","Serious injury or multiple injuries","₹50 lakh – ₹5 crore","Up to 1 week; plant-wide stoppage","National media; key customer relationship at risk","Penalty, licence suspension or customer audit failure"],["Severe","Fatality","> ₹5 crore","More than 1 week; loss of site","Sustained national / international coverage; loss of a key customer","Prosecution, licence revocation, debarment"]];
+const BAND_DEF=[["Critical","20–25","crit","Intolerable. Immediate action; interim controls within 24–72 hours; senior management owns closure within 30 days."],["High","10–19","serious","Treat as priority. Corrective action plan within 2 weeks; close within 60–90 days; monthly review."],["Medium","5–9","warn","Treat in the normal improvement plan within 3–6 months; monitor."],["Low","1–4","good","Tolerate / accept with routine monitoring; improve when the opportunity arises."]];
+// 5x5 colours: green Low, yellow Medium, orange High, red Critical (print-safe).
+const RISK_CSS='.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#9BD27A}.r-warn{background:#FFE066}.r-serious{background:#F7A35C}.r-crit{background:#E5534B;color:#fff}.r-crit .muted,.r-crit span{color:#fff}';
+function riskMatrixHTML(counts){
+  return '<table class="rm"><tr><th>Likelihood ↓ / Impact →</th>'+[1,2,3,4,5].map(n=>'<th>'+n+' '+IM_L[n]+'</th>').join("")+'</tr>'+
+   [5,4,3,2,1].map(l=>'<tr><th>'+l+' '+LI_L[l]+'</th>'+[1,2,3,4,5].map(i=>{const n=l*i,bd=riskBand(n),c=counts?counts[l+"x"+i]||0:null;
+     return '<td class="r-'+bd[1]+'">'+(counts?(c?'<b class="cnt">'+c+'</b><br>':'<span class="cnt0">·</span><br>'):'')+n+'<br><span>'+bd[0]+'</span></td>';}).join("")+'</tr>').join("")+'</table>';
+}
+function riskMethodHTML(){
+  return '<h3>Risk matrix (likelihood × impact)</h3>'+riskMatrixHTML()+
+   '<table><tr><th>Band</th><th>Score</th><th>Risk treatment and response time</th></tr>'+BAND_DEF.map(([l,r,c,t])=>'<tr><td class="r-'+c+'"><b>'+l+'</b></td><td>'+r+'</td><td>'+t+'</td></tr>').join("")+'</table>'+
+   '<h3>Likelihood scale</h3><table><tr><th>Level</th><th>Qualitative description</th><th>Frequency</th><th>Probability in 12 months</th></tr>'+[5,4,3,2,1].map(n=>'<tr><td><b>'+n+' '+LI_DEF[n][0]+'</b></td><td>'+LI_DEF[n][1]+'</td><td>'+LI_DEF[n][2]+'</td><td>'+LI_DEF[n][3]+'</td></tr>').join("")+'</table>'+
+   '<h3>Impact scale (the highest applicable consequence decides the level)</h3><table><tr><th>Level</th><th>People / safety</th><th>Financial loss (quantitative)</th><th>Operations / business continuity</th><th>Reputation</th><th>Legal / regulatory / customer</th></tr>'+
+   [5,4,3,2,1].map(n=>'<tr><td><b>'+n+' '+IM_DEF[n][0]+'</b></td>'+IM_DEF[n].slice(1).map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</table>'+
+   '<h3>Terms used in this report</h3><table class="kv">'+
+   [["Current risk","Risk as it stands today with the controls observed during the audit (residual risk of the current controls). This is the score in the findings table."],
+    ["Target risk (after treatment)","Expected residual risk once the recommendation is implemented. The gap between current and target risk shows the benefit of each action."],
+    ["Risk treatment","ISO 31000 options: avoid (stop the activity), reduce / treat (add or strengthen controls), share / transfer (insurance, contract SLA and penalty clauses) or retain / tolerate (accept and monitor). Recommendations in this report are reduce / treat actions unless stated."],
+    ["Qualitative assessment","Rating by descriptive scales (Rare … Almost certain, Minor … Severe) based on evidence, interviews and auditor judgement."],
+    ["Semi-quantitative assessment","The descriptive levels are scored 1–5 and multiplied (likelihood × impact = 1–25) so that findings can be ranked and compared across sites. This is the method used in this report."],
+    ["Quantitative assessment","Expressing risk in money and frequency, e.g. annualised loss expectancy = expected events per year × loss per event. The financial bands in the impact scale give indicative values; a full quantitative analysis was not in scope."],
+    ["Reputational risk","Damage to the trust of customers, employees, regulators and the public (media coverage, customer escalation, loss of business), rated in the Reputation column of the impact scale."],
+    ["Inherent risk","Risk before any control is applied; not scored separately in this report."]].map(([k,v])=>'<tr><th>'+k+'</th><td>'+v+'</td></tr>').join("")+'</table>'+
+   '<h3>References</h3><ul class="refs"><li>ISO 31000:2018 – Risk management – Guidelines</li><li>IEC 31010:2019 – Risk management – Risk assessment techniques (consequence / likelihood matrix)</li><li>ISO 31073:2022 – Risk management – Vocabulary</li><li>ISO 28000:2022 – Security and resilience – Security management systems</li><li>ANSI/ASIS/RIMS RA.1-2015 – Risk Assessment standard</li><li>ANSI/ASIS PAP.1-2012 – Management System for Quality of Private Security Company Operations / ASIS Physical Asset Protection guideline</li><li>Private Security Agencies (Regulation) Act, 2005 (PSARA) and Uttarakhand rules</li><li>IS 1893 (Part 1):2016 – Criteria for earthquake resistant design of structures (seismic zoning)</li><li>NDMA National Disaster Management Guidelines – Management of Floods (2008)</li></ul>';
+}
+// Risk cell for report tables: background in the 5x5 band colour.
+function riskCellHTML(li,im,lbl){if(!li||!im)return '<td class="muted">–</td>';const n=li*im,b=riskBand(n);return '<td class="r-'+b[1]+' rc"><b>'+n+'</b> '+b[0]+'<div>L'+li+' × I'+im+(lbl?'<br>'+lbl:'')+'</div></td>';}
+// Site perimeter from Google Earth (KML) drawn over satellite tiles; plain SVG fallback when tiles do not load.
+function siteMapHTML(g,W,H){
+  if(!g||!g.poly||g.poly.length<3)return "";
+  W=W||640;H=H||300;
+  const lat0=g.poly.reduce((a,p)=>a+p[0],0)/g.poly.length,mlat=111320,mlng=111320*Math.cos(lat0*Math.PI/180);
+  let area=0,per=0;const xy=g.poly.map(p=>[(p[1]-g.poly[0][1])*mlng,(p[0]-g.poly[0][0])*mlat]);
+  for(let i=0;i<xy.length;i++){const a=xy[i],b=xy[(i+1)%xy.length];area+=a[0]*b[1]-b[0]*a[1];per+=Math.hypot(b[0]-a[0],b[1]-a[1]);}
+  area=Math.abs(area)/2;
+  const wx=(lng,z)=>(lng+180)/360*256*Math.pow(2,z),wy=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*Math.pow(2,z);};
+  const lats=g.poly.map(p=>p[0]),lngs=g.poly.map(p=>p[1]);
+  let z=19;while(z>12&&((wx(Math.max(...lngs),z)-wx(Math.min(...lngs),z))>W*0.7||(wy(Math.min(...lats),z)-wy(Math.max(...lats),z))>H*0.7))z--;
+  const cx=(wx(Math.max(...lngs),z)+wx(Math.min(...lngs),z))/2,cy=(wy(Math.min(...lats),z)+wy(Math.max(...lats),z))/2,x0=cx-W/2,y0=cy-H/2;
+  let tiles="";
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)
+    tiles+='<img alt="" loading="eager" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx+'" style="position:absolute;left:'+(tx*256-x0).toFixed(1)+'px;top:'+(ty*256-y0).toFixed(1)+'px;width:256px;height:256px">';
+  const pts=g.poly.map(p=>(wx(p[1],z)-x0).toFixed(1)+","+(wy(p[0],z)-y0).toFixed(1)).join(" ");
+  const pin=g.pin?[(wx(g.pin[1],z)-x0),(wy(g.pin[0],z)-y0)]:null;
+  const c=g.pin||[lat0,lngs.reduce((a,b)=>a+b,0)/lngs.length];
+  return '<div class="smap" style="position:relative;width:100%;max-width:'+W+'px;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f">'+
+   '<div style="position:absolute;inset:0;transform-origin:0 0" class="smap-in" data-w="'+W+'"><div style="position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px">'+tiles+
+   '<svg width="'+W+'" height="'+H+'" style="position:absolute;left:0;top:0"><polygon points="'+pts+'" fill="rgba(251,192,45,.18)" stroke="#fbc02d" stroke-width="3" stroke-linejoin="round"/>'+
+   (pin?'<circle cx="'+pin[0].toFixed(1)+'" cy="'+pin[1].toFixed(1)+'" r="6" fill="#1976d2" stroke="#fff" stroke-width="2"/>':'')+'</svg></div></div>'+
+   '<div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeter from KML</div></div>'+
+   '<div class="small muted" style="margin-top:5px">'+(g.label?esc(g.label)+' · ':'')+'Perimeter ≈ '+Math.round(per)+' m · area ≈ '+(area/4046.86).toFixed(2)+' acre ('+Math.round(area).toLocaleString("en-IN")+' m²) · centre '+c[0].toFixed(5)+', '+c[1].toFixed(5)+
+   ' · <a href="https://www.google.com/maps/@'+c[0]+','+c[1]+',300m/data=!3m1!1e3" target="_blank" rel="noopener">Satellite view</a> · <a href="https://earth.google.com/web/@'+c[0]+','+c[1]+',600a,800d,35y,0h,0t,0r" target="_blank" rel="noopener">Google Earth</a></div>';
+}
+// Scale fixed-size maps down to the width of their box (phones).
+function fitMaps(root){(root||document).querySelectorAll(".smap-in").forEach(el=>{const w=Number(el.dataset.w),bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}
+const resGeo=sc=>((RES&&RES.sites)||[]).map(x=>x.site===sc?x.geo:null).find(Boolean)||null;
 const EXP_CAT=[["cab","Cab / taxi","s4"],["train","Train / flight","s2"],["hotel","Hotel","s6"],["food","Food","s3"],["local","Local travel / auto","s1"],["other","Other","s0"]];
 const EXP_CATM=Object.fromEntries(EXP_CAT.map(([k,l,c])=>[k,{label:l,col:c}]));
 const CLAIM_ST=[["draft","Not submitted","neutral"],["submitted","Submitted","info"],["approved","Approved","warn"],["paid","Paid","good"],["rejected","Rejected","crit"]];
@@ -712,7 +774,10 @@ function derive(){
   }
   for(const k in people)people[k].sort((a,b)=>(a.d.func||"").localeCompare(b.d.func||"")||(a.d.name||"").localeCompare(b.d.name||""));
   D={all,live,withdrawn,pts,visits,exp,people,kids,refs};
-  D.obs=live.filter(e=>isAudit(e)&&!isChild(e)).map(effObs);Dver=STATE.ver;return D;
+  D.obs=live.filter(e=>isAudit(e)&&!isChild(e)).map(effObs);
+  const SR={high:3,med:2,low:1};for(const p of pts.values())p.sev=null;
+  for(const o of D.obs){const p=o.item&&o.scope?pts.get(o.scope+"|"+o.item):null;if(p&&SR[o.sev]&&(!p.sev||SR[o.sev]>SR[p.sev]))p.sev=o.sev;}
+  Dver=STATE.ver;return D;
 }
 // "covered" = a final status is recorded; "progress" = entries exist but nothing final yet.
 function stateOf(p){if(!p)return "none";if(p.status&&!IN_PROGRESS.has(p.status))return "covered";return "progress";}
@@ -1143,12 +1208,13 @@ function renderInfo(m){
         (x.checklist?'<div><span>Checklist</span><b>'+esc(x.checklist)+'</b></div>':'')+
         (x.auditors?'<div><span>Auditors</span><b>'+esc(x.auditors)+'</b></div>':'')+'</div>'+
         (x.note?'<div class="hint" style="margin-bottom:0">'+esc(x.note)+'</div>':'')+
+        (x.geo?'<div style="margin-top:10px">'+siteMapHTML(x.geo,640,280)+'</div>':'')+
         '<div class="btn-row">'+(x.spocPhone?phoneBtns(x.spocPhone):'')+'<a class="btn sm" href="'+mapUrl(x.map||x.addr)+'" target="_blank" rel="noopener">📍 Directions</a>'+(sid?'<button class="btn sm" data-act="openscope" data-v="'+sid+'">Open checklist</button>':'')+'</div></div>';}
   }else{
     h+='<div class="card"><div class="stampbox" style="margin-top:0">'+(RES.engagement||[]).map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join("")+'</div></div>';
   }
   h+='<div class="small muted" style="text-align:center;margin:6px 0 14px">Updated '+esc(RES.updated||"")+(RES._at?' · fetched '+ago(RES._at):'')+'</div>';
-  m.innerHTML=h;
+  m.innerHTML=h;fitMaps(m);
 }
 
 /* ================= Edit / add photos to an observation ================= */
@@ -1159,7 +1225,7 @@ function openEdit(id,mode){
   draft.kind=e.kind;draft.item=v.item||"";draft.mode=mode;draft.target=id;
   if(mode==="edit"){
     Object.assign(draft,{status:v.status||"",sev:v.sev||"",evid:(v.evid||[]).slice(),body:v.body||"",by:v.by||"",ref:v.ref||""});
-    const x=v.extra||{};Object.assign(draft,{rec:x.rec||"",li:x.li?String(x.li):"",im:x.im?String(x.im):"",sop:(x.sop||[]).slice()});
+    const x=v.extra||{};Object.assign(draft,{rec:x.rec||"",li:x.li?String(x.li):"",im:x.im?String(x.im):"",tli:x.tli?String(x.tli):"",tim:x.tim?String(x.tim):"",sop:(x.sop||[]).slice()});
     const L=laterInfo(v);if(L){Object.assign(draft,{lname:L.name||"",lmob:L.mobile||"",lmail:L.email||"",ldue:L.due||"",by:"",ref:""});}
   }
   renderSheet();
@@ -1273,7 +1339,7 @@ function reportSheet(){
    '<span class="lbl">Site</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select>'+
    '<span class="lbl">Entries from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
-   '<div class="hint" style="margin-top:14px">The report has: cover page, auditees, check-in/out, coverage summary, findings by severity, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
+   '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
    '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
 }
@@ -1283,6 +1349,7 @@ async function makeReport(){
   if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
   w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing report…</p>');
   const scopes=r.site==="all"?SITES.map(s=>s.id):[r.site];
+  try{await loadResources();}catch(e){}
   const inPeriod=e=>r.period==="all"||dayKey(e.ts)===r.period;
   const ents=D.obs.filter(e=>scopes.includes(e.scope)&&(inPeriod(e)||e.revs.some(inPeriod)||e.adds.some(inPeriod)));
   const urls={};
@@ -1320,13 +1387,11 @@ function makeChecklist(){
   b+='<section class="site"><h2>D. Rating scales and risk matrix</h2><h3>Document status</h3><table><tr><th>Status</th><th>Meaning</th></tr>'+STATUS.doc.map(([k,l])=>'<tr><td>'+E(l)+'</td><td>'+E({verified:"Original seen and checked against practice on site",shared:"Copy received, not yet verified on site",onsite:"To be shown during the visit",later:"Client has agreed to share after the audit; owner and contact recorded",notavail:"Does not exist or not produced – recorded as a gap",notapp:"Not relevant to this site"}[k]||"")+'</td></tr>').join("")+'</table>'+
    '<h3>Walkthrough rating</h3><table><tr><th>Rating</th><th>Meaning</th></tr>'+STATUS.walk.map(([k,l])=>'<tr><td>'+E(l)+'</td><td>'+E({ok:"Control in place and working as observed",observed:"Seen, no rating needed",improve:"Control exists but is weak or inconsistent",noncomp:"Control absent or not working",notapp:"Not relevant to this site"}[k]||"")+'</td></tr>').join("")+'</table>'+
    '<h3>Finding severity</h3><table><tr><th>Severity</th><th>Use when</th></tr><tr><td>High</td><td>Exposure that could lead to serious loss, injury or breach; act immediately</td></tr><tr><td>Medium</td><td>Weakness that should be fixed within weeks</td></tr><tr><td>Low</td><td>Improvement, fix in the normal course</td></tr><tr><td>Good practice</td><td>Worth keeping and replicating</td></tr></table>'+
-   '<h3>Risk matrix (likelihood × impact)</h3><table class="rm"><tr><th>Likelihood ↓ / Impact →</th>'+[1,2,3,4,5].map(n=>'<th>'+n+' '+IM_L[n]+'</th>').join("")+'</tr>'+
-   [5,4,3,2,1].map(l=>'<tr><th>'+l+' '+LI_L[l]+'</th>'+[1,2,3,4,5].map(i=>{const n=l*i,bd=riskBand(n);return '<td class="r-'+bd[1]+'">'+n+'<br><span>'+bd[0]+'</span></td>';}).join("")+'</tr>').join("")+'</table>'+
-   '<p class="muted">Score 1–4 Low · 5–9 Medium · 10–19 High · 20–25 Critical.</p></section>';
+   riskMethodHTML()+'</section>';
   const css='@page{size:A4;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10pt/1.35 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
    'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:0 0 4px;color:#0E3F45}h3{font-size:11pt;margin:14px 0 3px;color:#0E5A61}.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55;margin-top:18px}'+
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
-   '.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#dff3df}.r-warn{background:#fdf0c8}.r-serious{background:#fbdcc9}.r-crit{background:#f6c9c9}'+
+   RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
   w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+'</style></head><body>'+b+'</body></html>');w.document.close();
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},500);
@@ -1341,17 +1406,26 @@ function reportHTML(r,scopes,ents,urls){
    '<tr><th>Generated</th><td>'+fmtFull(now)+' IST by '+E(uname(STATE.user))+'</td></tr></table>'+
    '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p>'+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
+  b+='<section class="site"><h2>Risk assessment methodology</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
   for(const sc of scopes){
     const S=SITE[sc],its=viewItems(sc);
     b+='<section class="site"><h2><span class="badge">'+E(S.no)+'</span> '+E(S.name)+'</h2><div class="muted">'+E(S.addr)+'</div>';
+    const geo=resGeo(sc);if(geo)b+='<h3>Site location and perimeter</h3>'+siteMapHTML(geo,680,300);
     const v=(D.visits[sc]||[]).filter(inPeriodV=>r.period==="all"||dayKey(inPeriodV.ts)===r.period);
     if(v.length)b+='<h3>Site visits</h3><table><tr><th>When (IST)</th><th>Event</th><th>Auditor</th><th>GPS</th></tr>'+v.map(x=>'<tr><td>'+fmtFull(x.ts)+'</td><td>'+(x.status==="in"?"Checked in":"Checked out")+'</td><td>'+E(uname(x.author))+'</td><td>'+(x.geo?x.geo.lat.toFixed(5)+", "+x.geo.lng.toFixed(5):"–")+'</td></tr>').join("")+'</table>';
     const ppl=D.people[sc]||[];
     b+='<h3>Auditees</h3>'+(ppl.length?'<table><tr><th>Name</th><th>Designation</th><th>Function</th><th>Email</th><th>Mobile</th></tr>'+ppl.map(x=>'<tr><td>'+E(x.d.name)+'</td><td>'+E(x.d.designation)+'</td><td>'+E(x.d.func)+'</td><td>'+E(x.d.email)+'</td><td>'+E(x.d.mobile)+'</td></tr>').join("")+'</table>':'<p class="muted">None recorded.</p>');
     b+='<h3>Coverage</h3><table><tr><th>Type</th><th>Points</th><th>Covered</th><th>In progress</th><th>Not covered</th><th>Gaps</th></tr>'+
       SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+x.gaps+'</td></tr>';}).join("")+'</table>';
-    const f=ents.filter(e=>e.scope===sc&&sevOrder[e.sev]!=null).sort((a,b2)=>sevOrder[a.sev]-sevOrder[b2.sev]||(a.ts<b2.ts?-1:1));
-    b+='<h3>Findings</h3>'+(f.length?'<table><tr><th>Severity / risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Logged</th></tr>'+f.map(e=>'<tr><td class="sev-'+e.sev+'">'+E(SEVM[e.sev].label)+(e.extra&&e.extra.li&&e.extra.im?'<div class="muted">Risk '+(e.extra.li*e.extra.im)+' ('+riskBand(e.extra.li*e.extra.im)[0]+')<br>L'+e.extra.li+' × I'+e.extra.im+'</div>':'')+'</td><td>'+E(e.item||"Note")+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra&&e.extra.rec||"–")+'</td><td>'+E(uname(e.author))+'<br>'+fmtFull(e.ts)+'</td></tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
+    const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
+    const f=ents.filter(e=>e.scope===sc&&sevOrder[e.sev]!=null).sort((a,b2)=>rs(b2)-rs(a)||sevOrder[a.sev]-sevOrder[b2.sev]||(a.ts<b2.ts?-1:1));
+    const cnt={},bc={Critical:0,High:0,Medium:0,Low:0};f.forEach(e=>{if(rs(e)){cnt[e.extra.li+"x"+e.extra.im]=(cnt[e.extra.li+"x"+e.extra.im]||0)+1;bc[riskBand(rs(e))[0]]++;}});
+    if(f.some(rs))b+='<h3>Risk profile – current risk of the findings</h3><div class="hm">'+riskMatrixHTML(cnt)+'</div><div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
+    const sevCls={high:"serious",med:"warn",low:"good"};
+    b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target risk</th></tr>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
+      (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
+      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+'</td><td>'+E(e.body||"")+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
+      (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
     b+='<h3>Status of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Last update</th></tr>'+
@@ -1364,7 +1438,7 @@ function reportHTML(r,scopes,ents,urls){
        ((e.status&&ST[e.status])||e.sev?'<div><b>'+[e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?"Severity: "+SEVM[e.sev].label:""].filter(Boolean).join(" · ")+'</b></div>':'')+
        (e.body?'<div class="body">'+E(e.body)+'</div>':'')+
        (e.extra&&e.extra.rec?'<div class="body"><b>Recommendation:</b> '+E(e.extra.rec)+'</div>':'')+
-       (e.extra&&(e.extra.li||(e.extra.sop&&e.extra.sop.length))?'<div class="muted">'+[e.extra.li&&e.extra.im?"Risk "+(e.extra.li*e.extra.im)+" ("+riskBand(e.extra.li*e.extra.im)[0]+", L"+e.extra.li+" × I"+e.extra.im+")":"",(e.extra.sop||[]).length?"SOP: "+E(e.extra.sop.join(", ")):""].filter(Boolean).join(" · ")+'</div>':'')+
+       (e.extra&&(e.extra.li||(e.extra.sop&&e.extra.sop.length))?'<div class="muted">'+[e.extra.li&&e.extra.im?'<span class="rtag r-'+riskBand(e.extra.li*e.extra.im)[1]+'">Risk '+(e.extra.li*e.extra.im)+" "+riskBand(e.extra.li*e.extra.im)[0]+"</span> L"+e.extra.li+" × I"+e.extra.im+(e.extra.tli&&e.extra.tim?' → target <span class="rtag r-'+riskBand(e.extra.tli*e.extra.tim)[1]+'">'+(e.extra.tli*e.extra.tim)+" "+riskBand(e.extra.tli*e.extra.tim)[0]+"</span>":""):"",(e.extra.sop||[]).length?"SOP: "+E(e.extra.sop.join(", ")):""].filter(Boolean).join(" · ")+'</div>':'')+
        (L?'<div class="muted">Will be shared by '+E(L.name)+(L.mobile?' · '+E(L.mobile):'')+(L.email?' · '+E(L.email):'')+(L.due?' · expected '+E(fmtDate(L.due)):'')+'</div>':
          ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="muted">'+[E((e.evid||[]).join(", ")),e.by?"From "+E(e.by):"",e.ref?"Ref "+E(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
        (r.photos&&e.photos&&e.photos.length?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
@@ -1379,8 +1453,10 @@ function reportHTML(r,scopes,ents,urls){
    '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}'+
    '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
+   RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.hm{max-width:520px}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
+   '.rtag{padding:0 5px;border-radius:4px;font-weight:700}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
-   '</style></head><body>'+b+'</body></html>';
+   '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 
 /* ================= Expenses / reimbursement claims ================= */
@@ -1458,8 +1534,8 @@ function statusCSV(){
   return toCSV(rows);
 }
 function logCSV(){
-  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn","Record_Hash","Recommendation","Likelihood","Impact","Risk_Score","Risk_Band","SOP_Topics","Photo_Refs","Change_Type","Changes_Entry"]];
-  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":"",e.hash||"",...(()=>{const x=e.extra||{},n=x.li&&x.im?x.li*x.im:"";return [x.rec||"",x.li||"",x.im||"",n,n?riskBand(n)[0]:"",(x.sop||[]).join("; "),(e.photos||[]).map(p=>photoRef(p.p)).join(" "),x.mode==="edit"?"Edit":x.mode==="add"?"Photos added":"",x.mode?e.target:""];})()]);}
+  const rows=[["Entry_ID","Device_Time","Server_Time","Auditor","Type","Site_No","Site","Point_ID","Status","Severity","Evidence","Provided_By","Reference","Note","Photos","Latitude","Longitude","Accuracy_m","Withdrawn","Record_Hash","Recommendation","Likelihood","Impact","Risk_Score","Risk_Band","Target_Risk_Score","Target_Risk_Band","SOP_Topics","Photo_Refs","Change_Type","Changes_Entry"]];
+  for(const e of D.all){rows.push([e.id,fmtFull(e.ts),e.sts?fmtFull(e.sts):"pending",uname(e.author),e.kind,e.scope?SITE[e.scope].no:"",e.scope?SITE[e.scope].name:"",e.item||e.target||"",e.status&&ST[e.status]?ST[e.status].label:(e.status||""),e.sev?SEVM[e.sev].label:"",(e.evid||[]).join("; "),e.by,e.ref,e.body,(e.photos||[]).map(p=>p.p).join(" "),e.geo?e.geo.lat:"",e.geo?e.geo.lng:"",e.geo?Math.round(e.geo.acc):"",D.withdrawn.has(e.id)?"Yes":"",e.hash||"",...(()=>{const x=e.extra||{},n=x.li&&x.im?x.li*x.im:"";const t=x.tli&&x.tim?x.tli*x.tim:"";return [x.rec||"",x.li||"",x.im||"",n,n?riskBand(n)[0]:"",t,t?riskBand(t)[0]:"",(x.sop||[]).join("; "),(e.photos||[]).map(p=>photoRef(p.p)).join(" "),x.mode==="edit"?"Edit":x.mode==="add"?"Photos added":"",x.mode?e.target:""];})()]);}
   return toCSV(rows);
 }
 function renderMore(m){
@@ -1487,7 +1563,7 @@ async function loadBackups(){
 
 /* ================= point sheet + forms ================= */
 let draft=null;
-function newDraft(kind,scope,item){return {mode:"",target:"",kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:"",lname:"",lmob:"",lmail:"",ldue:"",rec:"",li:"",im:"",sop:[]};}
+function newDraft(kind,scope,item){return {mode:"",target:"",kind,scope,item,status:"",sev:"",evid:[],body:"",by:"",ref:"",photos:[],busy:false,cat:"",amount:"",date:"",mode:"",lname:"",lmob:"",lmail:"",ldue:"",rec:"",li:"",im:"",tli:"",tim:"",sop:[]};}
 function pushSheet(){try{if(!(history.state&&history.state.sheet))history.pushState({sheet:1},"");}catch(e){}}
 function openPoint(item,scope){pushSheet();ui.sheet={type:"point",item,scope:scope||ui.scope};draft=newDraft("point",ui.sheet.scope,item);renderSheet();$("#sheet").scrollTop=0;}
 function openNote(){pushSheet();const sc=ui.tab==="list"?ui.scope:(lsGet("sa.lastScope")||"s1");ui.sheet={type:"note"};draft=newDraft("note",sc,"");renderSheet();}
@@ -1527,7 +1603,11 @@ function formHTML(sec){
      (fnd?'<span class="lbl">Risk rating <span class="muted">(likelihood × impact)</span></span>'+
        '<div class="small muted" style="margin-bottom:5px">Likelihood</div><div class="opts">'+[1,2,3,4,5].map(n=>'<button type="button" class="opt plain'+(li===n?" on":"")+'" data-act="dset" data-f="li" data-v="'+n+'">'+n+' '+LI_L[n]+'</button>').join("")+'</div>'+
        '<div class="small muted" style="margin:8px 0 5px">Impact</div><div class="opts">'+[1,2,3,4,5].map(n=>'<button type="button" class="opt plain'+(im===n?" on":"")+'" data-act="dset" data-f="im" data-v="'+n+'">'+n+' '+IM_L[n]+'</button>').join("")+'</div>'+
-       (b?'<div style="margin-top:8px">'+riskPill({li,im})+' <span class="small muted">'+li+' × '+im+'</span></div>':''):'')+
+       (b?'<div style="margin-top:8px">'+riskPill({li,im})+' <span class="small muted">'+li+' × '+im+(draft.sev&&draft.sev!==sevForRisk(li*im)?' · severity "'+SEVM[draft.sev].label+'" does not match this score ('+SEVM[sevForRisk(li*im)].label+')':'')+'</span></div>'+
+         (()=>{const tl=Number(draft.tli)||0,tm=Number(draft.tim)||0;return '<span class="lbl">Target risk after treatment <span class="muted">(once the recommendation is done)</span></span>'+
+         '<div class="small muted" style="margin-bottom:5px">Likelihood</div><div class="opts">'+[1,2,3,4,5].map(n=>'<button type="button" class="opt plain'+(tl===n?" on":"")+'" data-act="dset" data-f="tli" data-v="'+n+'">'+n+' '+LI_L[n]+'</button>').join("")+'</div>'+
+         '<div class="small muted" style="margin:8px 0 5px">Impact</div><div class="opts">'+[1,2,3,4,5].map(n=>'<button type="button" class="opt plain'+(tm===n?" on":"")+'" data-act="dset" data-f="tim" data-v="'+n+'">'+n+' '+IM_L[n]+'</button>').join("")+'</div>'+
+         (tl&&tm?'<div style="margin-top:8px"><span class="pill" style="--pc:var(--'+riskBand(tl*tm)[1]+')">Target '+(tl*tm)+' · '+riskBand(tl*tm)[0]+'</span></div>':'');})():''):'')+
      '<span class="lbl">SOP topic <span class="muted">(feeds the corporate SOP set)</span></span><div class="opts">'+
        sug.concat(rest).map(t=>'<button type="button" class="opt plain'+(draft.sop.includes(t)?" on":"")+'" data-act="dsop" data-v="'+esc(t)+'">'+(sug.includes(t)?"★ ":"")+esc(t)+'</button>').join("")+'</div>';})()+
    '<span class="lbl">Evidence type</span><div class="opts">'+EVID.map(x=>'<button type="button" class="opt plain'+(draft.evid.includes(x)?" on":"")+'" data-act="devid" data-v="'+esc(x)+'">'+esc(x)+'</button>').join("")+'</div>'+
@@ -1623,6 +1703,7 @@ async function saveDraft(){
   }
   const e={id,author:STATE.user,kind:d.kind,scope:d.scope||null,item:d.item||null,status:d.status||null,sev:d.sev||null,evid:d.evid,body:d.body.trim()||null,by:d.by.trim()||null,ref:d.ref.trim()||null,photos,geo:st.geo,gerr:st.gerr||null,ts:st.ts};
   if(d.rec.trim()||d.li||d.im||d.sop.length)e.extra={rec:d.rec.trim()||null,li:Number(d.li)||null,im:Number(d.im)||null,sop:d.sop};
+  if(e.extra&&e.extra.li&&e.extra.im&&Number(d.tli)&&Number(d.tim)){e.extra.tli=Number(d.tli);e.extra.tim=Number(d.tim);}
   if(d.mode){e.target=d.target;e.extra=Object.assign({},e.extra||{},{mode:d.mode});if(d.mode==="add"){e.status=null;e.sev=null;e.evid=[];e.by=null;e.ref=null;}}
   if(d.kind==="point"&&d.status==="later"&&d.mode!=="add"){e.by=d.lname.trim();e.ref=JSON.stringify({later:{name:d.lname.trim(),mobile:d.lmob.trim(),email:d.lmail.trim(),due:d.ldue||""}});}
   if(d.kind==="expense"){e.item=d.cat;e.body=JSON.stringify({amount:amt,date:d.date,vendor:d.by.trim(),ref:d.ref.trim(),mode:d.mode,desc:d.body.trim()});}

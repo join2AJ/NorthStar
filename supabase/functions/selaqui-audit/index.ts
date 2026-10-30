@@ -83,17 +83,20 @@ function cleanEntry(e: any, author: string) {
   }) : [];
   const geo = cleanGeo(e.geo);
   const evid = Array.isArray(e.evid) ? e.evid.slice(0, 10).map((x: unknown) => String(x).slice(0, 40)) : [];
-  // Optional structured extras: recommendation, risk likelihood x impact (1-5), SOP topics.
+  // Optional structured extras: recommendation, risk likelihood x impact (1-5), target risk after treatment, SOP topics.
   let extra: any = null;
   if (e.extra && typeof e.extra === "object") {
     const x = e.extra, lvl = (v: unknown) => { const n = Math.round(Number(v)); return n >= 1 && n <= 5 ? n : null; };
     extra = {
       rec: str(x.rec, 4000), li: lvl(x.li), im: lvl(x.im),
+      // target (treated) risk once the recommendation is implemented
+      tli: lvl(x.tli), tim: lvl(x.tim),
       sop: Array.isArray(x.sop) ? x.sop.slice(0, 12).map((t: unknown) => String(t).slice(0, 40)) : [],
       // mode: "edit" = new version of the target observation, "add" = photos/notes added to it
       mode: x.mode === "edit" || x.mode === "add" ? x.mode : null,
     };
     if (!extra.mode) delete extra.mode;
+    if (!extra.tli || !extra.tim) { delete extra.tli; delete extra.tim; }
     if (!extra.rec && !extra.li && !extra.im && !extra.sop.length && !extra.mode) extra = null;
   }
   return {
