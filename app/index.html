@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.39";
+const VERSION="2026-11-02.40";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1789,7 +1789,7 @@ const DELIV=[
  {n:2,t:"Security Audit Report",q:"Incorporating findings and photographic evidence · one per designated site",what:"What was found at the site – the as-is position, backed by evidence.",ans:"Where does the site stand today?",has:"Methodology, site map, auditees, coverage, risk heat map, findings with current and target risk, good practices, status of every point and photographic evidence.",use:"For site and corporate management to understand the gaps and their risk."},
  {n:3,t:"Site Security Plan (SSP)",q:"One per designated site",what:"How the site will be secured from now on – the forward-looking plan.",ans:"How should the site be protected?",has:"Site profile and context (PESTLE, utilities, issues, interested parties), threat and risk assessment, security zoning, organisation and deployment, physical and electronic measures, procedures, emergency response and an implementation plan.",use:"Owned by the Plant Head and kept current; the reference for running security at the site."},
  {n:4,t:"Operational Requirement (OR)",q:"One per designated site",what:"What must be achieved – each finding turned into a measurable requirement.",ans:"What exactly must be fixed or procured, by whom and by when?",has:"Numbered requirements by security function, with owner, acceptance criteria, current and target risk, timeline by risk band, and the controls to sustain.",use:"The basis for budgets, vendor specifications, implementation and closure tracking."},
- {n:5,t:"Corporate-Level Security SOP Set",q:"One consolidated set for the engagement",what:"How security tasks are done every day – the controlled procedures.",ans:"How do guards and staff carry out each security activity?",has:"16 SOPs (governance, guarding, patrolling, access control, ID, visitors, vehicles, material, scrap, keys, CCTV, frisking, incidents, emergency, equipment, BGV and training) with performance standards, records and the audit gaps each closes.",use:"Adopted once for all Dixon sites in Selaqui; each site adds a short annexure."}];
+ {n:5,t:"Corporate-Level Security SOP Set",q:"One consolidated set for the engagement",what:"How security tasks are done every day – the controlled procedures.",ans:"How do guards and staff carry out each security activity?",has:"Document hierarchy (policy, manual, procedure, SOP, work instruction, format, record, guideline), governance (approval matrix, monthly / quarterly / half-yearly / annual reviews, Group Security Chief role), one numbering scheme from organisation to site, one document platform with revision control, and 17 controlled SOPs – including security contracts (manpower, AMC, CAMC) – each with responsibilities, numbered steps, formats, records, performance standard and the audit gaps it closes.",use:"Adopted once for all Dixon sites in Selaqui; each site adds a short annexure."}];
 function delivAboutHTML(n){
   const d=DELIV[n-1];
   return '<div class="about"><div class="ab-t">About this document · Deliverable '+n+' of 5</div><p><b>'+esc(d.what)+'</b> It answers: <i>'+esc(d.ans)+'</i></p><p><b>Contains:</b> '+esc(d.has)+'</p><p><b>Use:</b> '+esc(d.use)+'</p>'+
@@ -1944,55 +1944,299 @@ function makeOR(sc){
       '<h2>6. Verification</h2><ul><li>Each requirement is closed only with evidence (photo, record, test report) reviewed by the Security In-charge and accepted by the Plant Head.</li><li>Electronic systems are accepted after a witnessed test against the acceptance criteria above.</li><li>Closure status is reported monthly against this OR until all Critical and High items are closed.</li></ul></section>';
     return b;});
 }
-// Corporate SOP set: one controlled procedure per topic, with the gaps that drove it at each audited site.
+// Corporate SOP set: document hierarchy, governance, nomenclature, and 17 controlled SOPs with formats.
+// [no, title, OR topic, purpose, scope, definitions, responsibilities, procedure steps, formats [[no,name,columns]], records & retention, KPIs, checklist points it closes]
+const SOP_SITES="all Dixon plants in Selaqui (DTSPL Khasra 122 & 265, DTSPL – Lighting, Dixon WM 261/262/C-2/C-3, Lightanium, Dixon WM C-8, DTSPL – WM 323 MI)";
 const SOPS=[
- ["SOP-01","Security governance, policy and document control",null,["Plant Head approves the security policy; Security In-charge maintains the manual, SOP master list and post orders.","Every SOP carries number, revision, date, owner, approver and next review date.","Changes are made only through revision with the reason recorded; old copies withdrawn from posts.","Annual management review of policy, SOPs, risks and incidents; minutes kept."],["Security policy (signed)","SOP master list","Revision history"],["AD-09","AD-10","AD-11"]],
- ["SOP-02","Guarding, deployment and post orders","Guarding & post orders",["Agency supervisor prepares the daily post-wise deployment chart (sanctioned vs actual) and signs it at shift start.","Each post has a signed post order kept at the post; guards sign that they have read it.","Absent guards are replaced within 30 minutes; shortfall escalated to the Security In-charge.","Handover at shift change covers incidents, keys, open gate passes and equipment status.","Guard alertness checks by supervisor every 2 hours; findings recorded."],["Deployment chart","Post orders","Handover register"],["AD-12","AD-19","W-04"]],
- ["SOP-03","Patrolling and surprise checks","Patrolling",["Patrol routes cover the full boundary, critical areas and parking at defined intervals, varied in timing.","Each round recorded (register or guard-tour system) with exceptions.","On-roll manager carries out at least one documented surprise night check per month.","Exceptions (breach, light failure, open door) reported immediately and closed."],["Patrol register","Surprise check report"],["AD-23","W-08"]],
- ["SOP-04","Access control and zoning","Access control",["Zones 0–3 defined per site; access matrix (zone vs role) approved by the Plant Head.","Access granted only on a written request approved by the zone owner; IT / Security implements and records.","Each person presents their own card / face; tailgating is a disciplinary offence.","Door-held-open and door-forced alarms monitored and answered within 2 minutes.","Access lists reviewed quarterly; leavers deactivated on the last working day."],["Access matrix","Access request records","Quarterly review"],["AD-31","AD-32","AD-33","W-02"]],
- ["SOP-05","ID cards and passes","ID cards & access passes",["Photo ID issued after BGV; colour coding by category (employee, contract, trainee, visitor).","ID worn visibly at all times inside the boundary.","Lost card reported immediately; card blocked and replacement recorded in the lost-card register.","Cards and passes collected at exit / separation."],["ID issue register","Lost card register"],["AD-29","AD-30"]],
- ["SOP-06","Visitor and contractor management","Visitor & contractor management",["Visitors pre-registered by the host; photo ID checked and recorded in the VMS.","Visitors escorted in Zone 2 and 3; photography only with written permission.","Contractor workers verified, inducted and listed; tools declared at entry and checked at exit.","Hot work and work at height only under a valid work permit."],["VMS records","Tool declaration register"],["AD-40","AD-41"]],
- ["SOP-07","Vehicle movement and parking","Vehicle movement",["Only vehicles on the approved transporter list are admitted; unlisted vehicles need written approval from Logistics.","Driver ID checked and recorded; vehicle searched against a checklist.","Time in / out recorded; vehicles parked only in marked areas away from the boundary wall."],["Vehicle register","Approved vehicle list","Search checklist"],["AD-42","AD-43","W-03"]],
- ["SOP-08","Material gate pass, inward and dispatch","Dispatch & inward",["No material leaves without an approved SAP gate pass checked against the load.","Inward: seal number recorded and verified against invoice / e-way bill before unloading; mismatch escalated.","Outward: vehicle sealed after loading; seal number on the gate pass; GPS tracking active.","Open RGPs reconciled weekly by Logistics."],["Gate pass copies","Seal register","RGP tracker"],["AD-44","AD-45","AD-46"]],
- ["SOP-09","Scrap and e-waste disposal","Scrap & e-waste",["Scrap moved only with a gate pass and weighment slip, under security witness.","E-waste and rejected units handed only to authorised recyclers; certificate of destruction on file."],["Weighment slips","Manifests","Destruction certificates"],["AD-47","AD-48"]],
- ["SOP-10","Key control","Key control",["All keys numbered and tagged; kept in a locked key box at the security office.","Issue and return recorded with name, time and purpose; master and duplicate keys sealed.","Utility keys (DG, HV panel, HSD) issued only to persons on the authorised list.","Monthly key audit by the Security In-charge."],["Key register","Key audit sheet"],["AD-34","W-07","W-10"]],
- ["SOP-11","CCTV operation, footage handling and control room","CCTV & control room",["Control room manned as per the deployment plan; operator logs events and faults.","Recording 24×7 with at least 90 days retention; system health and video-loss alerts configured.","Footage viewed or exported only against an approved request in the footage register; USB export restricted to authorised users; chain of custody kept.","Camera faults fixed within agreed time; monthly coverage check against the camera schedule."],["Monitoring log","Fault log","Footage request register"],["AD-35","AD-36","AD-37","AD-38"]],
- ["SOP-12","Frisking and prohibited items","Frisking & prohibited items",["Prohibited-items list displayed at gates; mobile / camera / storage-media rules per zone.","Frisking at production exits by same-gender guards with HHMD / DFMD; exceptions recorded.","Items found are recorded and escalated as per the incident SOP."],["Frisking register","Exception register"],["AD-51","W-07"]],
- ["SOP-13","Incident reporting, investigation and CAPA","Incident reporting & response",["Every incident and near-miss reported to the Security In-charge within 1 hour.","Scene and CCTV footage preserved; police informed where required.","Investigation by a nominated investigator using the standard report format; root cause and CAPA recorded.","Monthly incident and trend review with the Plant Head."],["Incident register","Investigation reports","CAPA tracker"],["AD-15","AD-53","AD-54"]],
- ["SOP-14","Emergency response (security role)","Emergency response",["Security roles in fire, evacuation, intrusion, bomb threat, sabotage, civil disturbance, labour unrest, flood and earthquake.","Escape doors on access control release on fire alarm and power failure (fail-safe); tested quarterly.","Gate control during emergencies: emergency vehicles prioritised, headcount at the assembly point reconciled with attendance.","At least one security scenario drilled every year; lessons learnt recorded."],["Drill reports","Fail-safe test record"],["AD-55","AD-56","AD-57","AD-58","AD-62","W-09"]],
- ["SOP-15","Security equipment checks and maintenance","Security equipment checks",["DFMD / HHMD function-tested at the start of each shift and recorded.","Preventive maintenance schedule for CCTV, access control, barriers and alarms, signed off by the vendor and Security.","Communication equipment (walkie-talkies, PA) checked daily."],["Function-test register","PM records"],["AD-39","AD-64","AD-65","AD-66"]],
- ["SOP-16","Background verification and security training","Background verification",["BGV and police verification completed before deployment for employees, contract workers and guards.","Security induction for all new joiners; refresher training for guards as per the calendar.","Training attendance and assessment recorded."],["BGV records","Training calendar and attendance"],["AD-21","AD-22","AD-27","AD-68","AD-69"]]];
-
-// Open points per site (not covered or still in progress), for follow-up with the site SPOC.
-function makeOpenPoints(){
-  const scs=Array.from(document.querySelectorAll("#nc-sites input:checked")).map(x=>x.value),mand=$("#nc-mand").checked;
-  if(!scs.length){toast("Tick at least one site.");return;}
-  lsSet("sa.ncSites",scs.join(","));
-  openDoc("Points not covered",()=>{
-    const groups=[["Documents – pre-audit",it=>it.sec==="doc"&&it.when==="Pre-audit"],["Documents – on-site",it=>it.sec==="doc"&&it.when==="On-site"],["Physical walkthrough",it=>it.sec==="walk"],["Stakeholder interviews",it=>it.sec==="int"]];
-    let total=0;const body=scs.map(sc=>{const S=SITE[sc],R=resSite(sc);
-      const open=itemsFor(sc).filter(it=>(!mand||it.mand)&&!["covered","na"].includes(ptState(sc,it)));total+=open.length;
-      return '<section class="'+(sc===scs[0]?"":"pb")+'"><h2>'+esc(S.no+". "+S.name)+' – '+open.length+' point'+(open.length===1?"":"s")+' open</h2><div class="muted">'+esc(R.addr||S.addr)+(R.spoc?' · SPOC '+esc(R.spoc)+(R.spocPhone?' '+esc(fmtPhone(R.spocPhone)):''):'')+'</div>'+
-        (open.length?groups.map(([l,f])=>{const xs=open.filter(f);return xs.length?'<h3>'+l+' ('+xs.length+')</h3><table><tr><th style="width:52px">ID</th><th>Document / requirement</th><th style="width:70px">Priority</th><th style="width:80px">Status</th><th style="width:30%">Remarks / document shared</th></tr>'+
-          xs.map(it=>{const p=D.pts.get(pkey(sc,it));return '<tr><td><b>'+it.id+'</b></td><td>'+esc(it.text)+(it.cat&&it.sec==="doc"?'<div class="muted">'+esc(it.cat)+'</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+(p?"In progress":"Not covered")+'</td><td></td></tr>';}).join("")+'</table>':'';}).join(""):'<p class="muted">Nothing open – all '+(mand?"mandatory ":"")+'points are covered.</p>')+'</section>';}).join("");
-    return '<section><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1 style="font-size:20pt">Points not covered'+(mand?" – mandatory":"")+'</h1>'+
-      '<p class="note">'+scs.map(sc=>esc(SITE[sc].no+". "+SITE[sc].name)).join(" · ")+' · '+total+' open point'+(total===1?"":"s")+' · generated '+fmtFull(new Date().toISOString())+' IST by '+esc(uname(STATE.user))+'</p><button class="noprint" onclick="print()">Print / Save as PDF</button></section>'+body;});
-}
+ ["SOP-01","Security governance, document control and review","Security governance",
+  "To define how security documents are created, approved, controlled, reviewed and retired, and how security performance is reviewed by management.",
+  "All security policies, manuals, procedures, SOPs, work instructions, formats and records at "+SOP_SITES+".",
+  [["Controlled copy","The current, approved version held on the document platform; printed copies are stamped 'Controlled copy – No. __'."],["Obsolete document","A superseded version, withdrawn from use and kept only in the archive."]],
+  [["Group Security Chief","Approves security policy, manual and SOPs; chairs the quarterly review; owns the master list."],["Plant Head","Reviews and endorses site documents; chairs the monthly site security meeting."],["Security In-charge (site)","Prepares and maintains site documents and annexures; raises change requests."],["HR / EHS / IT heads","Review documents that affect their function (BGV, emergency, CCTV / access systems)."]],
+  ["Every document is numbered as per the nomenclature in Section C, carries a revision number, effective date, next review date and the prepare / review / approve block, and is uploaded to the single document platform.",
+   "A new or changed document is raised through a Document Change Request (F-01-01) stating the reason, the clauses changed and the impact on training.",
+   "Approval follows the approval matrix (Section B): no document is approved by the person who prepared it, and SOPs are approved by the Group Security Chief after review by the Plant Head and the affected function heads.",
+   "On approval, the platform publishes the new revision, archives the previous one as obsolete and notifies the distribution list; printed copies at posts are replaced within 7 days and the old copies destroyed.",
+   "Guards and staff affected by a change are briefed and sign the training record before the effective date.",
+   "The master list (F-01-02) shows every document, its revision, owner, effective date and next review date; overdue reviews are reported in the monthly site meeting.",
+   "Review cadence: monthly site security meeting (Plant Head), quarterly security review with the Group Security Chief, half-yearly management review, and annual review of the policy, manual and every SOP – earlier after any significant incident, change of layout or customer requirement."],
+  [["F-01-01","Document change request",["Doc no.","Current rev.","Change requested","Reason / trigger","Raised by / date","Reviewed by / date","Approved by / date","New rev. / effective date"]],
+   ["F-01-02","Master list of security documents",["Doc no.","Title","Type","Owner","Rev.","Effective","Next review","Status"]],
+   ["F-01-03","Security review meeting minutes",["Meeting (monthly / quarterly / half-yearly / annual)","Date","Attendees","Incidents & trends","Open actions","Decisions","Owner","Target date"]]],
+  "Master list, change requests and minutes – kept for 3 years; obsolete documents archived for 3 years.",
+  "100 % of security documents numbered, approved and within review date; meetings held as per cadence with actions closed on time.",
+  ["AD-08","AD-09","AD-10","AD-11","AD-13","AD-14","AD-16"]],
+ ["SOP-02","Guarding, deployment and post orders","Guarding & post orders",
+  "To ensure every security post is manned as planned by trained guards who know their post orders.",
+  "On-roll security staff and contracted guards at all posts.",
+  [["Post order","Signed instruction for one post: duties, checks, do's and don'ts, escalation contacts."],["Deployment chart","Post-wise, shift-wise plan of sanctioned vs actual guards."]],
+  [["Agency supervisor","Prepares the daily deployment chart, briefs guards, checks alertness."],["Security In-charge","Approves deployment changes, audits posts, keeps post orders current."],["Plant Head","Approves the sanctioned strength."]],
+  ["The sanctioned strength per post and shift is fixed in the Site Security Plan and the agency contract; any change needs Plant Head approval.",
+   "At each shift start the agency supervisor prepares the deployment chart (F-02-01), confirms every post is filled, including female guards where required, and signs it; the Security In-charge countersigns.",
+   "Each post has a current post order (F-02-02) displayed at the post; the guard signs that he / she has read it on first deployment and after every revision.",
+   "Absent guards are replaced within 30 minutes; a post left unmanned for more than 30 minutes is escalated to the Security In-charge and recorded.",
+   "Shift handover is done at the post and recorded in the handover register (F-02-03): incidents, keys, open gate passes, equipment status.",
+   "The supervisor checks every post at least every two hours and records alertness, uniform and post-order knowledge (asking at least one question per visit)."],
+  [["F-02-01","Daily deployment chart",["Date / shift","Post","Sanctioned","Guard name","ID no.","Time in","Relieved by","Supervisor sign"]],
+   ["F-02-02","Post order",["Post name / no.","Duties","Checks to perform","Prohibited actions","Escalation contacts","Rev. / date","Approved by"]],
+   ["F-02-03","Handover register",["Date / time","Post","Handed over by","Taken over by","Incidents","Keys","Open items","Signatures"]]],
+  "Deployment charts and handover registers – 1 year.",
+  "Posts manned 100 % of shift time; zero unauthorised post absence; post-order knowledge ≥ 90 % in supervisor checks.",
+  ["AD-12","AD-19","AD-20","W-04"]],
+ ["SOP-03","Patrolling and surprise checks","Patrolling",
+  "To detect breaches, unsafe conditions and lapses through planned patrols and independent surprise checks.",
+  "Perimeter, buildings, critical areas, parking and stores, day and night.",
+  [["Patrol point","A numbered checkpoint on the patrol route (tag or register signature)."],["Surprise check","An unannounced check of posts and patrols by an on-roll manager."]],
+  [["Patrol guard","Completes rounds and records exceptions."],["Agency supervisor","Plans routes and timings, reviews records each shift."],["Security In-charge / on-roll manager","Carries out surprise checks."]],
+  ["Patrol routes covering the full boundary, critical areas (DG, transformer, panels, HSD, stores, roof) and parking are defined in the site annexure with numbered patrol points.",
+   "Rounds are done at least every two hours at night and every four hours by day, at varied times; each patrol point is recorded on the guard-tour system or in the patrol register (F-03-01).",
+   "Exceptions – breach, open door, light failure, unattended material, person without ID – are reported immediately to the supervisor and recorded with action taken.",
+   "An on-roll manager (Security In-charge, HR or a nominated manager) carries out at least one documented surprise night check per month (F-03-02); the agency's own night rounds do not replace this independent check.",
+   "Patrol and surprise-check exceptions are reviewed in the monthly site security meeting and closed with evidence."],
+  [["F-03-01","Patrol register / guard-tour report",["Date","Round no.","Patrol point","Time","Observation","Exception reported to","Guard sign"]],
+   ["F-03-02","Surprise check report",["Date / time","Checked by","Posts visited","Guard alert (Y/N)","Post order known (Y/N)","Lapses","Action","Closure date"]]],
+  "Patrol registers and surprise check reports – 1 year.",
+  "100 % of planned rounds completed; ≥ 1 surprise check per month; exceptions closed within 7 days.",
+  ["AD-23","W-08","W-01"]],
+ ["SOP-04","Access control and zoning","Access control",
+  "To ensure that people enter only the areas their role requires, and that every entry to restricted areas is controlled and traceable.",
+  "All persons entering any Dixon site in Selaqui and every access-controlled door, gate and turnstile.",
+  [["Zone 0 – public","Approach road and outside the gate; no control beyond CCTV and lighting."],["Zone 1 – controlled","Inside the boundary: security office, yard, canteen, offices. Entry with valid ID or visitor pass."],["Zone 2 – restricted","Production floors, stores, dispatch, maintenance. Entry only for staff assigned to the area, by card / face reader, with anti-tailgating."],["Zone 3 – high security","Server / CCTV room, HV panels, transformer, DG, HSD, high-value stores, customer-confidential areas, roof. Entry only for named persons on the zone's authorised list."],["Access matrix","Table of zones vs roles stating who may enter each zone and at what times."]],
+  [["Zone owner (department head)","Requests and justifies access for his / her staff."],["Security In-charge","Maintains the access matrix and the zone lists; reviews access quarterly."],["IT / system administrator","Configures access only on an approved request."],["Plant Head","Approves Zone 3 access and the access matrix; Group Security Chief approves changes to zone definitions."]],
+  ["Each site classifies every area into Zones 0–3 as defined above and records the classification and zone map in its annexure.",
+   "The access matrix (F-04-01) lists, for every role, the zones and times allowed; it is prepared by the Security In-charge, reviewed by the zone owners and HR, and approved by the Plant Head.",
+   "Access is granted only on an approved access request (F-04-02): employee details, role, zones requested, justification, zone-owner approval and – for Zone 3 – Plant Head approval. IT configures the access and records the request number.",
+   "Each person presents his / her own card or face at every reader; tailgating, lending a card or propping a door open is a disciplinary offence. Gates and turnstiles work on in–out (anti-passback) so that presence on site can be established at any time.",
+   "Door-forced and door-held-open alarms are routed to the control room and answered within 2 minutes; each alarm is logged with the cause and action.",
+   "Access lists are reviewed every quarter by the zone owners (F-04-03); leavers and transferred staff are deactivated on their last working day.",
+   "Where no electronic access exists, the zone is kept locked with key control (SOP-10) or manned, and entries are recorded in a zone entry register."],
+  [["F-04-01","Access matrix",["Role / department","Zone 1","Zone 2 areas","Zone 3 areas","Time window","Approved by / date"]],
+   ["F-04-02","Access request",["Request no.","Name / ID","Role","Zones and doors","Justification","Zone owner approval","Plant Head (Zone 3)","Configured by / date"]],
+   ["F-04-03","Quarterly access review",["Quarter","Zone","Users reviewed","Removed","Exceptions","Reviewed by","Date"]]],
+  "Access requests, reviews and alarm logs – 3 years.",
+  "Zero unapproved access in quarterly review; alarms answered within 2 minutes; leavers deactivated on the same day.",
+  ["AD-31","AD-32","AD-33","AD-63","W-02","W-10"]],
+ ["SOP-05","ID cards and passes","ID cards & access passes",
+  "To make every person on site identifiable and to prevent misuse of lost or returned cards.",
+  "Employees, contract workers, trainees, visitors and vendors.",
+  [["Colour code","Card colour by category (e.g. employee, contract, trainee, visitor) as fixed in the site annexure."]],
+  [["HR","Issues cards after verification; records lost cards."],["Security","Checks ID at gates and inside; blocks lost cards; collects cards at exit."]],
+  ["A photo ID is issued only after background verification (SOP-17) and is colour-coded by category.",
+   "The ID is worn visibly above the waist at all times inside the boundary; supervisors and guards challenge anyone without a visible ID and record it (F-05-02).",
+   "A lost card is reported to Security immediately; the card is blocked within 1 hour and recorded in the lost-card register (F-05-01) before a replacement is issued.",
+   "Temporary cards and visitor passes are returned at exit; unreturned passes are followed up the same day.",
+   "Cards are collected at separation and destroyed or reissued only after formatting."],
+  [["F-05-01","ID issue and lost-card register",["Card no.","Name","Category / colour","Issued on","Lost on","Blocked at (time)","Replacement no.","Returned on"]],
+   ["F-05-02","ID non-compliance log",["Date / time","Location","Person / department","Observed by","Action taken"]]],
+  "ID registers – for the employment period plus 1 year.",
+  "100 % visible ID in spot checks; lost cards blocked within 1 hour.",
+  ["AD-29","AD-30","W-02"]],
+ ["SOP-06","Visitor and contractor management","Visitor & contractor management",
+  "To ensure every visitor and contractor is identified, authorised, escorted where required and leaves as expected.",
+  "Visitors, vendors, auditors, contractors and their tools.",
+  [["Host","The employee who invites and is responsible for the visitor."]],
+  [["Host","Pre-registers the visitor, escorts him / her in Zones 2–3."],["Security","Verifies ID, issues pass, checks tools, ensures exit."]],
+  ["Visitors are pre-registered by the host in the visitor management system; at the gate Security verifies photo ID, captures a photo and issues a pass.",
+   "Visitors are escorted in Zones 2 and 3; photography is allowed only with written permission from the Plant Head.",
+   "Contract workers are verified, inducted and listed before first entry; their tools and material are declared at entry (F-06-01) and checked at exit.",
+   "Hot work, work at height and electrical work are allowed only under a valid work permit linked to the contractor entry."],
+  [["F-06-01","Tool / material declaration",["Date","Contractor / name","Item","Qty","Serial no.","In time","Out time","Checked by"]]],
+  "Visitor data and declarations – 1 year (personal data handled as per the DPDP Act).",
+  "100 % visitors registered and closed out; zero tool mismatches unexplained.",
+  ["AD-40","AD-41"]],
+ ["SOP-07","Vehicle movement and parking","Vehicle movement",
+  "To admit only authorised vehicles and drivers and to prevent material leaving hidden in vehicles.",
+  "All goods vehicles, staff buses, cars and two-wheelers.",
+  [["Approved vehicle list","List of transporter vehicles and drivers approved by Logistics."]],
+  [["Logistics","Maintains the approved vehicle list and approves exceptions."],["Security","Checks vehicles and drivers, records movement."]],
+  ["Only vehicles on the approved list (F-07-01) are admitted; any other vehicle needs written approval from Logistics before entry.",
+   "Driver ID and licence are checked and recorded; the vehicle is searched against the checklist (F-07-02) on entry and exit.",
+   "Time in / out is recorded; vehicles park only in marked bays away from the boundary wall and critical areas.",
+   "Vehicles overstaying or refusing checks are escalated to the Security In-charge."],
+  [["F-07-01","Approved transporter vehicle list",["Vehicle no.","Type","Transporter","Driver","Driver ID / licence","Valid till","Approved by"]],
+   ["F-07-02","Vehicle check record",["Date","Vehicle no.","In / out time","Driver ID","Cabin / body / underside checked","Seal no.","Remarks","Guard sign"]]],
+  "Vehicle records – 1 year.",
+  "100 % vehicles checked and recorded; zero unlisted vehicles without approval.",
+  ["AD-42","AD-43","W-03"]],
+ ["SOP-08","Material gate pass, inward and dispatch","Dispatch & inward",
+  "To ensure no material enters or leaves without authorisation and that loads are sealed and verified.",
+  "Raw material, finished goods, returnable and non-returnable items, inter-plant transfers.",
+  [["RGP / NRGP","Returnable / non-returnable gate pass raised in SAP."]],
+  [["Stores / Logistics","Raise gate passes and reconcile open RGPs."],["Security","Checks every load against the gate pass and seals."]],
+  ["No material leaves without an approved SAP gate pass checked at the gate against the physical load and the authorised signatory list.",
+   "Inward: the seal number is recorded and verified against the invoice / e-way bill before unloading (F-08-01); a mismatch is escalated before the vehicle is unloaded.",
+   "Outward and inter-plant: the vehicle is sealed after loading, the seal number is written on the gate pass and recorded; GPS tracking is active for finished goods.",
+   "Open RGPs are reconciled weekly by Logistics and reported in the monthly meeting.",
+   "Movement between plots or plants is recorded at the crossing point in the inter-plant movement register (F-08-02)."],
+  [["F-08-01","Inward seal verification",["Date / time","Vehicle no.","Supplier","Invoice / e-way bill","Seal no. on document","Seal no. found","Match (Y/N)","Guard sign"]],
+   ["F-08-02","Inter-plant movement register",["Date / time","From plot","To plot","Material / qty","Gate pass no.","Seal no.","Sent by","Received by"]]],
+  "Gate pass and seal records – 3 years.",
+  "100 % loads with matching gate pass and seal; open RGPs > 30 days reported monthly.",
+  ["AD-44","AD-45","AD-46","W-03"]],
+ ["SOP-09","Scrap and e-waste disposal","Scrap & e-waste",
+  "To prevent theft and IP leakage through scrap and rejected units.",
+  "All scrap, rejected units and e-waste.",
+  [],
+  [["Stores / EHS","Segregate, document and hand over to authorised recyclers."],["Security","Witnesses weighment and dispatch."]],
+  ["Scrap is stored in a locked, segregated yard; e-waste and rejected units are kept separately.",
+   "Scrap leaves only with a gate pass and weighment slip, weighed under the eye of a security guard (at an external weighbridge if none on site).",
+   "E-waste and rejected units are handed only to authorised recyclers; the certificate of destruction is filed against each manifest."],
+  [["F-09-01","Scrap dispatch record",["Date","Gate pass no.","Material","Gross / tare / net weight","Weighbridge","Witnessed by","Recycler / certificate no."]]],
+  "Manifests, weighment slips and certificates – 5 years.",
+  "Certificate on file for 100 % of e-waste disposals.",
+  ["AD-47","AD-48"]],
+ ["SOP-10","Key control","Key control",
+  "To know at all times who holds the key to every lockable area.",
+  "All keys, including master and duplicate keys.",
+  [],
+  [["Security","Holds the key cabinet and register."],["Zone owner","Approves who may draw keys of his / her area."]],
+  ["All keys are numbered and tagged and kept in a locked key cabinet at the security office; master and duplicate keys are kept sealed.",
+   "Keys are issued only to persons on the area's authorised list and recorded (F-10-01) with time out and time in.",
+   "Utility keys (DG, HV panel, transformer, HSD, roof) are never kept near the equipment.",
+   "A monthly key audit (F-10-02) compares the cabinet with the register; a missing key is treated as an incident."],
+  [["F-10-01","Key register",["Key no.","Area","Issued to","Time out","Purpose","Time in","Guard sign"]],
+   ["F-10-02","Monthly key audit",["Month","Keys in register","Keys in cabinet","Missing / untagged","Action","Audited by"]]],
+  "Key registers and audits – 1 year.",
+  "Zero unexplained keys in the monthly audit.",
+  ["AD-34","W-07","W-10"]],
+ ["SOP-11","CCTV operation, footage handling and control room","CCTV & control room",
+  "To make sure cameras are watched, faults are fixed and footage is handled as evidence.",
+  "All CCTV systems, NVRs, monitors and footage.",
+  [["Footage request","Written request to view or export footage, with reason and approval."]],
+  [["Control room operator","Monitors, logs events and faults."],["Security In-charge","Approves footage viewing and export."],["IT","Maintains NVRs, health alerts and retention."]],
+  ["The control room is manned as per the deployment plan; the operator logs every event and fault (F-11-01).",
+   "Recording is 24×7 with retention of at least 30 days (90 days for critical areas where customers require it); NVR health, HDD and video-loss alerts are configured and acted on within 1 hour.",
+   "Footage is viewed or exported only against an approved request (F-11-02); USB export is restricted to authorised users; exported media is encrypted, numbered and logged with chain of custody.",
+   "The camera schedule and coverage layout are checked monthly against the working cameras; faults are fixed within the AMC response time."],
+  [["F-11-01","Control room log",["Date / time","Camera / area","Event or fault","Action taken","Escalated to","Operator sign"]],
+   ["F-11-02","Footage request register",["Request no.","Requested by","Camera / period","Reason","Approved by","Exported to (media no.)","Handed to","Returned / destroyed"]]],
+  "Logs and footage registers – 3 years.",
+  "Monitoring ≥ 98 % of the shift; faults closed within the agreed time; 100 % exports approved.",
+  ["AD-35","AD-36","AD-37","AD-38","W-05","W-06"]],
+ ["SOP-12","Frisking and prohibited items","Frisking & prohibited items",
+  "To screen people consistently and respectfully and stop prohibited items entering or leaving.",
+  "Employees, contract workers and visitors at production exits and gates.",
+  [["Prohibited items","Items listed in the site annexure, e.g. cameras, storage media, sharp objects, personal phones in production areas."]],
+  [["Guards","Carry out frisking as trained."],["Supervisor","Checks method, handles exceptions."]],
+  ["The prohibited-items list and mobile / media rules for each zone are displayed at the gates.",
+   "Method: the person stands with both arms raised; the HHMD is held about 3 cm from the body and moved head to toe, front then back, including arms and legs; footwear, belts, pockets and bags are checked separately.",
+   "Frisking is done by a guard of the same gender in a screened booth where needed.",
+   "Every alarm that cannot be resolved, and every prohibited item found, is recorded (F-12-01) and escalated to the supervisor.",
+   "The DFMD / HHMD is function-tested at the start of each shift (SOP-15)."],
+  [["F-12-01","Frisking exception register",["Date / time","Gate / exit","Name / ID","Item found / alarm","Action","Supervisor","Guard sign"]]],
+  "Exception register – 1 year.",
+  "100 % of exits screened; exceptions recorded and resolved.",
+  ["AD-51","AD-64","W-07"]],
+ ["SOP-13","Incident reporting, investigation and CAPA","Incident reporting & response",
+  "To report, contain and investigate every security incident and prevent recurrence.",
+  "Theft, pilferage, intrusion, tailgating, violence, unrest, lost IDs, alarms, near-misses.",
+  [["Near-miss","An event that could have caused loss but did not."]],
+  [["Any employee / guard","Reports immediately."],["Security In-charge","Logs, contains, assigns investigation."],["Investigator","Completes the report and CAPA."],["Plant Head / Group Security Chief","Review serious incidents and trends."]],
+  ["Every incident and near-miss is reported to the Security In-charge within 1 hour and entered in the incident register (F-13-01).",
+   "The scene and CCTV footage are preserved; the police are informed where required.",
+   "A nominated investigator completes the investigation report (F-13-02) within 7 days, with root cause and CAPA.",
+   "Serious incidents are reported to the Group Security Chief within 24 hours.",
+   "Incidents, near-misses and CAPA status are reviewed in the monthly site meeting and the quarterly review."],
+  [["F-13-01","Incident register",["Incident no.","Date / time","Location","Type","Reported by","Immediate action","Investigator","Status"]],
+   ["F-13-02","Investigation report",["Incident no.","Facts","Evidence (CCTV, statements)","Root cause","CAPA","Owner","Target date","Closed on"]]],
+  "Incident records – 5 years.",
+  "100 % incidents reported within 1 hour; CAPA closed on time.",
+  ["AD-15","AD-53","AD-54"]],
+ ["SOP-14","Emergency response (security role)","Emergency response",
+  "To define security's actions in emergencies so that people are safe and the site is secured.",
+  "Fire, evacuation, intrusion, bomb threat, sabotage, civil disturbance, labour unrest, flood and earthquake.",
+  [],
+  [["Security In-charge","Leads security response, gate control and headcount support."],["EHS","Owns the Emergency Response Plan and drills."],["Guards","Act as per the scenario cards."]],
+  ["Scenario cards for each emergency are kept at every post and in the control room.",
+   "On fire alarm and on power failure, all access-controlled doors on escape routes release automatically (fail-safe); the release is tested every quarter (F-14-01).",
+   "Gates are cleared for emergency vehicles; no one re-enters until the all-clear; headcount at the assembly point is reconciled with attendance, visitors and contractors.",
+   "At least one security scenario (intrusion, bomb threat or unrest) is drilled every year in addition to fire drills; lessons learnt are recorded."],
+  [["F-14-01","Fail-safe door test",["Date","Door / location","Released on alarm (Y/N)","Released on power failure (Y/N)","Defect","Tested by"]]],
+  "Drill and test records – 3 years.",
+  "Fail-safe release 100 % in quarterly tests; evacuation within the drill target.",
+  ["AD-55","AD-56","AD-57","AD-58","AD-59","AD-60","AD-62","W-09"]],
+ ["SOP-15","Security equipment checks and maintenance","Security equipment checks",
+  "To keep security equipment working and tested.",
+  "DFMD, HHMD, CCTV, access control, boom barriers, alarms, radios and PA.",
+  [],
+  [["Guards","Daily function tests."],["Security In-charge / Maintenance","Preventive maintenance and AMC follow-up."]],
+  ["DFMD and HHMD are tested at the start of every shift with a test piece and recorded (F-15-01); a failed device is reported and replaced the same day.",
+   "Preventive maintenance of CCTV, access control, barriers and alarms follows the AMC / CAMC schedule and is signed off by the vendor and Security.",
+   "Radios and PA are checked daily."],
+  [["F-15-01","Equipment function-test register",["Date / shift","Equipment / location","Test result (pass / fail)","Action","Guard sign"]]],
+  "Test registers and PM reports – 1 year.",
+  "100 % daily tests recorded; no device out of service > 24 hours.",
+  ["AD-39","AD-64","AD-65","AD-66","AD-67"]],
+ ["SOP-16","Security contracts and vendor management (manpower, AMC, CAMC)","Security governance",
+  "To ensure security services and systems are contracted, monitored and renewed with clear obligations.",
+  "Guarding (manpower) contracts, AMC (annual maintenance contract – service and labour) and CAMC (comprehensive AMC – service, labour and spares) for CCTV, access control, barriers, detectors and alarms.",
+  [["SLA","Service level: response and restoration times, manpower fill rate, reporting."],["Penalty","Deduction for SLA breach as written in the contract."]],
+  [["Purchase / Admin","Contracts and renewals."],["Security In-charge","Monitors SLA monthly and certifies invoices."],["Group Security Chief","Approves security contracts and annual vendor evaluation."]],
+  ["Every security contract states scope, sites, manpower schedule or asset list, SLA, penalties, statutory compliance (PSARA, PF, ESI, minimum wages), confidentiality, insurance and the term with an expiry date.",
+   "Guarding: the agency must hold a valid PSARA licence for the state; guards are verified and trained before deployment; monthly compliance documents (wage register, PF / ESI challans) are checked before the invoice is certified.",
+   "AMC / CAMC: the asset list, PM schedule, response time and spares coverage are listed; CAMC is preferred for critical systems so that spares do not delay repairs.",
+   "SLA performance is reviewed monthly (F-16-01); penalties are applied as per the contract.",
+   "Contracts are tracked in the contract register (F-16-02); renewal starts 60 days before expiry and every vendor is evaluated annually."],
+  [["F-16-01","Monthly SLA review",["Month","Vendor","SLA item","Target","Actual","Penalty","Remarks","Reviewed by"]],
+   ["F-16-02","Security contract register",["Contract","Vendor","Type (manpower / AMC / CAMC)","Start","Expiry","PSARA / licence valid till","Owner","Renewal started"]]],
+  "Contracts and SLA reviews – contract term plus 3 years.",
+  "No contract or licence lapsed; SLA ≥ 95 %.",
+  ["AD-17","AD-18","AD-25","AD-26","AD-28","AD-39"]],
+ ["SOP-17","Background verification and security training","Background verification",
+  "To deploy only verified people and keep security skills current.",
+  "Employees, contract workers, guards and drivers.",
+  [],
+  [["HR","BGV and training records."],["Security In-charge","Security induction and refreshers."]],
+  ["Background and police verification are completed before deployment; no one starts work without a cleared record.",
+   "Every new joiner attends a security induction (ID, access, prohibited items, reporting); guards complete the site induction and refreshers as per the training calendar.",
+   "Attendance and assessment are recorded (F-17-01)."],
+  [["F-17-01","Training record",["Date","Topic","Trainer","Name / ID","Category","Assessment","Sign"]]],
+  "BGV records – employment plus 1 year; training records – 3 years.",
+  "100 % verified before deployment; training calendar ≥ 95 % completed.",
+  ["AD-21","AD-22","AD-27","AD-68","AD-69"]]];
+const DOC_TYPES=[["Policy","Management's intent and commitment – the 'why' and 'what'. Short, signed and dated by top management.","Top management (Business Head)","Every year"],
+ ["Manual / Site Security Plan","How security is organised as a whole – structure, roles, zones, resources. References the procedures and SOPs.","Group Security Chief","Every year"],
+ ["Procedure","How a process runs across functions – who does what, in what order, with which inputs and outputs.","Group Security Chief","Every year"],
+ ["SOP (standard operating procedure)","Step-by-step instructions for one security activity, with formats, records and performance standards. What guards and staff follow on the floor.","Group Security Chief, after Plant Head review","Every year or after any incident / change"],
+ ["Work instruction","A single task at a single post (e.g. how to frisk at Exit 2). Displayed at the post.","Plant Head","With the parent SOP"],
+ ["Format / form","The blank template used to record an activity (e.g. F-03-01 patrol register).","Owner of the parent SOP","With the parent SOP"],
+ ["Record","A completed format – evidence that the activity was done. Never changed after the event.","Kept by the function","Retention as per the SOP"],
+ ["Guideline","Recommended good practice; not mandatory unless adopted in an SOP.","Group Security Chief","As needed"]];
 function makeSOPSet(){
   openDoc("Corporate Security SOP Set",()=>{
     const done=SITES.filter(s=>D.obs.some(e=>e.scope===s.id));
-    let b=docCover("Corporate-Level Security SOP Set","Dixon Technologies – Selaqui operations",'<tr><th>Applies to</th><td>'+SITES.map(s=>esc(s.no+". "+s.name)).join("; ")+'</td></tr><tr><th>Sites audited so far</th><td>'+done.map(s=>esc(s.no+". "+s.name)).join(", ")+'</td></tr>');
-    b+='<section class="pb"><h2>How to use this set</h2><p>One consolidated set of security SOPs for all Dixon sites in Selaqui. Each site adds a short annexure with its own post names, zone list, contact numbers and equipment. The audit gaps that each SOP closes are listed under every SOP so that the set can be checked against the findings.</p>'+
-     '<table><tr><th>No.</th><th>SOP</th><th>Closes gaps at</th></tr>'+SOPS.map(x=>{const hits=done.filter(s=>x[5].some(id=>{const p=D.pts.get(s.id+"|"+id);return p&&p.risk>=5;}));return '<tr><td>'+x[0]+'</td><td>'+esc(x[1])+'</td><td>'+(hits.map(s=>s.no+". "+esc(s.name)).join(", ")||'<span class="muted">–</span>')+'</td></tr>';}).join("")+'</table></section>';
-    for(const [no,title,topic,steps,records,ids] of SOPS){
-      const gaps=done.flatMap(s=>ids.map(id=>({s,id,p:D.pts.get(s.id+"|"+id)})).filter(x=>x.p&&x.p.risk>=5));
-      const O=topic?OR_TOPIC[topic]:null;
-      b+='<section class="sop"><h2>'+no+' · '+esc(title)+'</h2><table class="hd"><tr><th>Document no.</th><td>DIX-SEL-SEC-'+no.slice(4)+'</td><th>Revision</th><td>00 (draft)</td></tr><tr><th>Owner</th><td>'+esc(O?O[0]:"Plant Head / Security In-charge")+'</td><th>Approved by</th><td>Plant Head</td></tr></table>'+
-        '<h3>Purpose and scope</h3><p>To define how '+esc(title.toLowerCase())+' is carried out at every Dixon site in Selaqui, by on-roll staff and the security agency.</p>'+
-        '<h3>Procedure</h3><ol>'+steps.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ol>'+
-        (O?'<h3>Performance standard</h3><p>'+esc(O[1])+'</p>':'')+
-        '<h3>Records</h3><ul>'+records.map(r=>'<li>'+esc(r)+'</li>').join("")+'</ul>'+
-        '<h3>Audit gaps this SOP closes</h3>'+(gaps.length?'<table><tr><th>Site</th><th>Point</th><th>Current risk</th></tr>'+gaps.map(x=>'<tr><td>'+esc(x.s.no+". "+x.s.name)+'</td><td><b>'+x.id+'</b> '+esc(ITEM[x.id].text.slice(0,80))+'</td>'+riskCellHTML(x.p.rx.li,x.p.rx.im)+'</tr>').join("")+'</table>':'<p class="muted">No rated gap at the sites audited so far.</p>')+'</section>';
+    const gapAt=(s,ids)=>ids.map(id=>({s,id,p:D.pts.get(s.id+"|"+id)})).filter(x=>x.p&&(["high","med","low"].includes(x.p.sev)||["notavail","noncomp","improve"].includes(x.p.status)));
+    let b=docCover("Corporate-Level Security SOP Set","Dixon Technologies – Selaqui operations",'<tr><th>Applies to</th><td>'+SITES.map(s=>esc(s.no+". "+s.name)).join("; ")+'</td></tr><tr><th>Sites audited</th><td>'+done.map(s=>esc(s.no+". "+s.name)).join(", ")+'</td></tr>');
+    b+='<section class="pb"><h2>A. Document hierarchy – what each type of document means</h2><table><tr><th>Type</th><th>What it is</th><th>Approved by</th><th>Review</th></tr>'+DOC_TYPES.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td><td>'+esc(r[3])+'</td></tr>').join("")+'</table>'+
+     '<p class="muted">Order of authority: Policy → Manual / Site Security Plan → Procedures → SOPs → Work instructions → Formats → Records. A lower document may not contradict a higher one.</p>'+
+     '<h2>B. Governance – approval and review</h2><h3>Approval matrix (no document is approved by the person who prepared it)</h3><table><tr><th>Document</th><th>Prepared by</th><th>Reviewed by</th><th>Approved by</th></tr>'+
+     [["Security policy","Group Security Chief","Plant Heads, HR Head","Business Head"],["Manual / Site Security Plan","Security In-charge (site)","Plant Head, EHS, HR","Group Security Chief"],["SOPs (this set)","Group Security Chief / Security In-charge","Plant Heads; HR, EHS, IT, Logistics as relevant","Group Security Chief"],["Site annexure to an SOP","Security In-charge","Zone owners","Plant Head"],["Work instruction / format","Security In-charge","Agency supervisor","Plant Head"]].map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join("")+'</tr>').join("")+'</table>'+
+     '<h3>Review cadence</h3><table><tr><th>Forum</th><th>Frequency</th><th>Chaired by</th><th>Agenda</th></tr>'+
+     [["Site security meeting","Monthly","Plant Head","Incidents and near-misses, patrol and surprise-check exceptions, open CAPA, deployment, system health, overdue documents"],
+      ["Security review with the Group Security Chief","Quarterly","Group Security Chief","Site-wise KPIs, trends across sites, access reviews, contracts and SLA, audit actions, changes to SOPs"],
+      ["Management review","Half-yearly","Business Head","Security risk register, investments (Operational Requirement), customer requirements, resource needs"],
+      ["Annual review","Yearly","Group Security Chief","Policy, manual, every SOP and the Site Security Plans; risk assessment refresh; training calendar"]].map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join("")+'</tr>').join("")+'</table>'+
+     '<h3>Group Security Chief</h3><p>The Group Security Chief owns this SOP set and the master list, approves SOPs and security contracts, chairs the quarterly review with every site, receives serious-incident reports within 24 hours, and visits each site at least once a year. Site Security In-charges report functionally to the Group Security Chief and administratively to their Plant Head.</p>'+
+     '<h2>C. Document nomenclature – one scheme for the whole organisation</h2><p>Every security document carries one number that tells where it applies and what it is:</p>'+
+     '<p style="font:700 11pt monospace;background:#F2F6F5;padding:8px 10px;border-radius:6px">ORG – COUNTRY – STATE – DISTRICT – SITE – FUNCTION – TYPE – NNN – Rrr</p>'+
+     '<table><tr><th>Element</th><th>Codes</th><th>Example</th></tr>'+
+     [["ORG","Company code","DIX"],["COUNTRY","ISO 3166 country code; GLB for global documents","IN"],["STATE","ISO 3166-2 state code; 00 for country-wide","UK (Uttarakhand)"],["DISTRICT","3-letter district code; 000 for state-wide","DDN (Dehradun)"],["SITE","Site code; CORP for corporate documents","SEL01 … SEL06 (Selaqui sites 1–6)"],["FUNCTION","SEC security · EHS · HR · IT","SEC"],["TYPE","POL policy · MAN manual · SSP site security plan · PRO procedure · SOP · WI work instruction · F format · REC record","SOP"],["NNN","Serial within the type","003"],["Rrr","Revision","R00"]].map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join("")+'</table>'+
+     '<p>Examples: <b>DIX-GLB-00-000-CORP-SEC-POL-001-R00</b> (group security policy) · <b>DIX-IN-00-000-CORP-SEC-SOP-003-R00</b> (this patrolling SOP, all India) · <b>DIX-IN-UK-DDN-SEL03-SEC-SSP-001-R00</b> (Site Security Plan, site 3) · format numbers follow the SOP, e.g. <b>F-03-01</b> within SOP-03.</p>'+
+     '<h3>One platform and revision control</h3><ul><li>All security documents live on one controlled document platform (DMS / SharePoint) with the master list; only the current revision is visible for use.</li><li>Each document carries a revision history table (rev., date, change, approved by); changes are made only through a change request (F-01-01).</li><li>Printed copies are stamped "Controlled copy" with a copy number and recalled on revision; uncontrolled prints are marked "For information only".</li><li>Access to edit is limited to the document owner; approvers sign digitally on the platform, which keeps the audit trail.</li><li>Obsolete revisions are archived, not deleted, for 3 years.</li></ul></section>';
+    b+='<section class="pb"><h2>D. SOP index and the audit gaps each closes</h2><table><tr><th>No.</th><th>SOP</th><th>Document no.</th><th>Closes gaps at</th></tr>'+SOPS.map(x=>{const hits=done.filter(s=>gapAt(s,x[11]).length);return '<tr><td>'+x[0]+'</td><td>'+esc(x[1])+'</td><td style="white-space:nowrap">DIX-IN-00-000-CORP-SEC-SOP-'+x[0].slice(4).padStart(3,"0")+'-R00</td><td>'+(hits.length===done.length?'All sites audited':hits.map(s=>s.no+". "+esc(s.name)).join(", ")||'<span class="muted">–</span>')+'</td></tr>';}).join("")+'</table></section>';
+    for(const [no,title,topic,purpose,scope,defs,resp,steps,formats,records,kpi,ids] of SOPS){
+      const gaps=done.flatMap(s=>gapAt(s,ids));
+      b+='<section class="sop"><h2>'+no+' · '+esc(title)+'</h2><table class="hd"><tr><th>Document no.</th><td>DIX-IN-00-000-CORP-SEC-SOP-'+no.slice(4).padStart(3,"0")+'</td><th>Revision</th><td>R00 (draft)</td></tr>'+
+        '<tr><th>Prepared by</th><td>Security In-charge / Group Security office</td><th>Reviewed by</th><td>Plant Heads'+(["SOP-05","SOP-17"].includes(no)?", HR Head":["SOP-14"].includes(no)?", EHS Head":["SOP-04","SOP-11"].includes(no)?", IT Head":["SOP-07","SOP-08","SOP-09"].includes(no)?", Logistics / Stores":"")+'</td></tr>'+
+        '<tr><th>Approved by</th><td>Group Security Chief</td><th>Effective / next review</th><td>On approval / 12 months later</td></tr></table>'+
+        '<h3>1. Purpose</h3><p>'+esc(purpose)+'</p><h3>2. Scope</h3><p>'+esc(scope)+'</p>'+
+        (defs.length?'<h3>3. Definitions</h3><table>'+defs.map(d=>'<tr><th style="width:28%">'+esc(d[0])+'</th><td>'+esc(d[1])+'</td></tr>').join("")+'</table>':'')+
+        '<h3>4. Responsibilities</h3><table>'+resp.map(r=>'<tr><th style="width:28%">'+esc(r[0])+'</th><td>'+esc(r[1])+'</td></tr>').join("")+'</table>'+
+        '<h3>5. Procedure</h3><ol>'+steps.map(t=>'<li>'+esc(t)+'</li>').join("")+'</ol>'+
+        '<h3>6. Formats</h3>'+formats.map(f=>'<div class="fmt"><b>'+f[0]+' – '+esc(f[1])+'</b><table><tr>'+f[2].map(c=>'<th>'+esc(c)+'</th>').join("")+'</tr>'+'<tr>'+f[2].map(()=>'<td>&nbsp;</td>').join("")+'</tr>'.repeat(1)+'<tr>'+f[2].map(()=>'<td>&nbsp;</td>').join("")+'</tr></table></div>').join("")+
+        '<h3>7. Records and retention</h3><p>'+esc(records)+'</p><h3>8. Performance standard</h3><p>'+esc(kpi)+'</p>'+
+        '<h3>9. Audit gaps this SOP closes</h3>'+(gaps.length?'<table><tr><th>Site</th><th>Point</th><th>Current risk</th></tr>'+gaps.map(x=>'<tr><td>'+esc(x.s.no+". "+x.s.name)+'</td><td><b>'+x.id+'</b> '+esc(ITEM[x.id]?ITEM[x.id].text.slice(0,90):"")+'</td>'+(x.p.rx?riskCellHTML(x.p.rx.li,x.p.rx.im):'<td>'+esc(ST[x.p.status]?ST[x.p.status].label:"")+'</td>')+'</tr>').join("")+'</table>':'<p class="muted">No gap recorded at the sites audited.</p>')+
+        '<h3>10. Revision history</h3><table><tr><th>Rev.</th><th>Date</th><th>Change</th><th>Approved by</th></tr><tr><td>R00</td><td>–</td><td>First issue (draft from the security audit)</td><td>–</td></tr></table></section>';
     }
     return b;});
 }
