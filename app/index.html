@@ -371,17 +371,17 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.34";
+const VERSION="2026-11-02.35";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
 const SITES=[
- {id:"s1",no:1,name:"DTSPL",addr:"Khasra No. 122 & 265, Central Hopetown, Selaqui",checklist:"08_26Oct requisition · SPOC Pankaj 9690650668 · audit 28–29 Oct"},
- {id:"s2",no:2,name:"DTSPL – Lighting",addr:"Khasra No. 323 MIN, Central Hope Town, Selaqui Industrial Area, Pargana Pachwadoon",checklist:"11_27Oct requisition · SPOC Pankaj 9690650668 · audit 29 Oct, 10:30 AM"},
- {id:"s3",no:3,name:"Dixon (Washing Machine)",addr:"Plot 261, 262, C-2, C-3, Industrial Area Selaqui, Central Hope Town, Dehradun 248011",checklist:"09_26Oct requisition · SPOC Abhishek 8887595898 · audit 30 Oct, 10:30 AM"},
- {id:"s4",no:4,name:"Lightanium",addr:"Khasra No. 1050, Central Hope Town, Selaqui Industrial Area, Tehsil Vikas Nagar, Dehradun 248011",checklist:"14_28Oct requisition · SPOC Munna 7668630498 · audit 31 Oct, 10:30 AM"},
+ {id:"s1",no:1,name:"DTSPL",addr:"Khasra No. 122 & 265, Central Hopetown, Selaqui",checklist:"08_26Oct requisition · SPOC Pankaj 9690650668 · audit 28 Oct"},
+ {id:"s2",no:2,name:"DTSPL – Lighting",addr:"Khasra No. 323 MIN, Central Hope Town, Selaqui Industrial Area, Pargana Pachwadoon",checklist:"11_27Oct requisition · SPOC Pankaj 9690650668 · audit 29 Oct"},
+ {id:"s3",no:3,name:"Dixon (Washing Machine)",addr:"Plot 261, 262, C-2, C-3, Industrial Area Selaqui, Central Hope Town, Dehradun 248011",checklist:"09_26Oct requisition · SPOC Abhishek 8887595898 · audit 30 Oct"},
+ {id:"s4",no:4,name:"Lightanium",addr:"Khasra No. 1050, Central Hope Town, Selaqui Industrial Area, Tehsil Vikas Nagar, Dehradun 248011",checklist:"14_28Oct requisition · SPOC Munna Kumar Gupta 9934141470 · audit 2 Nov"},
  {id:"s5",no:5,name:"Dixon WM Co. Plant",addr:"Plot C-8, SIDCUL Industrial Area, Selaqui, Dehradun",checklist:"Site-specific documents logged at C-8; common documents verified at site 3 · audit 30 Oct"},
- {id:"s6",no:6,name:"DTSPL – Washing Machine",addr:"Khasra No. 323 MI, Central Hope Town, Pargana Pachhwadoon, Selaqui, Dehradun",checklist:"Site-specific documents logged at 323 MI; common documents verified at site 3 · audit 30 Oct"}
+ {id:"s6",no:6,name:"DTSPL – Washing Machine",addr:"Khasra No. 323 MI, Central Hope Town, Pargana Pachhwadoon, Selaqui, Dehradun",checklist:"Site-specific documents logged at 323 MI; common documents verified at site 3 · audit 31 Oct"}
 ];
 // "G" is kept only for corporate/common auditees and for older entries that were logged under Common.
 const CORP={id:"G",no:"C",name:"Corporate / common",addr:"Head-office and group-level people."};
@@ -1625,7 +1625,7 @@ function reportHTML(r,scopes,ents,urls){
    '<tr><th>Issued</th><td>'+fmtFull(now)+' IST</td></tr><tr><th>Classification</th><td>Confidential – Dixon management and Northstar only</td></tr></table>'+
    '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
    '<div class="cv-toc"><b>Contents</b><ol>'+(scopes.length>1?'<li>Risk across sites</li>':'')+'<li>Risk assessment methodology</li>'+scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' – at a glance, findings, good practices, status of every point'+(r.photos?', photographic evidence':'')+'</li>').join("")+'</ol></div>'+
-   '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
+   '<p class="note">Compiled from the Selaqui audit field log. The field log is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
   if(scopes.length>1){const rows=crossRows(5);
     b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · – not logged · n/a not assessed · · not in the site checklist.</div>'+
      '<table class="xs"><tr><th>Point</th>'+SITES.map(s=>'<th>'+E(s.no)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr><td><b>'+r.it.id+'</b> '+E((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,70))+'</td>'+r.c.map(c=>crossCell(c,true)).join("")+'</tr>').join("")+'</table>'+
@@ -1655,20 +1655,20 @@ function reportHTML(r,scopes,ents,urls){
     const sevCls={high:"serious",med:"warn",low:"good"};
     b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
-      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
+      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'</td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
     const gp=ents.filter(e=>e.scope===sc&&(e.sev==="good"||e.sev==="info")&&rs(e)).sort((a,b2)=>(a.item||"zz").localeCompare(b2.item||"zz"));
     if(gp.length)b+='<h3>Good practices and compliant points ('+gp.length+')</h3><div class="muted">Controls found in place. The rating is the residual risk with the control working as observed.</div><table class="fd"><tr><th>Risk</th><th>Point</th><th>Observation</th><th>To sustain</th></tr>'+
       gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
-    b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th><th>Last update</th></tr>'+
+    b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th></tr>'+
       its.map(it=>{const p=D.pts.get(pkey(sc,it));const last=p?p.entries[p.entries.length-1]:null;
-        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">'+(skip.includes(it)?"Not assessed (desirable – time constraint)":"Not covered")+'</span>')+'</td>'+(p&&p.rx?riskCellHTML(p.rx.li,p.rx.im)+(p.rx.tli&&p.rx.tim?riskCellHTML(p.rx.tli,p.rx.tim):'<td class="muted">–</td>'):'<td class="muted">'+(p&&p.status==="notapp"?"N/A":"Not rated")+'</td><td class="muted">–</td>')+'<td>'+(last?E(uname(last.author))+'<br>'+fmt(last.ts):"–")+'</td></tr>';}).join("")+'</table>';
+        return '<tr><td>'+it.id+'</td><td>'+E(it.text)+(sc!=="G"&&it.scope==="G"?'<div class="muted">Common document – logged once for all sites</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+(it.sec==="doc"?'<br>'+it.when:'')+'</td><td>'+(p?(p.status?E(ST[p.status].label):"Notes only"):'<span class="muted">'+(skip.includes(it)?"Not assessed (desirable – time constraint)":"Not covered")+'</span>')+'</td>'+(p&&p.rx?riskCellHTML(p.rx.li,p.rx.im)+(p.rx.tli&&p.rx.tim?riskCellHTML(p.rx.tli,p.rx.tim):'<td class="muted">–</td>'):'<td class="muted">'+(p&&p.status==="notapp"?"N/A":"Not rated")+'</td><td class="muted">–</td>')+'</tr>';}).join("")+'</table>';
     const se=ents.filter(e=>e.scope===sc);
     b+='<h3>Entry log'+(r.period==="all"?"":" – "+E(period))+' ('+se.length+')</h3>'+(se.length?se.map(e=>{const it=e.item?ITEM[e.item]:null,L=laterInfo(e);
       return '<div class="ent"><div class="eh"><b>'+E(it?it.id:"Note")+'</b> '+(it?E(it.text.slice(0,120)):"")+'</div>'+
-       '<div class="meta">'+E(uname(e.author))+' · '+fmtFull(e.ts)+' IST'+(e.revs&&e.revs.length?' · edited by '+E(uname(e.revs[e.revs.length-1].author))+' '+fmtFull(e.revs[e.revs.length-1].ts)+' IST':'')+' · '+(e.geo?'GPS '+e.geo.lat.toFixed(5)+', '+e.geo.lng.toFixed(5)+' ±'+Math.round(e.geo.acc)+' m':'No GPS')+(e.hash?' · #'+E(e.hash.slice(0,12)):'')+'</div>'+
+
        ((e.status&&ST[e.status])||e.sev?'<div><b>'+[e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?"Severity: "+SEVM[e.sev].label:""].filter(Boolean).join(" · ")+'</b></div>':'')+
        (e.body?'<div class="body">'+E(e.body)+'</div>':'')+
        (e.extra&&e.extra.rec?'<div class="body"><b>Recommendation:</b> '+E(e.extra.rec)+'</div>':'')+
