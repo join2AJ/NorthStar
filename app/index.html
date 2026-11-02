@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.58";
+const VERSION="2026-11-02.59";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1978,7 +1978,7 @@ async function makePack(v,sel){
     const zw=zipWriter(),common={},day=dayKey(new Date().toISOString());
     // All sites: one ZIP, one folder per site; documents common to every site sit once in 0_Common.
     const add=(name,data)=>zw.add(name,data);
-    if(all&&has("6"))add("0_Common/All_Dixon_Selaqui_sites.kml",new TextEncoder().encode(sitesKML(sites)));
+    if(all&&has("6"))add("0_Common/Dixon_Selaqui_Site_Map_All_Sites.kml",new TextEncoder().encode(sitesKML(sites)));
     for(const [si,sc] of sites.entries()){
       const tag=siteTag(sc),dir=all?tag+"/":"",P=m=>prog((all?"Site "+(si+1)+"/"+sites.length+" · ":"")+"Site "+SITE[sc].no+": "+m);
       const pf=has("1")||has("4")?await photoFiles(allPhotos().filter(x=>x.e.scope===sc&&(has("1")||rowsHasPhoto(sc,x.ph.p))),dir+"1_Photos/",m=>P("photos "+m)):{files:[],byPath:{}};
@@ -1987,25 +1987,25 @@ async function makePack(v,sel){
       const tPaths=has("2")||has("3")||has("5.2")?[...new Set(ents.flatMap(e=>(e.photos||[]).map(p=>p.t)))]:[];
       const tb=await fetchBlobs(tPaths,m=>P("thumbnails "+m)),thumbs={};
       for(const p of tPaths)if(tb[p]){const im=await imgData(tb[p],420,0.8);if(im)thumbs[p]=im;}
-      if(has("2")){P("Excel");add(dir+"2_"+tag+"_Risk-matrix_Auditees_Findings.xlsx",await packExcel(sc,rows,thumbs));}
-      if(has("3")){P("PDF with photos in rows");add(dir+"3_"+tag+"_Findings_photos-in-rows.pdf",await packRowPdf(sc,rows,thumbs));}
+      if(has("2")){P("Excel");add(dir+pdfNameX("Findings Workbook",sc)+".xlsx",await packExcel(sc,rows,thumbs));}
+      if(has("3")){P("PDF with photos in rows");add(dir+pdfNameX("Findings Photos in Rows",sc)+".pdf",await packRowPdf(sc,rows,thumbs));}
       if(has("4")){const fPaths=[...new Set(rows.flatMap(r=>r.photos.map(p=>p.p)))],fb=await fetchBlobs(fPaths.filter(p=>!pf.byPath[p]),m=>P("photos for annex "+m)),med={};
         for(const p of fPaths){const b=pf.byPath[p]?new Blob([pf.byPath[p]],{type:"image/jpeg"}):fb[p];const im=b?await imgData(b,1100,0.72):null;if(im)med[p]=im;}
-        P("PDF with photo annex");add(dir+"4_"+tag+"_Findings_then_photos.pdf",await packAnnexPdf(sc,rows,med));}
+        P("PDF with photo annex");add(dir+pdfNameX("Findings then Photos",sc)+".pdf",await packAnnexPdf(sc,rows,med));}
       pf.byPath=null;
-      if(has("5.1")&&!common.cl){common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));add((all?"0_Common/":"5_Deliverables/")+"1_Security_Audit_Checklist.pdf",common.cl);}
+      if(has("5.1")&&!common.cl){common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));add((all?"0_Common/":"5_Deliverables/")+pdfName(1,"Security Audit Checklist")+".pdf",common.cl);}
       const urls={};for(const p of tPaths)if(tb[p]){const u=URL.createObjectURL(tb[p]);urls[p]=u;blobUrls0.push(u);}
-      if(has("5.2"))add(dir+"5_Deliverables/2_Security_Audit_Report_"+tag+".pdf",await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m)));
-      if(has("5.3"))add(dir+"5_Deliverables/3_Site_Security_Plan_"+tag+".pdf",await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m)));
-      if(has("5.4"))add(dir+"5_Deliverables/4_Operational_Requirement_"+tag+".pdf",await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m)));
-      if(has("5.5")&&!common.sop){common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));add((all?"0_Common/":"5_Deliverables/")+"5_Corporate_Security_SOP_Set.pdf",common.sop);}
-      if(has("6"))add(dir+"6_"+tag+"_Site_map.kml",new TextEncoder().encode(sitesKML([sc])));
+      if(has("5.2"))add(dir+"5_Deliverables/"+pdfName(2,"Security Audit Report",sc)+".pdf",await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m)));
+      if(has("5.3"))add(dir+"5_Deliverables/"+pdfName(3,"Site Security Plan",sc)+".pdf",await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m)));
+      if(has("5.4"))add(dir+"5_Deliverables/"+pdfName(4,"Operational Requirement",sc)+".pdf",await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m)));
+      if(has("5.5")&&!common.sop){common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));add((all?"0_Common/":"5_Deliverables/")+pdfName(5,"Corporate Security SOP Set")+".pdf",common.sop);}
+      if(has("6"))add(dir+pdfNameX("Site Map",sc)+".kml",new TextEncoder().encode(sitesKML([sc])));
       while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());
     }
     if(!zw.count){prog("Nothing to include - tick at least one item.");return;}
     prog("Zipping "+zw.count+" files…");
     const blob=zw.blob(),a=document.createElement("a");a.href=URL.createObjectURL(blob);
-    a.download=(all?"Dixon_Selaqui_All-sites":siteTag(v))+"_Audit-pack_"+day+".zip";
+    a.download=pdfNameX("Audit Pack",all?"all":v)+".zip";
     document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},15000);
     prog((all?"All-sites pack":"Site pack")+" ready - "+zw.count+" files, "+Math.round(blob.size/1048576)+" MB ("+Math.round((Date.now()-t0)/1000)+" s).");
   }catch(err){prog("Could not build the pack: "+(err.message||err));}
@@ -2078,6 +2078,8 @@ const AUDIT_LINE="Dixon Technologies - Selaqui sites security audit, "+AUDIT_PER
 // Document number and revision shown on every deliverable instead of a generation time stamp.
 // Page title = default file name when the document is saved as PDF, e.g. Dixon_Selaqui_D2_Security_Audit_Report_Site1_DTSPL.
 const pdfName=(d,label,sc)=>("Dixon_Selaqui_D"+d+"_"+label+(sc&&SITE[sc]?"_Site"+SITE[sc].no+"_"+SITE[sc].name:sc==="all"?"_All_Sites":"")).replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"");
+// Same pattern for site pack files that are not one of the five deliverables, e.g. Dixon_Selaqui_Findings_Workbook_Site1_DTSPL.
+const pdfNameX=(label,sc)=>("Dixon_Selaqui_"+label+(sc&&SITE[sc]?"_Site"+SITE[sc].no+"_"+SITE[sc].name:sc==="all"?"_All_Sites":"")).replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"");
 const docNo=(d,sc)=>"NSS/DTIL/SECA/2026-07/01/D"+d+(sc?"/"+(sc==="all"?"ALL":"S"+SITE[sc].no):"");
 // Revision = number of internal review rounds actually recorded in the audit log for that site (all sites for D1 and D5):
 // a round is a burst of edits / corrections separated from the next by more than 45 minutes.
