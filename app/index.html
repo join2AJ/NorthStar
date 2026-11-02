@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.48";
+const VERSION="2026-11-02.49";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -443,7 +443,8 @@ function riskMethodHTML(){
    '<h3>References</h3><ul class="refs"><li>ISO 31000:2018 - Risk management - Guidelines</li><li>IEC 31010:2019 - Risk management - Risk assessment techniques (consequence / likelihood matrix)</li><li>ISO 31073:2022 - Risk management - Vocabulary</li><li>ISO 28000:2022 - Security and resilience - Security management systems</li><li>ANSI/ASIS/RIMS RA.1-2015 - Risk Assessment standard</li><li>ANSI/ASIS PAP.1-2012 - Management System for Quality of Private Security Company Operations / ASIS Physical Asset Protection guideline</li><li>Private Security Agencies (Regulation) Act, 2005 (PSARA) and Uttarakhand rules</li><li>IS 1893 (Part 1):2016 - Criteria for earthquake resistant design of structures (seismic zoning)</li><li>NDMA National Disaster Management Guidelines - Management of Floods (2008)</li></ul>';
 }
 // "Photographic evidence" line listing the photo references of an observation.
-const evidLine=e=>{const r=(e.photos||[]).map(p=>photoRef(p.p)).filter(Boolean);return r.length?'<div class="evd">📷 Photographic evidence: '+r.length+' photo'+(r.length>1?"s":"")+' ('+esc(r.length>3?r.slice(0,3).join(", ")+" …":r.join(", "))+')</div>':'';};
+const allPh=e=>(e.photos||[]).concat(e.linked||[]);
+const evidLine=e=>{const r=allPh(e).map(p=>photoRef(p.p)).filter(Boolean);return r.length?'<div class="evd">📷 Photographic evidence: '+r.length+' photo'+(r.length>1?"s":"")+' ('+esc(r.length>3?r.slice(0,3).join(", ")+" …":r.join(", "))+')</div>':'';};
 // Risk cell for report tables: background in the 5x5 band colour.
 function riskCellHTML(li,im,lbl){if(!li||!im)return '<td class="muted">-</td>';const n=li*im,b=riskBand(n);return '<td class="r-'+b[1]+' rc"><b>'+n+'</b> '+b[0]+'<div>L'+li+' × I'+im+(lbl?'<br>'+lbl:'')+'</div></td>';}
 // Site perimeter from Google Earth (KML) drawn over satellite tiles; plain SVG fallback when tiles do not load.
@@ -902,6 +903,11 @@ function derive(){
   for(const k in people)people[k].sort((a,b)=>(a.d.func||"").localeCompare(b.d.func||"")||(a.d.name||"").localeCompare(b.d.name||""));
   D={all,live,withdrawn,pts,visits,exp,people,kids,refs};
   D.obs=live.filter(e=>isAudit(e)&&!isChild(e)).map(effObs);
+  // A photo-only entry (no text, rating or status) belongs with the written observation for the same point: documents show its photos there.
+  for(const po of D.obs){if(!po.item||(po.body||"").trim()||po.sev||po.status||!(po.photos||[]).length)continue;
+    const sib=D.obs.filter(o=>o!==po&&o.scope===po.scope&&o.item===po.item&&(o.body||"").trim());if(!sib.length)continue;
+    const t=sib.find(o=>/photo/i.test(o.body)&&!(o.photos||[]).length)||sib.find(o=>/photo/i.test(o.body))||sib[0];
+    t.linked=(t.linked||[]).concat(po.photos);po.mergedInto=t.id;}
   const SR={high:3,med:2,low:1};for(const p of pts.values()){p.sev=null;p.risk=0;p.trisk=0;p.rx=null;}
   for(const o of D.obs){const p=o.item&&o.scope?pts.get(o.scope+"|"+o.item):null;if(!p)continue;
     if(SR[o.sev]&&(!p.sev||SR[o.sev]>SR[p.sev]))p.sev=o.sev;
@@ -1663,7 +1669,7 @@ function reportHTML(r,scopes,ents,urls){
     rated.forEach(e=>{const k=e.extra.li+"x"+e.extra.im;(cells[k]=cells[k]||[]).push(e.item||"Other");bc[riskBand(rs(e))[0]]++;});
     if(rated.length)b+='<h3>Risk profile - current risk of every rated observation ('+rated.length+')</h3><div class="muted">Each cell shows its risk score (top left), the number of observations (large figure) and the point IDs.</div>'+riskMatrixHTML(cells)+'<div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
     const sevCls={high:"serious",med:"warn",low:"good"};
-    const shown=new Set(),phRow=(e,cols)=>{if(!r.photos||!(e.photos||[]).length)return '';const fig=e.photos.filter(p=>urls[p.t]).map(p=>'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>').join('');if(!fig)return '';shown.add(e.id);return '<tr class="phr"><td colspan="'+cols+'"><div class="ph">'+fig+'</div></td></tr>';};
+    const shown=new Set(),phRow=(e,cols)=>{if(!r.photos||!allPh(e).length)return '';const fig=allPh(e).filter(p=>urls[p.t]).map(p=>'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>').join('');if(!fig)return '';shown.add(e.id);return '<tr class="phr"><td colspan="'+cols+'"><div class="ph">'+fig+'</div></td></tr>';};
     b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd fd6"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
       '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'</td><td>'+E(e.extra&&e.extra.rec||"-")+'</td>'+
@@ -1686,7 +1692,7 @@ function reportHTML(r,scopes,ents,urls){
        (e.extra&&(e.extra.li||(e.extra.sop&&e.extra.sop.length))?'<div class="muted">'+[e.extra.li&&e.extra.im?'<span class="rtag r-'+riskBand(e.extra.li*e.extra.im)[1]+'">Risk '+(e.extra.li*e.extra.im)+" "+riskBand(e.extra.li*e.extra.im)[0]+"</span> L"+e.extra.li+" × I"+e.extra.im+(e.extra.tli&&e.extra.tim?' → target <span class="rtag r-'+riskBand(e.extra.tli*e.extra.tim)[1]+'">'+(e.extra.tli*e.extra.tim)+" "+riskBand(e.extra.tli*e.extra.tim)[0]+"</span>":""):"",(e.extra.sop||[]).length?"SOP: "+E(e.extra.sop.join(", ")):""].filter(Boolean).join(" · ")+'</div>':'')+
        (L?'<div class="muted">Will be shared by '+E(L.name)+(L.mobile?' · '+E(L.mobile):'')+(L.email?' · '+E(L.email):'')+(L.due?' · expected '+E(fmtDate(L.due)):'')+'</div>':
          ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="muted">'+[E((e.evid||[]).join(", ")),e.by?"From "+E(e.by):"",e.ref?"Ref "+E(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
-       (r.photos&&e.photos&&e.photos.length&&shown.has(e.id)?'<div class="muted">📷 Photos shown under the finding above.</div>':'')+(r.photos&&e.photos&&e.photos.length&&!shown.has(e.id)?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
+       (r.photos&&e.photos&&e.photos.length&&(shown.has(e.id)||(e.mergedInto&&shown.has(e.mergedInto)))?'<div class="muted">📷 Photos shown under the finding above.</div>':'')+(r.photos&&e.photos&&e.photos.length&&!shown.has(e.id)&&!(e.mergedInto&&shown.has(e.mergedInto))?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
     b+='</section>';
   }
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selaqui audit report '+E(period)+'</title><style>'+
@@ -1788,7 +1794,7 @@ function packRows(sc){
     return {no:i+1,kind,e,li:n?e.extra.li:0,im:n?e.extra.im:0,band:n?riskBand(n):null,tband:t?riskBand(t):null,
      riskTxt:n?n+" "+riskBand(n)[0]+" (L"+e.extra.li+" x I"+e.extra.im+")":(SEVM[e.sev]?SEVM[e.sev].label+" (not scored)":"-"),
      point:(e.item||"Other observation")+(e.item&&ITEM[e.item]?" - "+ITEM[e.item].text:""),desc:e.body||"",rec:(e.extra&&e.extra.rec)||"",
-     tgt:t?t+" "+riskBand(t)[0]+" (L"+e.extra.tli+" x I"+e.extra.tim+")":"-",photos:(e.photos||[]).map(p=>({p:p.p,t:p.t,ref:photoRef(p.p)}))};});
+     tgt:t?t+" "+riskBand(t)[0]+" (L"+e.extra.tli+" x I"+e.extra.tim+")":"-",photos:allPh(e).map(p=>({p:p.p,t:p.t,ref:photoRef(p.p)}))};});
 }
 const rowsHasPhoto=(sc,p)=>D.obs.some(e=>e.scope===sc&&(e.photos||[]).some(x=>x.p===p));
 async function fetchBlobs(paths,onp){
