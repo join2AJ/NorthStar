@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.45";
+const VERSION="2026-11-02.46";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1541,6 +1541,8 @@ function reportSheet(){
    '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
    '<div class="card" style="margin-top:10px;border-left:4px solid #0E5A61"><div class="card-t">📦 Site pack (ZIP)</div><div class="small muted" style="margin:3px 0 8px">One ZIP per site, in one go: 1) all site photos with an index, 2) Excel - risk matrix, auditees, findings with photos in the row, 3) findings PDF with photos in each row, 4) findings PDF followed by the photos, 5) all five deliverables as PDF. Allow a few minutes per site and keep this screen open.</div>'+
    '<select id="zp-site">'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'<option value="all">All sites - one ZIP per site</option></select>'+
+   '<div class="small" style="margin:10px 0 4px;font-weight:700">Include in the ZIP (tick what you need)</div><div id="zp-parts" style="display:grid;gap:6px">'+PACK_PARTS.map(([k,l])=>{const on=packSel().includes(k);return '<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'"'+(on?" checked":"")+' style="width:20px;height:20px;flex:none">'+esc(l)+'</label>';}).join("")+'</div>'+
+   '<div class="btn-row" style="margin-top:6px"><button class="btn sm" data-act="zpall" data-v="1">Select all</button><button class="btn sm" data-act="zpall" data-v="0">Clear</button></div>'+
    '<div class="btn-row"><button class="btn primary" data-act="mkpack">📦 Download site pack</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
    card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
@@ -1788,6 +1790,7 @@ function packRows(sc){
      point:(e.item||"Other observation")+(e.item&&ITEM[e.item]?" - "+ITEM[e.item].text:""),desc:e.body||"",rec:(e.extra&&e.extra.rec)||"",
      tgt:t?t+" "+riskBand(t)[0]+" (L"+e.extra.tli+" x I"+e.extra.tim+")":"-",photos:(e.photos||[]).map(p=>({p:p.p,t:p.t,ref:photoRef(p.p)}))};});
 }
+const rowsHasPhoto=(sc,p)=>D.obs.some(e=>e.scope===sc&&(e.photos||[]).some(x=>x.p===p));
 async function fetchBlobs(paths,onp){
   const out={},need=[];
   for(const p of paths){const b=await dbGet("blobs",p);if(b)out[p]=b;else need.push(p);}
@@ -1907,8 +1910,13 @@ async function htmlToPdf(html,onp){
 }
 let DOC_CAP=null;
 async function captureDoc(fn,...a){DOC_CAP={};try{fn(...a);await DOC_CAP.p;return DOC_CAP.html;}finally{DOC_CAP=null;}}
+const PACK_PARTS=[["1","1. Site photos (full size) with photo index"],["2","2. Excel - risk matrix, auditees, findings with photos in the row"],["3","3. Findings PDF - photos in each row"],["4","4. Findings PDF - table, then photos"],["5","5. Deliverables (PDF):"],["5.1","5.1 Security Audit Checklist"],["5.2","5.2 Security Audit Report"],["5.3","5.3 Site Security Plan (SSP)"],["5.4","5.4 Operational Requirement (OR)"],["5.5","5.5 Corporate Security SOP Set"]];
+document.addEventListener("change",ev=>{const t=ev.target;if(!t||!t.closest||!t.closest("#zp-parts"))return;const all=[...document.querySelectorAll("#zp-parts input")],kids=all.filter(x=>x.value.startsWith("5.")),par=all.find(x=>x.value==="5");
+  if(t===par)kids.forEach(x=>x.checked=par.checked);else if(kids.includes(t)&&par)par.checked=kids.some(x=>x.checked);});
+const packSel=()=>{const v=lsGet("sa.packParts");return v?v.split(","):PACK_PARTS.map(x=>x[0]);};
 let packBusy=false;
-async function makePack(v){
+async function makePack(v,sel){
+  sel=new Set(sel||PACK_PARTS.map(x=>x[0]));const has=k=>sel.has(k)||(k.startsWith("5.")&&sel.has("5")&&![...sel].some(x=>x.startsWith("5.")));
   if(packBusy){toast("A pack is already being prepared.",3000);return;}
   packBusy=true;const t0=Date.now();
   const prog=m=>{const el=$("#zp-prog");if(el)el.textContent=m;toast(m,120000);};
@@ -1920,24 +1928,25 @@ async function makePack(v){
     const common={};
     for(const [si,sc] of sites.entries()){
       const tag=siteTag(sc),P=m=>prog((sites.length>1?"Site "+(si+1)+"/"+sites.length+" · ":"")+"Site "+SITE[sc].no+": "+m),files=[];
-      const pf=await photoFiles(allPhotos().filter(x=>x.e.scope===sc),"1_Photos/",m=>P("photos "+m));files.push(...pf.files);
+      const pf=has("1")||has("4")?await photoFiles(allPhotos().filter(x=>x.e.scope===sc&&(has("1")||rowsHasPhoto(sc,x.ph.p))),"1_Photos/",m=>P("photos "+m)):{files:[],byPath:{}};if(has("1"))files.push(...pf.files);
       const rows=packRows(sc),ents=D.obs.filter(e=>e.scope===sc);
-      const tPaths=[...new Set(ents.flatMap(e=>(e.photos||[]).map(p=>p.t)))];
+      const tPaths=has("2")||has("3")||has("5.2")?[...new Set(ents.flatMap(e=>(e.photos||[]).map(p=>p.t)))]:[];
       const tb=await fetchBlobs(tPaths,m=>P("thumbnails "+m)),thumbs={};
       for(const p of tPaths)if(tb[p]){const im=await imgData(tb[p],420,0.8);if(im)thumbs[p]=im;}
-      P("Excel");files.push({name:"2_"+tag+"_Risk-matrix_Auditees_Findings.xlsx",data:await packExcel(sc,rows,thumbs)});
-      P("PDF with photos in rows");files.push({name:"3_"+tag+"_Findings_photos-in-rows.pdf",data:await packRowPdf(sc,rows,thumbs)});
-      const fPaths=[...new Set(rows.flatMap(r=>r.photos.map(p=>p.p)))],fb=await fetchBlobs(fPaths.filter(p=>!pf.byPath[p]),m=>P("photos for annex "+m)),med={};
+      if(has("2")){P("Excel");files.push({name:"2_"+tag+"_Risk-matrix_Auditees_Findings.xlsx",data:await packExcel(sc,rows,thumbs)});}
+      if(has("3")){P("PDF with photos in rows");files.push({name:"3_"+tag+"_Findings_photos-in-rows.pdf",data:await packRowPdf(sc,rows,thumbs)});}
+      if(has("4")){const fPaths=[...new Set(rows.flatMap(r=>r.photos.map(p=>p.p)))],fb=await fetchBlobs(fPaths.filter(p=>!pf.byPath[p]),m=>P("photos for annex "+m)),med={};
       for(const p of fPaths){const b=pf.byPath[p]?new Blob([pf.byPath[p]],{type:"image/jpeg"}):fb[p];const im=b?await imgData(b,1100,0.72):null;if(im)med[p]=im;}
-      P("PDF with photo annex");files.push({name:"4_"+tag+"_Findings_then_photos.pdf",data:await packAnnexPdf(sc,rows,med)});
-      if(!common.cl)common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));
-      files.push({name:"5_Deliverables/1_Security_Audit_Checklist.pdf",data:common.cl});
+      P("PDF with photo annex");files.push({name:"4_"+tag+"_Findings_then_photos.pdf",data:await packAnnexPdf(sc,rows,med)});}
+      if(has("5.1")){if(!common.cl)common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));
+      files.push({name:"5_Deliverables/1_Security_Audit_Checklist.pdf",data:common.cl});}
       const urls={};for(const p of tPaths)if(tb[p]){const u=URL.createObjectURL(tb[p]);urls[p]=u;blobUrls0.push(u);}
-      files.push({name:"5_Deliverables/2_Security_Audit_Report_"+tag+".pdf",data:await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m))});
-      files.push({name:"5_Deliverables/3_Site_Security_Plan_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m))});
-      files.push({name:"5_Deliverables/4_Operational_Requirement_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m))});
-      if(!common.sop)common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));
-      files.push({name:"5_Deliverables/5_Corporate_Security_SOP_Set.pdf",data:common.sop});
+      if(has("5.2"))files.push({name:"5_Deliverables/2_Security_Audit_Report_"+tag+".pdf",data:await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m))});
+      if(has("5.3"))files.push({name:"5_Deliverables/3_Site_Security_Plan_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m))});
+      if(has("5.4"))files.push({name:"5_Deliverables/4_Operational_Requirement_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m))});
+      if(has("5.5")){if(!common.sop)common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));
+      files.push({name:"5_Deliverables/5_Corporate_Security_SOP_Set.pdf",data:common.sop});}
+      if(!files.length){P("nothing to include");continue;}
       P("zipping");
       const blob=zipBlob(files),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=tag+"_Audit-pack_"+dayKey(new Date().toISOString())+".zip";
       document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},8000);
@@ -2792,7 +2801,8 @@ document.addEventListener("click",async ev=>{
     case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
     case "mksop":makeSOPSet();break;
     case "mkopen":makeOpenPoints();break;
-    case "mkpack":makePack($("#zp-site").value);break;
+    case "mkpack":{const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);if(!sel.length){toast("Tick at least one item to include.",3000);break;}lsSet("sa.packParts",sel.join(","));makePack($("#zp-site").value,sel);break;}
+    case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
