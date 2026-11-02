@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.56";
+const VERSION="2026-11-02.57";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1363,8 +1363,8 @@ function auditDashHTML(){
   for(let l=5;l>=1;l--){mx+='<div class="ax">'+l+' '+LI[l]+'</div>';for(let i=1;i<=5;i++){const n=cnt(F,x=>x.li===l&&x.im===i);mx+='<div class="cl'+(n?'':' z')+'" style="background:'+col(l*i)+'" title="Likelihood '+l+' × impact '+i+' = '+l*i+': '+n+' finding'+(n===1?'':'s')+'"><small>'+l*i+'</small><b>'+n+'</b></div>';}}
   h+='<div class="ad-card"><h3>Risk matrix, all sites</h3><div class="ad-note">Number of findings in each likelihood × impact cell; the small figure is the risk score.</div>'+mx+'</div></div></div>';
   const pill=n=>n==null?'-':'<span class="ad-pill" style="background:'+col(n)+'">'+n+'</span>';
-  h+='<div class="ad-card"><h3>Site summary</h3><div class="ad-note">Each site\'s findings, photographic evidence and the internal review rounds behind its report revision number.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Site</th><th>Findings</th><th>Critical</th><th>High</th><th class="ad-hn">Medium</th><th class="ad-hn">Low</th><th>Photos</th><th>Report rev.</th><th class="ad-hn">Revisions</th></tr>'+
-    per.map(r=>'<tr><td>'+esc(nm(r.sc))+'</td><td class="n">'+r.n+'</td><td class="n">'+r.c+'</td><td class="n">'+r.h+'</td><td class="n ad-hn">'+r.m+'</td><td class="n ad-hn">'+r.l+'</td><td class="n">'+r.ph+'</td><td class="n">Rev. '+String(r.rounds).padStart(2,"0")+'</td><td class="n ad-hn">'+r.revs+'</td></tr>').join("")+'</table></div></div>';
+  h+='<div class="ad-card"><h3>Site summary</h3><div class="ad-note">Each site\'s findings, photographic evidence and the internal review rounds carried out on its report.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Site</th><th>Findings</th><th>Critical</th><th>High</th><th class="ad-hn">Medium</th><th class="ad-hn">Low</th><th>Photos</th><th>Review rounds</th><th class="ad-hn">Revisions</th></tr>'+
+    per.map(r=>'<tr><td>'+esc(nm(r.sc))+'</td><td class="n">'+r.n+'</td><td class="n">'+r.c+'</td><td class="n">'+r.h+'</td><td class="n ad-hn">'+r.m+'</td><td class="n ad-hn">'+r.l+'</td><td class="n">'+r.ph+'</td><td class="n">'+r.rounds+'</td><td class="n ad-hn">'+r.revs+'</td></tr>').join("")+'</table></div></div>';
   const cr=F.filter(x=>x.score>=20).sort((a,b)=>b.score-a.score||a.site.localeCompare(b.site));
   h+='<div class="ad-card"><h3>Critical findings</h3><div class="ad-note">Every finding with a current risk of 20 or more, highest first. Interim controls are due within 24-72 hours.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Site</th><th>Point</th><th>Risk</th><th>Observation</th><th class="ad-hn">Recommendation</th><th class="ad-hn">Target</th></tr>'+
     cr.map(x=>'<tr><td>'+esc(nm(x.site))+'</td><td>'+esc(x.item)+'</td><td>'+pill(x.score)+'</td><td>'+esc((x.e.body||"").slice(0,200))+'</td><td class="ad-hn">'+esc((x.e.extra.rec||"").slice(0,200))+'</td><td class="ad-hn">'+pill(x.t)+'</td></tr>').join("")+'</table></div></div>';
@@ -2085,12 +2085,8 @@ function revInfo(sc){
   const r=[];let last=0;for(const e of ed){const t=Date.parse(e.ts);if(!r.length||t-last>45*60000)r.push({t,n:0});r[r.length-1].n++;last=t;}
   return r;
 }
-const revMon=t=>{const d=new Date(t+19800000);return MON[d.getUTCMonth()]+" "+d.getUTCFullYear();};
-const revRows=(d,sc)=>{const r=revInfo(sc),n=r.length;return '<tr><th>Document no.</th><td>'+docNo(d,sc)+'</td></tr><tr><th>Revision</th><td>Rev. '+String(n).padStart(2,"0")+' - issued for client review after '+n+' internal review round'+(n===1?"":"s")+'</td></tr>';};
-const revHist=sc=>{const r=revInfo(sc),tot=r.reduce((a,x)=>a+x.n,0);
-  return '<table class="kv" style="margin-top:8px"><tr><th>Rev.</th><th>Month</th><th>Description</th></tr><tr><td>00</td><td>Oct 2026</td><td>Field audit log compiled on site (observations, ratings and photographs)</td></tr>'+
-   r.map((x,i)=>'<tr><td>'+String(i+1).padStart(2,"0")+'</td><td>'+revMon(x.t)+'</td><td>Internal review round '+(i+1)+' - '+x.n+' entr'+(x.n===1?"y":"ies")+' revised'+(i===r.length-1?'; issued for client review':'')+'</td></tr>').join("")+
-   '</table><div class="muted" style="font-size:8pt">'+tot+' revisions across '+r.length+' review rounds are held in the tamper-evident audit log.</div>';};
+const revRows=(d,sc)=>'<tr><th>Document no.</th><td>'+docNo(d,sc)+'</td></tr>';
+const revHist=sc=>"";
 // Audit schedule by date, e.g. "30 Oct 2026: Site 3 - … and Site 5 - …", in date order.
 const siteDatesTxt=()=>{const g={};for(const x of SITES){const d=resSite(x.id).date;if(d)(g[d]=g[d]||[]).push(x);}
   return Object.keys(g).sort((a,b)=>new Date(a)-new Date(b)).map(d=>d+": "+g[d].map(x=>"Site "+x.no+" - "+x.name).join(" and ")).join(" · ");};
