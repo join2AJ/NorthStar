@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.37";
+const VERSION="2026-11-02.38";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1808,7 +1808,7 @@ function sitesMapHTML(hl,W,H){
     const dy=(a[0]-b[0])*111.32,dx=(a[1]-b[1])*111.32*Math.cos(a[0]*Math.PI/180);dist.push(list[i].s.no+"–"+list[j].s.no+": "+Math.hypot(dx,dy).toFixed(1)+" km");}
   return '<div class="smap" style="position:relative;width:100%;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f">'+tiles+
    '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%">'+shapes+'</svg><div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeters from KML</div></div>'+
-   '<div class="muted" style="margin-top:4px">Marked: '+list.map(x=>x.s.no+". "+esc(x.s.name)).join(" · ")+(dist.length?' · straight-line distance '+dist.join(", "):'')+'. Sites not yet marked: '+(SITES.filter(s=>!list.some(x=>x.s.id===s.id)).map(s=>s.no+". "+esc(s.name)).join(", ")||"none")+'.</div>';
+   '<div class="muted" style="margin-top:4px">Marked: '+list.map(x=>x.s.no+". "+esc(x.s.name)).join(" · ")+(dist.length?' · straight-line distance '+dist.join(", "):'')+'.'+(SITES.some(s=>!list.some(x=>x.s.id===s.id))?' Sites not yet marked: '+SITES.filter(s=>!list.some(x=>x.s.id===s.id)).map(s=>s.no+". "+esc(s.name)).join(", ")+'.':'')+'</div>';
 }
 // Site observations, findings and good points as they read now.
 function siteData(sc){
