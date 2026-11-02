@@ -367,7 +367,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-10-30.28";
+const VERSION="2026-11-02.29";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1418,6 +1418,10 @@ function reportSheet(){
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
    '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
+   '<div class="card" style="margin-top:12px"><div class="card-t">Points not covered (PDF)</div><div class="small muted" style="margin:3px 0 8px">List of points still open at the sites you tick – grouped by pre-audit documents, on-site documents, walkthrough and interviews – with a blank remarks column to share with the site.</div>'+
+   '<div class="opts" id="nc-sites">'+SITES.map(x=>'<label class="opt plain" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" value="'+x.id+'"'+((lsGet("sa.ncSites")||"s5,s6").split(",").includes(x.id)?" checked":"")+'>'+esc(x.no+". "+x.name)+'</label>').join("")+'</div>'+
+   '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600"><input type="checkbox" id="nc-mand" checked style="width:20px;height:20px">Mandatory points only</label>'+
+   '<div class="btn-row"><button class="btn" data-act="mkopen">📄 Points not covered (PDF)</button></div></div>'+
    '<div class="card" style="margin-top:12px"><div class="card-t">Deliverables 3–5 · Site Security Plan, Operational Requirement, SOP set</div><div class="small muted" style="margin:3px 0 8px">Built from the audit log, risk ratings, schedule and site perimeters. Pick a site above for the SSP and OR (Deliverable 2 is the audit report above). Regenerate any time – later sites work the same way.</div>'+
    '<div class="btn-row" style="margin-top:0"><button class="btn" data-act="mkssp">3 · Site Security Plan</button><button class="btn" data-act="mkor">4 · Operational Requirement</button><button class="btn" data-act="mksop">5 · Corporate SOP set</button></div></div>'+
    '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
@@ -1778,6 +1782,22 @@ const SOPS=[
  ["SOP-14","Emergency response (security role)","Emergency response",["Security roles in fire, evacuation, intrusion, bomb threat, sabotage, civil disturbance, labour unrest, flood and earthquake.","Escape doors on access control release on fire alarm and power failure (fail-safe); tested quarterly.","Gate control during emergencies: emergency vehicles prioritised, headcount at the assembly point reconciled with attendance.","At least one security scenario drilled every year; lessons learnt recorded."],["Drill reports","Fail-safe test record"],["AD-55","AD-56","AD-57","AD-58","AD-62","W-09"]],
  ["SOP-15","Security equipment checks and maintenance","Security equipment checks",["DFMD / HHMD function-tested at the start of each shift and recorded.","Preventive maintenance schedule for CCTV, access control, barriers and alarms, signed off by the vendor and Security.","Communication equipment (walkie-talkies, PA) checked daily."],["Function-test register","PM records"],["AD-39","AD-64","AD-65","AD-66"]],
  ["SOP-16","Background verification and security training","Background verification",["BGV and police verification completed before deployment for employees, contract workers and guards.","Security induction for all new joiners; refresher training for guards as per the calendar.","Training attendance and assessment recorded."],["BGV records","Training calendar and attendance"],["AD-21","AD-22","AD-27","AD-68","AD-69"]]];
+
+// Open points per site (not covered or still in progress), for follow-up with the site SPOC.
+function makeOpenPoints(){
+  const scs=Array.from(document.querySelectorAll("#nc-sites input:checked")).map(x=>x.value),mand=$("#nc-mand").checked;
+  if(!scs.length){toast("Tick at least one site.");return;}
+  lsSet("sa.ncSites",scs.join(","));
+  openDoc("Points not covered",()=>{
+    const groups=[["Documents – pre-audit",it=>it.sec==="doc"&&it.when==="Pre-audit"],["Documents – on-site",it=>it.sec==="doc"&&it.when==="On-site"],["Physical walkthrough",it=>it.sec==="walk"],["Stakeholder interviews",it=>it.sec==="int"]];
+    let total=0;const body=scs.map(sc=>{const S=SITE[sc],R=resSite(sc);
+      const open=itemsFor(sc).filter(it=>(!mand||it.mand)&&stateOf(D.pts.get(pkey(sc,it)))!=="covered");total+=open.length;
+      return '<section class="'+(sc===scs[0]?"":"pb")+'"><h2>'+esc(S.no+". "+S.name)+' – '+open.length+' point'+(open.length===1?"":"s")+' open</h2><div class="muted">'+esc(R.addr||S.addr)+(R.spoc?' · SPOC '+esc(R.spoc)+(R.spocPhone?' '+esc(fmtPhone(R.spocPhone)):''):'')+'</div>'+
+        (open.length?groups.map(([l,f])=>{const xs=open.filter(f);return xs.length?'<h3>'+l+' ('+xs.length+')</h3><table><tr><th style="width:52px">ID</th><th>Document / requirement</th><th style="width:70px">Priority</th><th style="width:80px">Status</th><th style="width:30%">Remarks / document shared</th></tr>'+
+          xs.map(it=>{const p=D.pts.get(pkey(sc,it));return '<tr><td><b>'+it.id+'</b></td><td>'+esc(it.text)+(it.cat&&it.sec==="doc"?'<div class="muted">'+esc(it.cat)+'</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+(p?"In progress":"Not covered")+'</td><td></td></tr>';}).join("")+'</table>':'';}).join(""):'<p class="muted">Nothing open – all '+(mand?"mandatory ":"")+'points are covered.</p>')+'</section>';}).join("");
+    return '<section><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1 style="font-size:20pt">Points not covered'+(mand?" – mandatory":"")+'</h1>'+
+      '<p class="note">'+scs.map(sc=>esc(SITE[sc].no+". "+SITE[sc].name)).join(" · ")+' · '+total+' open point'+(total===1?"":"s")+' · generated '+fmtFull(new Date().toISOString())+' IST by '+esc(uname(STATE.user))+'</p><button class="noprint" onclick="print()">Print / Save as PDF</button></section>'+body;});
+}
 function makeSOPSet(){
   openDoc("Corporate Security SOP Set",()=>{
     const done=SITES.filter(s=>D.obs.some(e=>e.scope===s.id));
@@ -2142,6 +2162,7 @@ document.addEventListener("click",async ev=>{
     case "mkchecklist":makeChecklist();break;
     case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
     case "mksop":makeSOPSet();break;
+    case "mkopen":makeOpenPoints();break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
