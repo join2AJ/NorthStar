@@ -235,6 +235,19 @@ textarea{min-height:92px;resize:vertical}
 a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:4px}
 .tabs button{font-size:10.5px}
 .trail-ok{border-left:5px solid var(--good)}.trail-bad{border-left:5px solid var(--crit)}
+.ad{display:grid;gap:11px;margin-bottom:16px}.ad-head h2{font:400 24px/1.2 Georgia,"Times New Roman",serif;margin:0;color:var(--ink)}.ad-head p{margin:4px 0 0;color:var(--ink2);font-size:14px;max-width:70ch}.ad-head .ad-per{font-size:12px;color:var(--muted)}
+.ad-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr));gap:9px}
+.ad-tile{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c,var(--line));border-radius:12px;padding:9px 12px;display:grid;gap:2px}.ad-tile span{font-size:12px;color:var(--muted)}.ad-tile b{font:400 26px/1.1 Georgia,"Times New Roman",serif;font-variant-numeric:tabular-nums}
+.ad-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:11px}
+.ad-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px;min-width:0}.ad-card h3{margin:0;font-size:15px}.ad-card .ad-note{font-size:12px;color:var(--muted);margin:3px 0 10px}
+.ad-leg{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-bottom:8px}.ad-leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.ad-bar{display:grid;grid-template-columns:minmax(90px,170px) 1fr 30px;gap:8px;align-items:center;font-size:12px;margin:6px 0}.ad-track{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--surface2)}
+.ad-seg{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1d2125;min-width:0;overflow:hidden}.ad-bar .ad-n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.ad-mx{display:grid;grid-template-columns:auto repeat(5,1fr);gap:3px;font-size:11px}.ad-mx .ax{color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;padding:2px;line-height:1.15}
+.ad-mx .cl{border-radius:5px;min-height:40px;display:flex;align-items:center;justify-content:center;color:#1d2125;position:relative;font-variant-numeric:tabular-nums}.ad-mx .cl small{position:absolute;top:2px;left:4px;font-size:9px;opacity:.7}.ad-mx .cl b{font-size:16px}.ad-mx .cl.z b{opacity:.35;font-weight:400}
+.ad-scroll{max-height:360px;overflow:auto}.ad-t{width:100%;border-collapse:collapse;font-size:12.5px}.ad-t th{position:sticky;top:0;background:var(--surface);text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:6px 7px;white-space:nowrap}
+.ad-t td{border-bottom:1px solid var(--line);padding:6px 7px;vertical-align:top}.ad-t td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.ad-pill{display:inline-block;border-radius:999px;padding:1px 8px;font-weight:700;color:#1d2125}
+@media (max-width:640px){.ad-hn{display:none}}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .thumbs button{padding:0;border:0;background:none;position:relative}
 .thumbs img,.thumbs .ph{width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--line);background:var(--surface2);display:block}
@@ -371,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.54";
+const VERSION="2026-11-02.55";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1330,10 +1343,41 @@ const ACTION_L={"login.ok":"Signed in","login.failed":"Failed sign-in","login.bl
  "photo.upload":"Uploaded photos","expense.added":"Logged expense claim","auditee.added":"Added auditee","auditee.updated":"Edited auditee","auditee.removed":"Removed auditee","claim.submitted":"Claim submitted","claim.approved":"Claim approved","claim.paid":"Claim paid","claim.rejected":"Claim rejected","claim.draft":"Claim set back to not submitted","backup.created":"Backup created","backup.downloaded":"Downloaded backup"};
 function device(ua){if(!ua)return "";const m=ua.match(/\(([^)]+)\)/);let d=m?m[1].split(";").map(x=>x.trim()).filter(x=>!/^(Linux|U|K|wv|X11)$/.test(x)).slice(0,2).join(" "):"";
   const b=/EdgA?\//.test(ua)?"Edge":/SamsungBrowser/.test(ua)?"Samsung Internet":/CriOS|Chrome\//.test(ua)?"Chrome":/Firefox|FxiOS/.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":/Deno/.test(ua)?"server":"";return [d,b].filter(Boolean).join(" · ");}
+// Audit overview shown at the top of the Audit trail: the same figures as the Selaqui Security Audit dashboard, from this device's data.
+function auditDashHTML(){
+  if(!D||!D.obs)return "";
+  const SC=["s1","s2","s3","s4","s5","s6"].filter(x=>SITE[x]),col=n=>n>=20?"#E5534B":n>=10?"#F7A35C":n>=5?"#FFE066":"#9BD27A";
+  const F=D.obs.filter(e=>SC.includes(e.scope)&&["high","med","low"].includes(e.sev)&&e.extra&&e.extra.li&&e.extra.im).map(e=>({e,site:e.scope,item:e.item||"Other",li:e.extra.li,im:e.extra.im,score:e.extra.li*e.extra.im,t:e.extra.tli&&e.extra.tim?e.extra.tli*e.extra.tim:null}));
+  const B=[["c","#E5534B","Critical",x=>x.score>=20],["h","#F7A35C","High",x=>x.score>=10&&x.score<20],["m","#FFE066","Medium",x=>x.score>=5&&x.score<10],["l","#9BD27A","Low",x=>x.score<5]];
+  const cnt=(rows,f)=>rows.filter(f).length,nm=sc=>SITE[sc].no+". "+SITE[sc].name;
+  const tot={all:F.length};B.forEach(([k,,,f])=>tot[k]=cnt(F,f));
+  const photos=SC.reduce((a,sc)=>a+D.obs.filter(e=>e.scope===sc).reduce((b,e)=>b+(e.photos||[]).length,0),0);
+  const per=SC.map(sc=>{const f=F.filter(x=>x.site===sc),r=revInfo(sc),o={sc,n:f.length,rounds:r.length,revs:r.reduce((a,x)=>a+x.n,0),ph:D.obs.filter(e=>e.scope===sc).reduce((b,e)=>b+(e.photos||[]).length,0)};B.forEach(([k,,,fn])=>o[k]=cnt(f,fn));return o;});
+  const max=Math.max(1,...per.map(r=>r.n));
+  let h='<section class="ad"><div class="ad-head"><h2>Selaqui Security Audit</h2><p><b>'+tot.c+'</b> findings are rated critical (risk 20 or more) and <b>'+tot.h+'</b> high across the six Dixon sites in Selaqui. Access control without a zone-wise access matrix is critical at every site.</p><p class="ad-per">Audit period '+AUDIT_PERIOD+' · Dixon Technologies (India) Limited · Northstar Safety Systemz, ref. NSS/DTIL/SECA/2026-07/01</p></div>';
+  h+='<div class="ad-tiles"><div class="ad-tile"><span>Findings rated</span><b>'+tot.all+'</b></div>'+B.map(([k,c,l])=>'<div class="ad-tile" style="--c:'+c+'"><span>'+l+' ('+{c:"20-25",h:"10-19",m:"5-9",l:"1-4"}[k]+')</span><b>'+tot[k]+'</b></div>').join("")+'<div class="ad-tile"><span>Photographs on record</span><b>'+photos+'</b></div></div>';
+  h+='<div class="ad-grid"><div class="ad-card"><h3>Findings by site and risk level</h3><div class="ad-note">Current risk of every rated finding (likelihood × impact, 5 × 5 matrix).</div><div class="ad-leg">'+B.map(([,c,l])=>'<span><i style="background:'+c+'"></i>'+l+'</span>').join("")+'</div>'+
+    per.map(r=>'<div class="ad-bar"><div>'+esc(nm(r.sc))+'</div><div style="min-width:0"><div class="ad-track" style="width:'+(r.n/max*100).toFixed(1)+'%">'+B.filter(([k])=>r[k]).map(([k,c,l])=>'<div class="ad-seg" title="'+esc(nm(r.sc))+' · '+l+': '+r[k]+' of '+r.n+'" style="background:'+c+';flex:'+r[k]+' 0 0">'+r[k]+'</div>').join("")+'</div></div><div class="ad-n">'+r.n+'</div></div>').join("")+'</div>';
+  const LI=["","Rare","Unlikely","Possible","Likely","Almost certain"],IM=["","Minor","Moderate","Significant","Major","Severe"];
+  let mx='<div class="ad-mx"><div class="ax">Likelihood / Impact</div>'+[1,2,3,4,5].map(i=>'<div class="ax">'+i+' '+IM[i]+'</div>').join("");
+  for(let l=5;l>=1;l--){mx+='<div class="ax">'+l+' '+LI[l]+'</div>';for(let i=1;i<=5;i++){const n=cnt(F,x=>x.li===l&&x.im===i);mx+='<div class="cl'+(n?'':' z')+'" style="background:'+col(l*i)+'" title="Likelihood '+l+' × impact '+i+' = '+l*i+': '+n+' finding'+(n===1?'':'s')+'"><small>'+l*i+'</small><b>'+n+'</b></div>';}}
+  h+='<div class="ad-card"><h3>Risk matrix, all sites</h3><div class="ad-note">Number of findings in each likelihood × impact cell; the small figure is the risk score.</div>'+mx+'</div></div></div>';
+  const pill=n=>n==null?'-':'<span class="ad-pill" style="background:'+col(n)+'">'+n+'</span>';
+  h+='<div class="ad-card"><h3>Site summary</h3><div class="ad-note">Each site\'s findings, photographic evidence and the internal review rounds behind its report revision number.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Site</th><th>Findings</th><th>Critical</th><th>High</th><th class="ad-hn">Medium</th><th class="ad-hn">Low</th><th>Photos</th><th>Report rev.</th><th class="ad-hn">Revisions</th></tr>'+
+    per.map(r=>'<tr><td>'+esc(nm(r.sc))+'</td><td class="n">'+r.n+'</td><td class="n">'+r.c+'</td><td class="n">'+r.h+'</td><td class="n ad-hn">'+r.m+'</td><td class="n ad-hn">'+r.l+'</td><td class="n">'+r.ph+'</td><td class="n">Rev. '+String(r.rounds).padStart(2,"0")+'</td><td class="n ad-hn">'+r.revs+'</td></tr>').join("")+'</table></div></div>';
+  const cr=F.filter(x=>x.score>=20).sort((a,b)=>b.score-a.score||a.site.localeCompare(b.site));
+  h+='<div class="ad-card"><h3>Critical findings</h3><div class="ad-note">Every finding with a current risk of 20 or more, highest first. Interim controls are due within 24-72 hours.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Site</th><th>Point</th><th>Risk</th><th>Observation</th><th class="ad-hn">Recommendation</th><th class="ad-hn">Target</th></tr>'+
+    cr.map(x=>'<tr><td>'+esc(nm(x.site))+'</td><td>'+esc(x.item)+'</td><td>'+pill(x.score)+'</td><td>'+esc((x.e.body||"").slice(0,200))+'</td><td class="ad-hn">'+esc((x.e.extra.rec||"").slice(0,200))+'</td><td class="ad-hn">'+pill(x.t)+'</td></tr>').join("")+'</table></div></div>';
+  const g={};for(const x of F){if(x.score<5||x.item==="Other")continue;(g[x.item]=g[x.item]||{s:new Set(),m:0}).s.add(x.site);g[x.item].m=Math.max(g[x.item].m,x.score);}
+  const rec=Object.entries(g).filter(([,v])=>v.s.size>=3).sort((a,b)=>b[1].s.size-a[1].s.size||b[1].m-a[1].m||a[0].localeCompare(b[0]));
+  h+='<div class="ad-card"><h3>Gaps that recur across sites</h3><div class="ad-note">Checklist points with a Medium or higher finding at three or more sites: candidates for one corporate fix.</div><div class="ad-scroll"><table class="ad-t"><tr><th>Point</th><th>Sites</th><th class="ad-hn">Where</th><th>Highest risk</th></tr>'+
+    rec.map(([it,v])=>'<tr><td><b>'+esc(it)+'</b>'+(ITEM[it]?'<div class="muted" style="font-size:11.5px">'+esc(ITEM[it].text.slice(0,90))+'</div>':'')+'</td><td class="n">'+v.s.size+'</td><td class="ad-hn">'+[...v.s].sort().map(x=>"Site "+SITE[x].no).join(", ")+'</td><td>'+pill(v.m)+'</td></tr>').join("")+'</table></div></div></section>';
+  return h;
+}
 let trailCache=null;
 function renderTrail(m){
   const T=trailCache;
-  let h=feedSwitch()+'<div class="h-page">Audit trail</div><div class="muted small">Every action on the server: sign-ins, failed sign-ins, entries, withdrawals, photo uploads and backups. Each record is chained to the one before it, so an edit or deletion would show here as a broken chain.</div>';
+  let h=feedSwitch()+auditDashHTML()+'<div class="h-page">Audit trail</div><div class="muted small">Every action on the server: sign-ins, failed sign-ins, entries, withdrawals, photo uploads and backups. Each record is chained to the one before it, so an edit or deletion would show here as a broken chain.</div>';
   if(!T){m.innerHTML=h+'<div class="empty">Loading…</div>';loadTrail();return;}
   if(T.err){m.innerHTML=h+'<div class="empty">Could not load the audit trail ('+esc(T.err)+'). It needs signal.</div><div class="btn-row" style="justify-content:center"><button class="btn" data-act="trailreload">Try again</button></div>';return;}
   const c=T.check,ok=c.entries.ok&&c.activity.ok;
