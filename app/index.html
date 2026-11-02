@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.57";
+const VERSION="2026-11-02.58";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1665,7 +1665,7 @@ function checklistHTML(){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+pdfName(1,"Security Audit Checklist")+'</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>';
 }
 function reportHTML(r,scopes,ents,urls){
   const E=esc,now=new Date().toISOString();
@@ -1739,7 +1739,7 @@ function reportHTML(r,scopes,ents,urls){
        (r.photos&&e.photos&&e.photos.length&&(shown.has(e.id)||(e.mergedInto&&shown.has(e.mergedInto)))?'<div class="muted">📷 Photos shown under the finding above.</div>':'')+(r.photos&&e.photos&&e.photos.length&&!shown.has(e.id)&&!(e.mergedInto&&shown.has(e.mergedInto))?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
     b+='</section>';
   }
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selaqui audit report '+E(period)+'</title><style>'+
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+pdfName(2,"Security Audit Report",r.site)+(r.period==="all"?"":"_entries_"+r.period)+'</title><style>'+
    '@page{size:A4;margin:15mm 13mm 17mm;@bottom-left{content:"Northstar Safety Systemz · Security Audit Report · Confidential";font:7.5pt Arial;color:#5E7079}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5pt Arial;color:#5E7079}}'+
    '@page:first{@bottom-left{content:none}@bottom-right{content:none}}'+
    '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}body{font:10pt/1.42 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
@@ -2061,7 +2061,7 @@ function docShell(title,body){
 async function openDoc(title,build){
   if(DOC_CAP){DOC_CAP.p=(async()=>{try{await loadResources();}catch(e){}derive();DOC_CAP.html=docShell(title,build());})();return;}
   const w=window.open("","_blank");if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
-  w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing '+esc(title)+'…</p>');
+  w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing the document…</p>');
   try{await loadResources();}catch(e){}
   derive();
   w.document.open();w.document.write(docShell(title,build()));w.document.close();
@@ -2076,6 +2076,8 @@ const resSite=sc=>((RES&&RES.sites)||[]).find(x=>x.site===sc)||{};
 const AUDIT_PERIOD="28 Oct 2026 to 2 Nov 2026";
 const AUDIT_LINE="Dixon Technologies - Selaqui sites security audit, "+AUDIT_PERIOD;
 // Document number and revision shown on every deliverable instead of a generation time stamp.
+// Page title = default file name when the document is saved as PDF, e.g. Dixon_Selaqui_D2_Security_Audit_Report_Site1_DTSPL.
+const pdfName=(d,label,sc)=>("Dixon_Selaqui_D"+d+"_"+label+(sc&&SITE[sc]?"_Site"+SITE[sc].no+"_"+SITE[sc].name:sc==="all"?"_All_Sites":"")).replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"");
 const docNo=(d,sc)=>"NSS/DTIL/SECA/2026-07/01/D"+d+(sc?"/"+(sc==="all"?"ALL":"S"+SITE[sc].no):"");
 // Revision = number of internal review rounds actually recorded in the audit log for that site (all sites for D1 and D5):
 // a round is a burst of edits / corrections separated from the next by more than 45 minutes.
@@ -2203,7 +2205,7 @@ function heatHTML(sd){const cells={};sd.obs.filter(sd.rs).forEach(e=>{const k=e.
 
 function makeSSP(sc){
   const S=SITE[sc];
-  openDoc("Site Security Plan - "+S.name,()=>{
+  openDoc(pdfName(3,"Site Security Plan",sc),()=>{
     const sd=siteData(sc),R=resSite(sc),g=resGeo(sc),st=(id)=>{const p=D.pts.get(sc+"|"+id);return p&&p.status?ST[p.status].label:"Not covered";};
     let b=docCover("Site Security Plan (SSP)",esc(S.no+". "+S.name),siteHeader(sc),sc);
     b+='<section class="pb"><h2>1. Purpose, scope and use of this plan</h2><p>This Site Security Plan sets out how '+esc(S.name)+' protects its people, material, information and production against security threats, and how it responds when something goes wrong. It is based on the on-site security audit, document review, walkthrough and stakeholder interviews carried out by the Northstar audit team, and on the risk ratings in the audit report. It covers the whole premises inside the boundary shown below, all employees, contract workers, visitors, vehicles and material.</p>'+
@@ -2235,7 +2237,7 @@ function makeSSP(sc){
 }
 function makeOR(sc){
   const S=SITE[sc];
-  openDoc("Operational Requirement - "+S.name,()=>{
+  openDoc(pdfName(4,"Operational Requirement",sc),()=>{
     const sd=siteData(sc);
     let b=docCover("Operational Requirement (OR)",esc(S.no+". "+S.name),siteHeader(sc),sc);
     b+='<section class="pb"><h2>1. Purpose</h2><p>This Operational Requirement states what the site needs its security measures to achieve, in terms that can be designed, procured and tested. Each requirement comes from an audit finding, carries the current and target risk, an owner, a timeline by risk band and acceptance criteria. Technical specifications (camera models, reader types) are left to the design stage; the OR fixes the outcome to be achieved.</p>'+
@@ -2518,8 +2520,23 @@ const DOC_TYPES=[["Policy","Management's intent and commitment - the 'why' and '
  ["Format / form","The blank template used to record an activity (e.g. F-03-01 patrol register).","Owner of the parent SOP","With the parent SOP"],
  ["Record","A completed format - evidence that the activity was done. Never changed after the event.","Kept by the function","Retention as per the SOP"],
  ["Guideline","Recommended good practice; not mandatory unless adopted in an SOP.","Group Security Chief","As needed"]];
+// Open points per site (not covered or still in progress), for follow-up with the site SPOC.
+function makeOpenPoints(){
+  const scs=Array.from(document.querySelectorAll("#nc-sites input:checked")).map(x=>x.value),mand=$("#nc-mand").checked;
+  if(!scs.length){toast("Tick at least one site.");return;}
+  lsSet("sa.ncSites",scs.join(","));
+  openDoc(("Dixon_Selaqui_Points_Not_Covered_"+scs.map(sc=>"Site"+SITE[sc].no).join("_")+(mand?"_Mandatory":"")),()=>{
+    const groups=[["Documents - pre-audit",it=>it.sec==="doc"&&it.when==="Pre-audit"],["Documents - on-site",it=>it.sec==="doc"&&it.when==="On-site"],["Physical walkthrough",it=>it.sec==="walk"],["Stakeholder interviews",it=>it.sec==="int"]];
+    let total=0;const body=scs.map(sc=>{const S=SITE[sc],R=resSite(sc);
+      const open=itemsFor(sc).filter(it=>(!mand||it.mand)&&!["covered","na"].includes(ptState(sc,it)));total+=open.length;
+      return '<section class="'+(sc===scs[0]?"":"pb")+'"><h2>'+esc(S.no+". "+S.name)+' - '+open.length+' point'+(open.length===1?"":"s")+' open</h2><div class="muted">'+esc(R.addr||S.addr)+(R.spoc?' · SPOC '+esc(R.spoc)+(R.spocPhone?' '+esc(fmtPhone(R.spocPhone)):''):'')+'</div>'+
+        (open.length?groups.map(([l,f])=>{const xs=open.filter(f);return xs.length?'<h3>'+l+' ('+xs.length+')</h3><table><tr><th style="width:52px">ID</th><th>Document / requirement</th><th style="width:70px">Priority</th><th style="width:80px">Status</th><th style="width:30%">Remarks / document shared</th></tr>'+
+          xs.map(it=>{const p=D.pts.get(pkey(sc,it));return '<tr><td><b>'+it.id+'</b></td><td>'+esc(it.text)+(it.cat&&it.sec==="doc"?'<div class="muted">'+esc(it.cat)+'</div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+(p?"In progress":"Not covered")+'</td><td></td></tr>';}).join("")+'</table>':'';}).join(""):'<p class="muted">Nothing open - all '+(mand?"mandatory ":"")+'points are covered.</p>')+'</section>';}).join("");
+    return '<section><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1 style="font-size:20pt">Points not covered'+(mand?" - mandatory":"")+'</h1>'+
+      '<p class="note">'+scs.map(sc=>esc(SITE[sc].no+". "+SITE[sc].name)).join(" · ")+' · '+total+' open point'+(total===1?"":"s")+' · audit period '+AUDIT_PERIOD+'</p><button class="noprint" onclick="print()">Print / Save as PDF</button></section>'+body;});
+}
 function makeSOPSet(){
-  openDoc("Corporate Security SOP Set",()=>{
+  openDoc(pdfName(5,"Corporate Security SOP Set"),()=>{
     const done=SITES.filter(s=>D.obs.some(e=>e.scope===s.id));
     const gapAt=(s,ids)=>ids.map(id=>({s,id,p:D.pts.get(s.id+"|"+id)})).filter(x=>x.p&&(["high","med","low"].includes(x.p.sev)||["notavail","noncomp","improve"].includes(x.p.status)));
     const T=(h,rows)=>'<table class="stk"><tr>'+h.map(c=>'<th>'+esc(c)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr>'+r.map((c,i)=>'<td data-l="'+esc(h[i])+'">'+(i?esc(c):'<b>'+esc(c)+'</b>')+'</td>').join("")+'</tr>').join("")+'</table>';
