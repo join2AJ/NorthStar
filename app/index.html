@@ -139,6 +139,7 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .tagm{font-style:normal;font-size:11px;font-weight:600;border-radius:6px;padding:2px 7px;white-space:nowrap;flex:0 0 auto}
 .tagm.m{background:color-mix(in srgb,var(--crit) 16%,transparent);color:var(--crit)}.tagm.d{background:var(--surface2);color:var(--muted)}
 .cb-pt .tagm{padding:1px 6px;font-size:10.5px}
+.why-box{background:var(--brand-soft);border-left:3px solid var(--brand);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;color:var(--ink2)}.why-box b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--brand);margin-bottom:2px}
 .linkbtn{background:none;border:0;color:var(--brand);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px}
 @media (max-width:520px){.cb-sum{grid-template-columns:repeat(3,1fr)}.cb-sum div:nth-child(n+4){display:none}}
 .brow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm num" "bar bar";gap:5px 10px;align-items:center;padding:8px 0}
@@ -367,7 +368,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.29";
+const VERSION="2026-11-02.30";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -529,6 +530,100 @@ for(const [id,cat,text,p,when,sc] of DOCS)ITEMS.push({id,sec:"doc",cat,text,mand
 for(const [id,cat,text,hint] of WALKS)ITEMS.push({id,sec:"walk",cat:"Walkthrough",area:cat,text:cat+": "+text,mand:true,when:"On-site",scope:"S",hint});
 for(const [id,who] of INTS)ITEMS.push({id,sec:"int",cat:"Stakeholder interviews",text:who,mand:true,when:"On-site",scope:"S",hint:"20–30 minute slot. Note name, role, key concerns and anything that contradicts the records."});
 const ITEM=Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+// Why each requirement matters – the auditor's rationale, shown with every point in the app, report and OR.
+const WHY={
+"AD-01":"Security can only protect what it can see on a plan: the layout is the base for zoning, guard posts, patrol routes, CCTV coverage and emergency response, and shows where the boundary and utilities are exposed.",
+"AD-02":"Floor-wise layouts show where people, high-value material and screening points are, so that restricted zones can be enforced and evacuation and response can be directed floor by floor.",
+"AD-03":"Headcount and shift data size the guard force, gate capacity and screening at shift change, and are needed to account for every person in an emergency.",
+"AD-04":"Customer and product-line mapping shows which areas carry customer-confidential or high-value products and therefore need stricter zoning and screening.",
+"AD-05":"Brand customers audit their EMS partners; knowing their security requirements and open audit actions avoids repeat findings and loss of business.",
+"AD-06":"Previous assessments and their CAPA status show whether known risks were actually closed; repeated findings indicate weak management of security.",
+"AD-07":"A vetted critical-asset register tells the guard force what must be protected most – utilities, stores, server / CCTV room – and drives the level of control at each.",
+"AD-08":"A clear security organisation with reporting lines and contacts ensures accountability and that incidents are escalated quickly to the right person.",
+"AD-09":"A signed and dated policy is management's commitment to security; without it, rules on the floor have no authority and are applied inconsistently.",
+"AD-10":"The Site Security Plan translates policy into site-specific threats, zones, manpower and technology; it is the reference against which security is run and audited.",
+"AD-11":"A controlled master list ensures every security activity has a current, approved procedure and that guards follow the latest version.",
+"AD-12":"Post orders tell each guard exactly what to check and how to respond at that post; without them, security depends on individual memory and varies by shift.",
+"AD-13":"Defined roles avoid gaps and overlaps – everyone from the manager to the CCTV operator knows what they are accountable for.",
+"AD-14":"In an incident the first minutes matter; an escalation matrix and contact list make sure the right internal and external responders are called without delay.",
+"AD-15":"A documented incident response procedure ensures incidents are reported, contained, evidence is preserved and lessons are learnt in the same way every time.",
+"AD-16":"Security KPIs and review meetings give management visibility of performance and trends, and drive improvement.",
+"AD-17":"The contract defines what the security agency must deliver – scope, manpower, SLA and penalties – and is the basis for holding it accountable.",
+"AD-18":"A PSARA licence is a legal requirement for private security agencies; engaging an unlicensed agency exposes the company to legal and operational risk.",
+"AD-19":"A post-wise deployment plan confirms that every post is manned as sanctioned and lets the site reconstruct who was where during an investigation.",
+"AD-20":"Attendance and rosters verify that paid manpower is actually present and posts are not left unmanned.",
+"AD-21":"Guards have access to the whole site; background and police verification reduce the risk of insider theft and collusion.",
+"AD-22":"Trained guards respond correctly to fire, frisking, crowd and vehicle situations; untrained guards are a weak control.",
+"AD-23":"Patrols and surprise checks detect breaches early and keep the guard force alert, especially at night.",
+"AD-24":"Where armed guards are deployed, arms licences, safe custody and practice records are legal and safety requirements.",
+"AD-25":"Statutory payments by the agency (wages, PF, ESI) protect the principal employer from liability and reduce guard attrition.",
+"AD-26":"Performance reviews and rotation keep the agency accountable and prevent guards from becoming too familiar with staff and routines.",
+"AD-27":"Verifying employees, contract workers and drivers reduces the insider threat, which accounts for most theft in manufacturing.",
+"AD-28":"A valid CLRA licence is a legal requirement for engaging contract labour and keeps the contractor list controlled.",
+"AD-29":"ID cards and colour coding let guards and supervisors identify who is authorised to be where; lost cards must be blocked to prevent misuse.",
+"AD-30":"Leavers must return IDs and lose access on the last day; otherwise former staff can re-enter or pass on their access.",
+"AD-31":"An approved access matrix ensures people enter only the zones their job requires; without it, access grows unchecked and restricted areas are not restricted.",
+"AD-32":"Periodic access reviews and deactivation logs prove that leavers and role changes are removed from access in time.",
+"AD-33":"Door-forced and held-open alarms reveal tailgating and forced entry; reviewing them shows whether access control is working in practice.",
+"AD-34":"Keys open every restricted area; without a register, tagging and audits, there is no way to know who could have opened a door.",
+"AD-35":"A camera schedule and coverage layout show what is and is not covered, so blind spots can be closed and faults detected.",
+"AD-36":"Health monitoring and adequate retention ensure footage actually exists when an incident is discovered days or weeks later.",
+"AD-37":"A CCTV SOP controls who may view and export footage, protecting evidence integrity and the privacy of employees.",
+"AD-38":"Cameras only deter and detect if someone watches and acts on them; monitoring and fault logs show whether that happens.",
+"AD-39":"Preventive maintenance keeps security systems working; failures discovered only after an incident are too late.",
+"AD-40":"Visitor control ensures every outsider is identified, authorised by a host and escorted, and leaves when expected.",
+"AD-41":"Contractors bring people and tools on site; entry control and tool declaration prevent theft and unsafe work.",
+"AD-42":"Vehicle registers and checks prevent material leaving hidden in vehicles and unauthorised vehicles entering.",
+"AD-43":"Controlled parking keeps vehicles away from boundaries and critical areas and identifies unauthorised vehicles.",
+"AD-44":"Gate passes with authorised signatories are the primary control against material leaving without approval.",
+"AD-45":"Sealed and tracked dispatch protects finished goods in transit, where a large share of losses occur.",
+"AD-46":"Seal and quantity checks at inward detect short supply or pilferage in transit before the material is accepted.",
+"AD-47":"Scrap and rejected units are a common route for theft and IP leakage; documented disposal and destruction close it.",
+"AD-48":"Hazardous waste must be authorised, stored and disposed of as per law; uncontrolled waste is a legal and safety risk.",
+"AD-49":"Knowing which items and stores are high-value focuses access control, CCTV and stock checks where losses would hurt most.",
+"AD-50":"Cycle counts and variance reports reveal pilferage early; unexplained variance is often the first sign of organised theft.",
+"AD-51":"A frisking SOP and prohibited-items list make screening consistent, fair and defensible, and protect against loss of material and data.",
+"AD-52":"Confidential and prototype areas hold customer IP; their custody and destruction must be controlled and recorded.",
+"AD-53":"An incident register, including near-misses, shows patterns that single incidents hide and is the basis for risk-based improvement.",
+"AD-54":"Investigation with root cause and CAPA prevents recurrence and supports police and insurance action.",
+"AD-55":"The emergency plan defines who does what in a crisis; security's role at gates, evacuation and headcount is critical.",
+"AD-56":"Scenario SOPs (bomb threat, intrusion, unrest) prepare the team for rare but high-impact events where improvisation fails.",
+"AD-57":"Regular drills prove that the plan works and that people know what to do; untested plans fail under pressure.",
+"AD-58":"Evacuation routes, assembly points and headcount ensure every person can be accounted for after an evacuation.",
+"AD-59":"A business continuity plan keeps production and customer commitments going after a major disruption.",
+"AD-60":"Good liaison with police and fire brings faster support during incidents and better local intelligence.",
+"AD-61":"A valid fire NOC and factory licence are legal conditions for operating; lapses can stop production.",
+"AD-62":"Fire detection and fail-safe release of access-controlled doors protect life; a door that stays locked in a fire is a serious hazard.",
+"AD-63":"Restricting utilities (DG, transformer, panels, fuel) to authorised persons protects against sabotage, accidents and plant-wide outages.",
+"AD-64":"Metal detectors are effective only if they work and are tested daily; a faulty DFMD gives a false sense of security.",
+"AD-65":"Barriers, turnstiles and scanners enforce control at gates consistently, independent of guard vigilance.",
+"AD-66":"Reliable communication (radios, PA) lets guards raise alarms and coordinate response quickly, including during emergencies.",
+"AD-67":"Perimeter lighting and intrusion detection deter and expose night-time intrusion along the boundary.",
+"AD-68":"Security awareness makes every employee part of security – challenging strangers, protecting IDs and reporting incidents.",
+"AD-69":"Structured training for the security team keeps skills current in fire, first aid, crowd management and report writing.",
+"W-01":"The boundary is the first line of defence; its height, condition and climb aids decide how easily an intruder or stolen material crosses it.",
+"W-02":"Gates are where people and vehicles are authorised; weak gate control lets unauthorised people and material in and out unnoticed.",
+"W-03":"Material and vehicle checks at the gate are the main control against theft of components, finished goods and scrap.",
+"W-04":"Alert, well-briefed guards at every post are the core of physical security; empty or untrained posts are open doors.",
+"W-05":"Electronic security extends the guards' reach; dead cameras, blind spots and faulty detectors leave areas unprotected.",
+"W-06":"A manned control room turns cameras into detection and response; unmonitored screens only help after the event.",
+"W-07":"Key custody, high-value stores and exit frisking control the routes by which material and data most often leave the site.",
+"W-08":"Complete, signed registers are the evidence trail for investigations and audits; gaps or loose pages make them unreliable.",
+"W-09":"In an emergency, security controls the gates, guides evacuation and accounts for people; routes and fail-safe doors must work.",
+"W-10":"Utilities and critical areas (DG, transformer, panels, server room, roof) are single points of failure and must be restricted.",
+"I-01":"The Plant Head's view sets priorities, confirms management commitment and explains business risks that documents do not show.",
+"I-02":"The Admin / Security Head explains how security is actually run, resourced and escalated.",
+"I-03":"The agency supervisor shows whether guards know their duties and how deployment and supervision work in practice.",
+"I-04":"The CCTV operator shows whether cameras are actually monitored and how incidents and faults are handled.",
+"I-05":"HR / IR explains verification, ID, leaver and labour-relations controls that directly affect security.",
+"I-06":"Stores staff show how high-value material is protected and where losses could occur.",
+"I-07":"Dispatch staff show how finished goods are checked, sealed and tracked before leaving.",
+"I-08":"Maintenance / utilities staff show how critical utilities are protected and who can access them.",
+"I-09":"EHS / fire staff confirm emergency arrangements, drills and the fire system's link with access control.",
+"I-10":"IT explains the security systems (access control, CCTV, HR integration) and data handling.",
+"I-11":"Quality staff show how rejected material and customer-confidential items are controlled.",
+"I-12":"Interviewing guards on post tests whether post orders and training work on the ground."};
+const whyOf=id=>id&&WHY[id]?WHY[id]:"";
 // Points at a site: the 54 site documents, walkthrough and interviews. The 15 former group-level documents (scope "X")
 // are retired: kept only so older entries still show their titles; their findings were folded into the 54 at DTSPL.
 // Sites whose own requisition sheet from Northstar lists all 69 documents (the retired 15 included).
@@ -1461,7 +1556,7 @@ function makeChecklist(){
   let last="";
   for(const it of ITEMS.filter(i=>i.sec==="doc"&&i.scope!=="X")){
     if(it.cat!==last){if(last)b+='</table>';b+='<h3>'+E(it.cat)+'</h3><div class="muted">'+E(it.hint||"")+'</div><table><tr><th>ID</th><th>Document / record</th><th>Priority</th><th>When</th><th>Status</th><th>Remarks / evidence</th></tr>';last=it.cat;}
-    b+='<tr><td>'+it.id+'</td><td>'+E(it.text)+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+it.when+'</td>'+blank+'</tr>';
+    b+='<tr><td>'+it.id+'</td><td>'+E(it.text)+(whyOf(it.id)?'<div class="muted"><i>Why: '+E(whyOf(it.id))+'</i></div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+it.when+'</td>'+blank+'</tr>';
   }
   b+='</table></section><section class="site"><h2>B. Physical walkthrough</h2><table><tr><th>ID</th><th>Area and what to check</th><th>How to test</th><th>Rating</th><th>Observations</th></tr>'+
    ITEMS.filter(i=>i.sec==="walk").map(it=>'<tr><td>'+it.id+'</td><td><b>'+E(it.area)+'</b><br>'+E(it.text.slice(it.area.length+2))+'</td><td>'+E(it.hint)+'</td>'+blank+'</tr>').join("")+'</table>';
@@ -1510,11 +1605,11 @@ function reportHTML(r,scopes,ents,urls){
     const sevCls={high:"serious",med:"warn",low:"good"};
     b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target risk</th></tr>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
-      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
+      '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
     const gp=ents.filter(e=>e.scope===sc&&(e.sev==="good"||e.sev==="info")&&rs(e)).sort((a,b2)=>(a.item||"zz").localeCompare(b2.item||"zz"));
     if(gp.length)b+='<h3>Good practices and compliant points ('+gp.length+')</h3><div class="muted">Controls found in place. The rating is the residual risk with the control working as observed.</div><table class="fd"><tr><th>Risk</th><th>Point</th><th>Observation</th><th>To sustain</th></tr>'+
-      gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
+      gp.map(e=>'<tr>'+riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label))+'<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'</td><td>'+E(e.extra.rec||"–")+'</td></tr>').join("")+'</table>';
     const pg=pendingGroups(sc);
     if(pg.length)b+='<h3>Documents the client will share later</h3><table><tr><th>Point</th><th>Document</th><th>Will be shared by</th><th>Expected</th></tr>'+pg.flatMap(g=>g.items).map(x=>'<tr><td>'+x.it.id+'</td><td>'+E(x.it.text)+'</td><td>'+E(x.L.name)+'<div class="muted">'+E([x.L.mobile,x.L.email].filter(Boolean).join(" · "))+'</div></td><td>'+E(x.L.due?fmtDate(x.L.due):"–")+'</td></tr>').join("")+'</table>';
     b+='<h3>Status and risk of every point</h3><table class="pts"><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th><th>Current risk</th><th>Target risk</th><th>Last update</th></tr>'+
@@ -1543,7 +1638,7 @@ function reportHTML(r,scopes,ents,urls){
    '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
    RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
-   '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
+   '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
    '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
@@ -1600,7 +1695,7 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
  '.kv th{width:26%}.muted{color:#5E7079;font-size:8.6pt}.pb{page-break-before:always}.tag{display:inline-block;border-radius:4px;padding:0 5px;font-size:8pt;font-weight:700;background:#E6EDEB}'+
  RISK_CSS+'.rc{width:70px;text-align:center}.rc div{font-size:7.8pt}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.smap img{max-width:none}.box{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid}'+
  '.rm th span{font-weight:400;font-size:8pt}.hm td{position:relative;height:54px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:14pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600}'+
- '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
+ '.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
 function docShell(title,body){
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+'</style></head><body>'+body+
@@ -1758,7 +1853,7 @@ function makeOR(sc){
     let n=0;
     b+='<section class="pb"><h2>4. Requirements by security function</h2>'+Object.keys(groups).sort((a,b2)=>Math.max(...groups[b2].map(sd.rs))-Math.max(...groups[a].map(sd.rs))).map(t=>{const O=OR_TOPIC[t]||["Security In-charge","Requirement met and verified on site."];
       return '<h3>'+esc(t)+'</h3><div class="muted">Owner: '+esc(O[0])+' · Acceptance: '+esc(O[1])+'</div><table><tr><th>Ref</th><th>Requirement (the site shall …)</th><th>Why – audit finding</th><th>Current</th><th>Target</th><th>Timeline</th></tr>'+
-        groups[t].map(e=>{n++;const bd=riskBand(sd.rs(e))[0];return '<tr><td><b>OR-'+S.no+'-'+String(n).padStart(2,"0")+'</b></td><td>'+esc(e.extra.rec||"Close the gap described.")+'</td><td><b>'+esc(e.item||"Other")+'</b> '+esc(e.body||"")+evidLine(e)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'<td>'+BAND_TIME[bd]+'</td></tr>';}).join("")+'</table>';}).join("")+'</section>';
+        groups[t].map(e=>{n++;const bd=riskBand(sd.rs(e))[0];return '<tr><td><b>OR-'+S.no+'-'+String(n).padStart(2,"0")+'</b></td><td>'+esc(e.extra.rec||"Close the gap described.")+'</td><td><b>'+esc(e.item||"Other")+'</b> '+esc(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+esc(whyOf(e.item))+'</div>':'')+evidLine(e)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+(e.extra.tli?riskCellHTML(e.extra.tli,e.extra.tim):'<td>–</td>')+'<td>'+BAND_TIME[bd]+'</td></tr>';}).join("")+'</table>';}).join("")+'</section>';
     b+='<section class="pb"><h2>5. Controls to sustain</h2><p>These controls were found in place and must be kept working; they are part of the requirement baseline.</p><table><tr><th>Point</th><th>Control in place</th><th>Residual risk</th></tr>'+
       sd.obs.filter(e=>(e.sev==="good"||e.sev==="info")&&sd.rs(e)&&e.body).map(e=>'<tr><td><b>'+esc(e.item||"Other")+'</b></td><td>'+esc(e.body)+'</td>'+riskCellHTML(e.extra.li,e.extra.im)+'</tr>').join("")+'</table>'+
       '<h2>6. Verification</h2><ul><li>Each requirement is closed only with evidence (photo, record, test report) reviewed by the Security In-charge and accepted by the Plant Head.</li><li>Electronic systems are accepted after a witnessed test against the acceptance criteria above.</li><li>Closure status is reported monthly against this OR until all Critical and High items are closed.</li></ul></section>';
@@ -1984,7 +2079,7 @@ function renderSheet(){
     sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">'+esc(it.id)+' · '+esc(SITE[sc].name)+'</div></div><div class="sh-body">'+
      '<div class="rtop">'+badge(sc,1)+'<b>'+it.id+'</b><span class="tag">'+esc(it.cat)+'</span>'+(it.sec==="doc"?'<span class="tag '+(it.mand?"mand":"")+'">'+(it.mand?"Mandatory":"Desirable")+'</span><span class="tag">'+it.when+'</span>':'')+'</div>'+
 
-     '<div class="req">'+esc(it.text)+'</div>'+(it.hint?'<div class="hint">'+esc(it.hint)+'</div>':'')+
+     '<div class="req">'+esc(it.text)+'</div>'+(whyOf(it.id)?'<div class="why-box"><b>Why it is required</b> '+esc(whyOf(it.id))+'</div>':'')+(it.hint?'<div class="hint">'+esc(it.hint)+'</div>':'')+
      '<div class="small" style="margin-top:8px">Current: '+(p&&p.status?stPill(p.status)+' by '+esc(uname(p.statusBy)):p?'<span class="pill" style="--pc:var(--warn)">Notes only</span>':'<span class="pill outline">Not covered</span>')+'</div>'+
      '<div class="sec-h">Entries ('+(p?p.entries.length:0)+')</div>'+
      (p?p.entries.filter(e=>!isChild(e)).map(e=>entryCard(effObs(e))).join(""):'<div class="muted small">No entries yet. Either auditor can add the first one.</div>')+
