@@ -142,7 +142,7 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .why-box{background:var(--brand-soft);border-left:3px solid var(--brand);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;color:var(--ink2)}.why-box b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--brand);margin-bottom:2px}
 .xs-t{border-collapse:separate;border-spacing:3px;width:100%}.xs-t th{font-size:12px;text-align:left;font-weight:600;color:var(--ink2);padding-right:6px;min-width:150px}.xs-t thead th{text-align:center;min-width:0}
 .xs-t td{text-align:center;min-width:40px}.xs-na{color:var(--muted);font-size:12px}.xs-b{width:100%;min-height:30px;border:0;border-radius:7px;background:color-mix(in srgb,var(--pc) 75%,transparent);color:#14212B;font:inherit;font-weight:700;cursor:pointer}
-.dv{margin-top:12px}.dv-h{display:flex;gap:10px;align-items:flex-start}.dv-n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:800}
+.dv{margin-top:12px}.dv-about{font-size:13px;color:var(--ink2);margin:8px 0 2px;display:grid;gap:3px}.dv-about b{color:var(--ink)}.dv-h{display:flex;gap:10px;align-items:flex-start}.dv-n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:800}
 .linkbtn{background:none;border:0;color:var(--brand);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px}
 @media (max-width:520px){.cb-sum{grid-template-columns:repeat(3,1fr)}.cb-sum div:nth-child(n+4){display:none}}
 .brow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm num" "bar bar";gap:5px 10px;align-items:center;padding:8px 0}
@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.38";
+const VERSION="2026-11-02.39";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1535,15 +1535,16 @@ function openReport(sc){
 }
 function reportSheet(){
   const r=ui.sheet;
-  const card=(n,t,q,body)=>'<div class="card dv"><div class="dv-h"><span class="dv-n">'+n+'</span><div><div class="card-t">'+t+'</div><div class="small muted">'+q+'</div></div></div>'+body+'</div>';
+  const card=(n,t,q,body)=>{const d=DELIV[n-1];return '<div class="card dv"><div class="dv-h"><span class="dv-n">'+n+'</span><div><div class="card-t">'+t+'</div><div class="small muted">'+q+'</div></div></div>'+
+    '<div class="dv-about"><div><b>What it is:</b> '+esc(d.what)+'</div><div><b>Answers:</b> '+esc(d.ans)+'</div><div><b>Contains:</b> '+esc(d.has)+'</div></div>'+body+'</div>';};
   return '<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Deliverables (PDF)</div></div><div class="sh-body">'+
    '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
-   card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="small muted" style="margin:6px 0">All 69 documents, 10 walkthrough areas and 12 interviews with why each is required, rating scales and the risk matrix.</div><div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
+   card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
    card(2,"Security Audit Report","Incorporating findings and photographic evidence where available · one per designated site",
      '<span class="lbl" style="margin-top:8px">Entry log from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
      '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
-     '<div class="small muted" style="margin-top:6px">Cover, risk methodology, site map, auditees, coverage, risk heat map, colour-coded findings with current and target risk, good practices, status and risk of every point, and the entry log with photos. "All sites" adds the risk-across-sites comparison.</div>'+
+     '<div class="small muted" style="margin-top:6px">"All sites" adds the Dixon sites map and the risk-across-sites comparison.</div>'+
      '<div class="btn-row"><button class="btn primary" data-act="mkreport">📄 Audit report PDF</button></div>')+
    card(3,"Site Security Plan (SSP)","One per designated site",'<div class="btn-row" style="margin-top:6px"><button class="btn primary" data-act="mkssp">📄 SSP PDF</button></div>')+
    card(4,"Operational Requirement (OR)","One per designated site",'<div class="btn-row" style="margin-top:6px"><button class="btn primary" data-act="mkor">📄 OR PDF</button></div>')+
@@ -1583,7 +1584,7 @@ function makeChecklist(){
   let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit checklist</h1><h2>Dixon Technologies (India) Limited – Selaqui, Dehradun</h2>'+
    '<table class="kv"><tr><th>Reference</th><td>NSS/DTIL/SECA/2026-07/01</td></tr><tr><th>Applies to</th><td>'+SITES.filter(s=>s.id!=="G").map(s=>E(s.no+". "+s.name)).join("; ")+'</td></tr>'+
    '<tr><th>Parts</th><td>A. Documents and records (69) · B. Physical walkthrough (10 areas) · C. Stakeholder interviews (12) · D. Rating scales and risk matrix</td></tr><tr><th>Version</th><td>Issued '+fmtDate(dayKey(new Date().toISOString()))+'</td></tr></table>'+
-   '<p class="note">One instrument common to all sites. Each site is assessed against the same 69 documents. Mandatory items are needed to complete the audit; desirable items strengthen findings. Records containing personal data are reviewed on site only and not copied.</p>'+
+   '<p class="note">One instrument common to all sites. Each site is assessed against the same 69 documents. Mandatory items are needed to complete the audit; desirable items strengthen findings. Records containing personal data are reviewed on site only and not copied.</p>'+delivAboutHTML(1)+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
   b+='<section class="site"><h2>A. Documents and records</h2>';
   let last="";
@@ -1604,7 +1605,7 @@ function makeChecklist(){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
-  w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+'</style></head><body>'+PBAR+b+'</body></html>');w.document.close();
+  w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>');w.document.close();
   try{w.focus();}catch(e){}
 }
 function reportHTML(r,scopes,ents,urls){
@@ -1625,7 +1626,7 @@ function reportHTML(r,scopes,ents,urls){
    '<tr><th>Issued</th><td>'+fmtFull(now)+' IST</td></tr><tr><th>Classification</th><td>Confidential – Dixon management and Northstar only</td></tr></table>'+
    '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
    '<div class="cv-toc"><b>Contents</b><ol>'+(scopes.length>1?'<li>Risk across sites</li>':'')+'<li>Risk assessment methodology</li>'+scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' – at a glance, findings, good practices, status of every point'+(r.photos?', photographic evidence':'')+'</li>').join("")+'</ol></div>'+
-   '<p class="note">Compiled from the Selaqui audit field log. The field log is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
+   delivAboutHTML(2)+'<p class="note">Compiled from the Selaqui audit field log. The field log is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
   if(scopes.length>1){const rows=crossRows(5);
     b+='<section class="site"><h2>Dixon sites in Selaqui</h2>'+sitesMapHTML(null,900,560)+'<div class="mgrid" style="margin-top:10px">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell"><div class="mt"><b>'+s.no+'</b> '+E(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div></section>';
     b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · – not logged · n/a not assessed · · not in the site checklist.</div>'+
@@ -1707,7 +1708,7 @@ function reportHTML(r,scopes,ents,urls){
    '.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}@media screen and (max-width:600px){.mgrid{grid-template-columns:1fr}}'+
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
-   PBAR_CSS+'</style></head><body>'+PBAR+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
+   PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 
 
@@ -1766,7 +1767,7 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mcell.on{border:2px solid #0E5A61}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
 function docShell(title,body){
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+PBAR_CSS+'</style></head><body>'+PBAR+body+
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+body+
    '<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 async function openDoc(title,build){
@@ -1782,9 +1783,23 @@ async function openDoc(title,build){
 // Desirable documents left unlogged at a site whose audit is marked done: reported once as a scope limitation.
 const skippedDesirable=sc=>resSite(sc).status==="done"?itemsFor(sc,"doc").filter(it=>!it.mand&&!D.pts.get(pkey(sc,it))):[];
 const resSite=sc=>((RES&&RES.sites)||[]).find(x=>x.site===sc)||{};
+// The five deliverables: what each is, what it answers and what it contains – shown on the Deliverables screen and inside every document.
+const DELIV=[
+ {n:1,t:"Security Audit Checklist",q:"One instrument, common to the engagement",what:"The audit instrument – what is checked at every site and how.",ans:"What will be examined?",has:"69 documents and records, 10 walkthrough areas, 12 stakeholder interviews, why each is required, rating scales and the 5 × 5 risk matrix.",use:"Used to plan and conduct the audit and to repeat it consistently; it contains no findings."},
+ {n:2,t:"Security Audit Report",q:"Incorporating findings and photographic evidence · one per designated site",what:"What was found at the site – the as-is position, backed by evidence.",ans:"Where does the site stand today?",has:"Methodology, site map, auditees, coverage, risk heat map, findings with current and target risk, good practices, status of every point and photographic evidence.",use:"For site and corporate management to understand the gaps and their risk."},
+ {n:3,t:"Site Security Plan (SSP)",q:"One per designated site",what:"How the site will be secured from now on – the forward-looking plan.",ans:"How should the site be protected?",has:"Site profile and context (PESTLE, utilities, issues, interested parties), threat and risk assessment, security zoning, organisation and deployment, physical and electronic measures, procedures, emergency response and an implementation plan.",use:"Owned by the Plant Head and kept current; the reference for running security at the site."},
+ {n:4,t:"Operational Requirement (OR)",q:"One per designated site",what:"What must be achieved – each finding turned into a measurable requirement.",ans:"What exactly must be fixed or procured, by whom and by when?",has:"Numbered requirements by security function, with owner, acceptance criteria, current and target risk, timeline by risk band, and the controls to sustain.",use:"The basis for budgets, vendor specifications, implementation and closure tracking."},
+ {n:5,t:"Corporate-Level Security SOP Set",q:"One consolidated set for the engagement",what:"How security tasks are done every day – the controlled procedures.",ans:"How do guards and staff carry out each security activity?",has:"16 SOPs (governance, guarding, patrolling, access control, ID, visitors, vehicles, material, scrap, keys, CCTV, frisking, incidents, emergency, equipment, BGV and training) with performance standards, records and the audit gaps each closes.",use:"Adopted once for all Dixon sites in Selaqui; each site adds a short annexure."}];
+function delivAboutHTML(n){
+  const d=DELIV[n-1];
+  return '<div class="about"><div class="ab-t">About this document · Deliverable '+n+' of 5</div><p><b>'+esc(d.what)+'</b> It answers: <i>'+esc(d.ans)+'</i></p><p><b>Contains:</b> '+esc(d.has)+'</p><p><b>Use:</b> '+esc(d.use)+'</p>'+
+   '<table class="ab-tb"><tr><th>#</th><th>Deliverable</th><th>Answers</th></tr>'+DELIV.map(x=>'<tr class="'+(x.n===n?"ab-on":"")+'"><td>'+x.n+'</td><td>'+esc(x.t)+'<div class="muted">'+esc(x.q)+'</div></td><td>'+esc(x.ans)+'</td></tr>').join("")+'</table></div>';
+}
+const ABOUT_CSS='.about{border:1px solid #D0DAD7;border-left:5px solid #0E5A61;border-radius:8px;padding:10px 12px;margin:14px 0;background:#F7FAF9;break-inside:avoid;font-size:9pt}.about p{margin:4px 0}.ab-t{font-weight:800;color:#0E3F45;font-size:10pt;margin-bottom:4px}.ab-tb{margin-top:8px;font-size:8.5pt}.ab-tb th{background:#E6EDEB!important;color:#14212B!important}.ab-tb tr.ab-on td{background:#DDEFEA!important;font-weight:700}';
 const docCover=(kind,sub,extra)=>'<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1>'+esc(kind)+'</h1><h2 style="border:0">'+sub+'</h2>'+
   '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
   '<tr><th>Version</th><td>Draft for client review · generated '+fmtFull(new Date().toISOString())+' IST</td></tr><tr><th>Classification</th><td>Confidential – for Dixon management and Northstar only</td></tr></table>'+
+  delivAboutHTML(/Site Security Plan/.test(kind)?3:/Operational Requirement/.test(kind)?4:5)+
   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
 // All Dixon pockets in Selaqui on one satellite view (sites whose perimeter has been marked).
 function sitesMapHTML(hl,W,H){
