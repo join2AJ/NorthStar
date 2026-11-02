@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.47";
+const VERSION="2026-11-02.48";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1910,7 +1910,7 @@ async function htmlToPdf(html,onp){
 }
 let DOC_CAP=null;
 async function captureDoc(fn,...a){DOC_CAP={};try{fn(...a);await DOC_CAP.p;return DOC_CAP.html;}finally{DOC_CAP=null;}}
-const PACK_PARTS=[["1","1. Site photos (full size) with photo index"],["2","2. Excel - risk matrix, auditees, findings with photos in the row"],["3","3. Findings PDF - photos in each row"],["4","4. Findings PDF - table, then photos"],["5","5. Deliverables (PDF):"],["5.1","5.1 Security Audit Checklist"],["5.2","5.2 Security Audit Report"],["5.3","5.3 Site Security Plan (SSP)"],["5.4","5.4 Operational Requirement (OR)"],["5.5","5.5 Corporate Security SOP Set"],["6","6. KML map file - perimeter, site pin, observations with GPS (opens in Google Earth)"]];
+const PACK_PARTS=[["1","1. Site photos (full size) with photo index"],["2","2. Excel - risk matrix, auditees, findings with photos in the row"],["3","3. Findings PDF - photos in each row"],["4","4. Findings PDF - table, then photos"],["5","5. Deliverables (PDF):"],["5.1","5.1 Security Audit Checklist"],["5.2","5.2 Security Audit Report"],["5.3","5.3 Site Security Plan (SSP)"],["5.4","5.4 Operational Requirement (OR)"],["5.5","5.5 Corporate Security SOP Set"],["6","6. KML map file - site perimeter and location pin (opens in Google Earth)"]];
 document.addEventListener("change",ev=>{const t=ev.target;if(!t||!t.closest||!t.closest("#zp-parts"))return;const all=[...document.querySelectorAll("#zp-parts input")],kids=all.filter(x=>x.value.startsWith("5.")),par=all.find(x=>x.value==="5");
   if(t===par)kids.forEach(x=>x.checked=par.checked);else if(kids.includes(t)&&par)par.checked=kids.some(x=>x.checked);});
 const packSel=()=>{const v=lsGet("sa.packParts");return v?v.split(","):PACK_PARTS.map(x=>x[0]);};
@@ -1961,24 +1961,17 @@ async function makePack(v,sel){
   }catch(err){prog("Could not build the pack: "+(err.message||err));}
   finally{packBusy=false;while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());}
 }
-// KML for Google Earth: site perimeter, site pin and every finding logged with GPS, coloured by current risk.
+// KML for Google Earth: site perimeter and site pin only.
 function sitesKML(scs){
   const X=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-  const kc={good:"ff7ad29b",warn:"ff66e0ff",serious:"ff5ca3f7",crit:"ff4b53e5",none:"ffb0b0b0"};
   let k='<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>'+X(scs.length>1?"Dixon Selaqui sites - security audit":"Site "+SITE[scs[0]].no+". "+SITE[scs[0]].name+" - security audit")+'</name>'+
     '<description>Northstar Safety Systemz · Ref. NSS/DTIL/SECA/2026-07/01</description>'+
-    '<Style id="perim"><LineStyle><color>ff2dc0fb</color><width>3</width></LineStyle><PolyStyle><color>2e2dc0fb</color></PolyStyle></Style>'+
-    Object.entries(kc).map(([b,c])=>'<Style id="r-'+b+'"><IconStyle><color>'+c+'</color><scale>0.9</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>').join("");
+    '<Style id="perim"><LineStyle><color>ff2dc0fb</color><width>3</width></LineStyle><PolyStyle><color>2e2dc0fb</color></PolyStyle></Style>';
   for(const sc of scs){
     const S=SITE[sc],g=resGeo(sc),R=resSite(sc);
     k+='<Folder><name>'+X(S.no+". "+S.name)+'</name>';
     if(g&&g.poly&&g.poly.length>2)k+='<Placemark><name>'+X(S.name+" perimeter")+'</name><description>'+X((R.addr||S.addr||"")+(R.date?" · audit "+R.date:""))+'</description><styleUrl>#perim</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>'+g.poly.concat([g.poly[0]]).map(p=>p[1]+","+p[0]+",0").join(" ")+'</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>';
     if(g&&g.pin)k+='<Placemark><name>'+X(S.no+". "+S.name)+'</name><Point><coordinates>'+g.pin[1]+","+g.pin[0]+',0</coordinates></Point></Placemark>';
-    const f=D.obs.filter(e=>e.scope===sc&&e.geo&&e.geo.lat);
-    if(f.length){k+='<Folder><name>Observations with GPS ('+f.length+')</name>';
-      for(const e of f){const n=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0,b=n?riskBand(n):null;
-        k+='<Placemark><name>'+X((e.item||"Note")+(n?" · "+n+" "+b[0]:""))+'</name><description>'+X((e.item&&ITEM[e.item]?ITEM[e.item].text+"\n\n":"")+(e.body||"")+(e.extra&&e.extra.rec?"\n\nRecommendation: "+e.extra.rec:"")+((e.photos||[]).length?"\n\nPhotos: "+e.photos.map(p=>photoRef(p.p)).join(", "):""))+'</description><styleUrl>#r-'+(b?b[1]:"none")+'</styleUrl><Point><coordinates>'+e.geo.lng+","+e.geo.lat+',0</coordinates></Point></Placemark>';}
-      k+='</Folder>';}
     k+='</Folder>';
   }
   return k+'</Document></kml>';
