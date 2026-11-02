@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.43";
+const VERSION="2026-11-02.44";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1539,6 +1539,9 @@ function reportSheet(){
     '<div class="dv-about"><div><b>What it is:</b> '+esc(d.what)+'</div><div><b>Answers:</b> '+esc(d.ans)+'</div><div><b>Contains:</b> '+esc(d.has)+'</div></div>'+body+'</div>';};
   return '<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Deliverables (PDF)</div></div><div class="sh-body">'+
    '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
+   '<div class="card" style="margin-top:10px;border-left:4px solid #0E5A61"><div class="card-t">📦 Site pack (ZIP)</div><div class="small muted" style="margin:3px 0 8px">One ZIP per site, in one go: 1) all site photos with an index, 2) Excel - risk matrix, auditees, findings with photos in the row, 3) findings PDF with photos in each row, 4) findings PDF followed by the photos, 5) all five deliverables as PDF. Allow a few minutes per site and keep this screen open.</div>'+
+   '<select id="zp-site">'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'<option value="all">All sites - one ZIP per site</option></select>'+
+   '<div class="btn-row"><button class="btn primary" data-act="mkpack">📦 Download site pack</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
    card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
    card(2,"Security Audit Report","Incorporating findings and photographic evidence where available · one per designated site",
@@ -1579,6 +1582,10 @@ async function makeReport(){
 }
 function makeChecklist(){
   const w=window.open("","_blank");if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
+  w.document.open();w.document.write(checklistHTML());w.document.close();
+  try{w.focus();}catch(e){}
+}
+function checklistHTML(){
   const E=esc;
   const blank='<td class="bx"></td><td class="bx"></td>';
   let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit checklist</h1><h2>Dixon Technologies (India) Limited - Selaqui, Dehradun</h2>'+
@@ -1605,8 +1612,7 @@ function makeChecklist(){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
-  w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>');w.document.close();
-  try{w.focus();}catch(e){}
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>';
 }
 function reportHTML(r,scopes,ents,urls){
   const E=esc,now=new Date().toISOString();
@@ -1656,7 +1662,7 @@ function reportHTML(r,scopes,ents,urls){
     if(rated.length)b+='<h3>Risk profile - current risk of every rated observation ('+rated.length+')</h3><div class="muted">Each cell shows its risk score (top left), the number of observations (large figure) and the point IDs.</div>'+riskMatrixHTML(cells)+'<div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
     const sevCls={high:"serious",med:"warn",low:"good"};
     const shown=new Set(),phRow=(e,cols)=>{if(!r.photos||!(e.photos||[]).length)return '';const fig=e.photos.filter(p=>urls[p.t]).map(p=>'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>').join('');if(!fig)return '';shown.add(e.id);return '<tr class="phr"><td colspan="'+cols+'"><div class="ph">'+fig+'</div></td></tr>';};
-    b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
+    b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd fd6"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
       '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'</td><td>'+E(e.extra&&e.extra.rec||"-")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">-</td>')+'</tr>'+phRow(e,6)).join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
@@ -1692,7 +1698,7 @@ function reportHTML(r,scopes,ents,urls){
    '.cv-toc{margin-top:8px;font-size:9.5pt}.cv-toc ol{margin:4px 0;padding-left:20px}'+
    '.sh{display:flex;gap:10px;align-items:center;background:#0E3F45;color:#fff;border-radius:6px;padding:10px 12px;margin-bottom:10px}.sh .badge{background:#fff;color:#0E3F45;font-size:14pt;font-weight:800;padding:2px 10px;border-radius:6px}.sh-n{font-size:15pt;font-weight:700}.sh-a{font-size:8.5pt;opacity:.85}'+
    '.glance{border:1px solid #D0DAD7;border-radius:8px;padding:10px 12px;margin:6px 0 12px;break-inside:avoid}.gl-row{display:flex;gap:8px;margin-bottom:8px}.gl-k{flex:1;background:#F2F6F5;border-radius:6px;padding:6px 8px}.gl-k b{display:block;font-size:14pt;color:#0E3F45}.gl-k span{font-size:8pt;color:#5E7079}.gl-top{margin-top:8px;font-size:9pt}.gl-top ol{margin:4px 0;padding-left:18px}.gl-top li{margin:3px 0}'+
-   '@media print,(min-width:900px){.fd,.pts{table-layout:fixed}}.fd td{word-wrap:break-word;overflow-wrap:anywhere}'+
+   '@media print,(min-width:900px){.fd,.pts{table-layout:fixed}.fd6 tr>:nth-child(1){width:4%}.fd6 tr>:nth-child(2){width:11%}.fd6 tr>:nth-child(3){width:17%}.fd6 tr>:nth-child(4){width:32%}.fd6 tr>:nth-child(5){width:27%}.fd6 tr>:nth-child(6){width:9%}.fd6 tr.phr>td{width:100%}}.fd td{word-wrap:break-word;overflow-wrap:anywhere}'+
    '@media screen and (max-width:899px){.fd colgroup,.fd thead,.pts tr:first-child{display:none}.fd,.fd tbody,.fd tr,.fd td,.pts,.pts tbody,.pts tr,.pts td{display:block;width:auto!important}'+
    '.fd tr,.pts tr{border:1px solid #D0DAD7;border-radius:10px;margin:10px 0;overflow:hidden;break-inside:avoid}.fd td,.pts td{border:0;border-top:1px solid #EEF2F1}.fd td:not([class*="r-"]),.pts td:not([class*="r-"]){background:#fff!important}.fd td.rc,.pts td.rc{padding:8px 10px}td{overflow-wrap:anywhere}.fd td:first-child{display:none}.fd td.rc,.pts td.rc{display:inline-block;width:50%!important;text-align:left;border-top:0}'+
    '.fd td:nth-child(4)::before{content:"Observation";display:block;font-size:8pt;font-weight:700;color:#0E5A61;text-transform:uppercase}.fd td:nth-child(5)::before{content:"Recommendation";display:block;font-size:8pt;font-weight:700;color:#0E5A61;text-transform:uppercase}.fd td:nth-child(6)::before{content:"Target risk  ";font-size:8pt;font-weight:700}'+
@@ -1729,30 +1735,217 @@ function zipBlob(files){
   return new Blob(parts.concat(cen,[e.buffer]),{type:"application/zip"});
 }
 let zipBusy=false;
+// Photos (full size) plus a CSV index, as ZIP entries; folder "" puts each site in its own folder.
+async function photoFiles(list,folder,onp){
+  list=list.map(x=>({...x,o:D.obs.find(o=>o.id===(isChild(x.e)?x.e.target:x.e.id))||x.e,name:(folder!=null?folder:(x.e.scope&&SITE[x.e.scope]?"Site"+SITE[x.e.scope].no+"_"+SITE[x.e.scope].name.replace(/[^A-Za-z0-9]+/g,"-")+"/":""))+photoName(x.e,x.i)}));
+  const urls={},need=[];
+  for(const x of list){if(!(await dbGet("blobs",x.ph.p)))need.push(x.ph.p);}
+  for(let i=0;i<need.length;i+=200){const r=await api("signRead",{paths:need.slice(i,i+200)});Object.assign(urls,r.urls);}
+  const files=[],byPath={},rows=[["Photo_Ref","File","Site","Point","Requirement","Observation","Status","Severity","Risk","Auditor","Logged_IST","GPS"]];let done=0,fail=0;
+  for(const x of list){
+    onp(++done+" / "+list.length);
+    try{let b=await dbGet("blobs",x.ph.p);if(!b){const r=await fetch(urls[x.ph.p]);if(!r.ok)throw 0;b=await r.blob();}
+      const u8=new Uint8Array(await b.arrayBuffer());byPath[x.ph.p]=u8;files.push({name:x.name,data:u8});}catch(err){fail++;continue;}
+    const e=x.o,rk=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:"";
+    rows.push([photoRef(x.ph.p),x.name,e.scope?SITE[e.scope].name:"",e.item||"Other observation",e.item&&ITEM[e.item]?ITEM[e.item].text:"",e.body||"",e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",rk?rk+" "+riskBand(rk)[0]:"",uname(x.e.author),fmtFull(x.e.ts),x.e.geo?x.e.geo.lat.toFixed(5)+", "+x.e.geo.lng.toFixed(5):""]);}
+  const csv="\ufeff"+rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  files.unshift({name:(folder||"")+"Photo_index.csv",data:new TextEncoder().encode(csv)});
+  return {files,fail,byPath};
+}
 async function photosZip(list,fname){
-  list=list.map(x=>({...x,o:D.obs.find(o=>o.id===(isChild(x.e)?x.e.target:x.e.id))||x.e,name:(x.e.scope&&SITE[x.e.scope]?"Site"+SITE[x.e.scope].no+"_"+SITE[x.e.scope].name.replace(/[^A-Za-z0-9]+/g,"-")+"/":"")+photoName(x.e,x.i)}));
   if(zipBusy)return;
   if(!list.length){toast("No photos to download.");return;}
   zipBusy=true;
   try{
-    const urls={},need=[];
-    for(const x of list){if(!(await dbGet("blobs",x.ph.p)))need.push(x.ph.p);}
-    for(let i=0;i<need.length;i+=200){const r=await api("signRead",{paths:need.slice(i,i+200)});Object.assign(urls,r.urls);}
-    const files=[],rows=[["Photo_Ref","File","Site","Point","Requirement","Observation","Status","Severity","Risk","Auditor","Logged_IST","GPS"]];let done=0,fail=0;
-    for(const x of list){
-      toast("Packing photos… "+(++done)+" / "+list.length,60000);
-      try{let b=await dbGet("blobs",x.ph.p);if(!b){const r=await fetch(urls[x.ph.p]);if(!r.ok)throw 0;b=await r.blob();}
-        files.push({name:x.name,data:new Uint8Array(await b.arrayBuffer())});}catch(err){fail++;continue;}
-      const e=x.o,rk=e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:"";
-      rows.push([photoRef(x.ph.p),x.name,e.scope?SITE[e.scope].name:"",e.item||"Other observation",e.item&&ITEM[e.item]?ITEM[e.item].text:"",e.body||"",e.status&&ST[e.status]?ST[e.status].label:"",e.sev&&SEVM[e.sev]?SEVM[e.sev].label:"",rk?rk+" "+riskBand(rk)[0]:"",uname(x.e.author),fmtFull(x.e.ts),x.e.geo?x.e.geo.lat.toFixed(5)+", "+x.e.geo.lng.toFixed(5):""]);}
-    const csv="﻿"+rows.map(r=>r.map(c=>'"'+String(c==null?"":c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
-    files.unshift({name:"Photo_index.csv",data:new TextEncoder().encode(csv)});
+    const {files,fail}=await photoFiles(list,null,m=>toast("Packing photos… "+m,60000));
     const blob=zipBlob(files),a=document.createElement("a");
     a.href=URL.createObjectURL(blob);a.download=fname;
     document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
     toast((files.length-1)+" photos zipped"+(fail?" · "+fail+" could not be downloaded":"")+".",4000);
   }catch(err){toast("Could not build the ZIP: "+(err.message||err),5000);}
   finally{zipBusy=false;}
+}
+
+/* ================= Site pack: one ZIP per site with photos, Excel, findings PDFs and all five deliverables ================= */
+// Libraries are loaded only when a pack is built. PDFs of the deliverables are paginated with Paged.js using the same A4 print styles, then captured page by page.
+const LIBS={xlsx:"https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js",jspdf:"https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",at:"https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js",h2c:"https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",paged:"https://unpkg.com/pagedjs@0.4.3/dist/paged.polyfill.min.js"};
+const libP={};
+function loadLib(k){if(k==="at"&&!libP.at)libP.at=loadLib("jspdf").then(()=>{delete libP.at;return loadLib1("at");});return libP[k]||loadLib1(k);}
+function loadLib1(k){return libP[k]||(libP[k]=new Promise((res,rej)=>{const s=document.createElement("script");s.src=LIBS[k];s.onload=()=>res();s.onerror=()=>{delete libP[k];s.remove();rej(new Error("Could not load "+k+" - check the internet connection"));};document.head.appendChild(s);}));}
+const BANDHEX={good:"9BD27A",warn:"FFE066",serious:"F7A35C",crit:"E5534B"};
+const hexRgb=h=>[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+const pdfTxt=s=>String(s==null?"":s).replace(/[–—]/g,"-").replace(/≥/g,">=").replace(/≤/g,"<=").replace(/→/g,"->").replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,"...").replace(/[^\x00-\xFF]/g,"");
+const siteTag=sc=>"Site"+SITE[sc].no+"_"+SITE[sc].name.replace(/[^A-Za-z0-9]+/g,"-").replace(/^-|-$/g,"");
+// Findings (by current risk) followed by good practices - the same rows and order as the audit report.
+function packRows(sc){
+  const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0,so={high:0,med:1,low:2};
+  const ents=D.obs.filter(e=>e.scope===sc);
+  const f=ents.filter(e=>so[e.sev]!=null).sort((a,b)=>rs(b)-rs(a)||so[a.sev]-so[b.sev]||(a.ts<b.ts?-1:1));
+  const gp=ents.filter(e=>(e.sev==="good"||e.sev==="info")&&rs(e)).sort((a,b)=>(a.item||"zz").localeCompare(b.item||"zz"));
+  return f.map(e=>[e,"Finding"]).concat(gp.map(e=>[e,"Good practice"])).map(([e,kind],i)=>{const n=rs(e),t=e.extra&&e.extra.tli&&e.extra.tim?e.extra.tli*e.extra.tim:0;
+    return {no:i+1,kind,e,li:n?e.extra.li:0,im:n?e.extra.im:0,band:n?riskBand(n):null,tband:t?riskBand(t):null,
+     riskTxt:n?n+" "+riskBand(n)[0]+" (L"+e.extra.li+" x I"+e.extra.im+")":(SEVM[e.sev]?SEVM[e.sev].label+" (not scored)":"-"),
+     point:(e.item||"Other observation")+(e.item&&ITEM[e.item]?" - "+ITEM[e.item].text:""),desc:e.body||"",rec:(e.extra&&e.extra.rec)||"",
+     tgt:t?t+" "+riskBand(t)[0]+" (L"+e.extra.tli+" x I"+e.extra.tim+")":"-",photos:(e.photos||[]).map(p=>({p:p.p,t:p.t,ref:photoRef(p.p)}))};});
+}
+async function fetchBlobs(paths,onp){
+  const out={},need=[];
+  for(const p of paths){const b=await dbGet("blobs",p);if(b)out[p]=b;else need.push(p);}
+  const urls={};for(let i=0;i<need.length;i+=200){const r=await api("signRead",{paths:need.slice(i,i+200)});Object.assign(urls,r.urls);}
+  let k=0;for(const p of need){onp&&onp(++k+" / "+need.length);try{const r=await fetch(urls[p]);if(r.ok)out[p]=await r.blob();}catch(e){}}
+  return out;
+}
+async function imgData(b,max,q){try{const bm=await createImageBitmap(b);const s=Math.min(1,max/Math.max(bm.width,bm.height));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bm.width*s));c.height=Math.max(1,Math.round(bm.height*s));
+  c.getContext("2d").drawImage(bm,0,0,c.width,c.height);if(bm.close)bm.close();const r={u:c.toDataURL("image/jpeg",q||0.75),w:c.width,h:c.height};c.width=c.height=0;return r;}catch(e){return null;}}
+const fitBox=(im,W,H)=>{const s=Math.min(W/im.w,H/im.h);return [im.w*s,im.h*s];};
+// Excel: sheet 1 site and risk matrix, sheet 2 auditees, sheet 3 findings with photos in the row.
+async function packExcel(sc,rows,thumbs){
+  await loadLib("xlsx");
+  const S=SITE[sc],R=resSite(sc),wb=new ExcelJS.Workbook();wb.creator="Northstar Safety Systemz";wb.created=new Date();
+  const fill=h=>({type:"pattern",pattern:"solid",fgColor:{argb:"FF"+h}}),ln={style:"thin",color:{argb:"FFB9C6C2"}},bd={top:ln,left:ln,bottom:ln,right:ln};
+  const head=(r)=>{r.eachCell(c=>{c.font={bold:true,color:{argb:"FFFFFFFF"}};c.fill=fill("0E3F45");c.border=bd;c.alignment={vertical:"middle",wrapText:true};});r.height=22;};
+  const s1=wb.addWorksheet("Risk matrix",{views:[{showGridLines:false}]});
+  s1.getColumn(1).width=22;for(let c=2;c<=6;c++)s1.getColumn(c).width=24;
+  const t=s1.addRow(["Site "+S.no+". "+S.name]);t.font={bold:true,size:15,color:{argb:"FF0E3F45"}};
+  [R.addr||S.addr||"",R.date?"Audit date: "+R.date:"","Client: Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01 · Northstar Safety Systemz"].filter(Boolean).forEach(x=>s1.addRow([x]).font={color:{argb:"FF3C4C55"}});
+  s1.addRow([]);s1.addRow(["Current risk of every rated observation (likelihood x impact). Each cell: score, number of observations and point IDs."]).font={italic:true,size:9};
+  head(s1.addRow(["Likelihood \\ Impact"].concat([1,2,3,4,5].map(i=>i+" "+IM_L[i]))));
+  for(const l of [5,4,3,2,1]){const vals=[l+" "+LI_L[l]];
+    for(const i of [1,2,3,4,5]){const ids=rows.filter(r=>r.li===l&&r.im===i).map(r=>r.e.item||"Other");vals.push((l*i)+(ids.length?"  ·  "+ids.length+" obs.\n"+Array.from(new Set(ids)).map(id=>{const c=ids.filter(x=>x===id).length;return id+(c>1?" x"+c:"");}).join(", "):""));}
+    const r=s1.addRow(vals);r.height=62;r.getCell(1).font={bold:true};r.getCell(1).fill=fill("E6EDEB");r.getCell(1).border=bd;r.getCell(1).alignment={vertical:"middle"};
+    for(const i of [1,2,3,4,5]){const c=r.getCell(i+1),b=riskBand(l*i)[1];c.fill=fill(BANDHEX[b]);c.border=bd;c.alignment={vertical:"top",wrapText:true};c.font={size:9,color:{argb:b==="crit"?"FFFFFFFF":"FF14212B"},bold:false};}}
+  s1.addRow([]);head(s1.addRow(["Band","Score","Observations","Treatment"]));
+  for(const [l,rg,c,txt] of BAND_DEF){const n=rows.filter(r=>r.band&&r.band[0]===l).length;const r=s1.addRow([l,rg,n,txt]);r.getCell(1).fill=fill(BANDHEX[c]);r.getCell(1).font={bold:true,color:{argb:c==="crit"?"FFFFFFFF":"FF14212B"}};r.eachCell(x=>{x.border=bd;x.alignment={vertical:"top",wrapText:true};});s1.mergeCells(r.number,4,r.number,6);r.height=32;}
+  const s2=wb.addWorksheet("Auditees");
+  [28,26,20,32,18].forEach((w,i)=>s2.getColumn(i+1).width=w);
+  head(s2.addRow(["Name","Designation","Function","Email","Mobile"]));
+  for(const x of D.people[sc]||[]){const r=s2.addRow([x.d.name,x.d.designation,x.d.func,x.d.email,x.d.mobile].map(v=>v||""));r.eachCell({includeEmpty:true},c=>{c.border=bd;c.alignment={vertical:"top",wrapText:true};});}
+  const s3=wb.addWorksheet("Findings",{views:[{state:"frozen",ySplit:1}]});
+  const maxP=Math.max(1,...rows.map(r=>r.photos.filter(p=>thumbs[p.t]).length)),PW=150,PH=112;
+  [6,13,16,34,58,50,16,20].forEach((w,i)=>s3.getColumn(i+1).width=w);for(let k=0;k<maxP;k++)s3.getColumn(9+k).width=22;
+  head(s3.addRow(["No.","Type","Current risk","Checklist point","Description","Recommendation","Target risk","Photo ID"].concat(Array.from({length:maxP},(_,k)=>"Photo "+(k+1)))));
+  for(const r of rows){
+    const x=s3.addRow([r.no,r.kind,r.riskTxt,r.point,r.desc,r.rec,r.tgt,r.photos.map(p=>p.ref).join("\n")]);
+    x.eachCell({includeEmpty:true},c=>{c.border=bd;c.alignment={vertical:"top",wrapText:true};c.font={size:9};});
+    if(r.band){const c=x.getCell(3);c.fill=fill(BANDHEX[r.band[1]]);c.font={size:9,bold:true,color:{argb:r.band[1]==="crit"?"FFFFFFFF":"FF14212B"}};}
+    if(r.tband){const c=x.getCell(7);c.fill=fill(BANDHEX[r.tband[1]]);c.font={size:9,bold:true};}
+    const lines=Math.max(...[[r.point,34],[r.desc,58],[r.rec,50]].map(([s,w])=>Math.ceil((s||"").length/(w*1.15))+1));
+    const ph=r.photos.filter(p=>thumbs[p.t]);
+    x.height=Math.max(ph.length?PH*0.78+6:0,Math.min(409,lines*12.5),30);
+    ph.forEach((p,k)=>{const im=thumbs[p.t],[w,h]=fitBox(im,PW,PH);const id=wb.addImage({base64:im.u,extension:"jpeg"});
+      s3.addImage(id,{tl:{col:8+k+0.05,row:x.number-1+0.05},ext:{width:w,height:h},editAs:"oneCell"});});
+  }
+  return new Uint8Array(await wb.xlsx.writeBuffer());
+}
+function pdfFooter(doc,title){const n=doc.getNumberOfPages(),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(94,112,121);doc.text(pdfTxt("Northstar Safety Systemz · "+title+" · Confidential"),10,H-6);doc.text("Page "+i+" of "+n,W-10,H-6,{align:"right"});}}
+function pdfHead(doc,sc,title,sub){const S=SITE[sc],R=resSite(sc);doc.setFillColor(14,63,69);doc.rect(0,0,doc.internal.pageSize.getWidth(),17,"F");doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont("helvetica","bold");
+  doc.text(pdfTxt(title+" - Site "+S.no+". "+S.name),10,8);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(pdfTxt((R.date?"Audit date "+R.date+" · ":"")+"Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01"+(sub?" · "+sub:"")),10,13.5);doc.setTextColor(20,33,43);}
+const riskCellStyle=(d,b)=>{if(!b)return;d.cell.styles.fillColor=hexRgb(BANDHEX[b[1]]);d.cell.styles.fontStyle="bold";if(b[1]==="crit")d.cell.styles.textColor=[255,255,255];};
+// PDF with the photos in each finding's row.
+async function packRowPdf(sc,rows,thumbs){
+  await loadLib("jspdf");await loadLib("at");
+  const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true}),MAXP=12;
+  pdfHead(doc,sc,"Findings with photographic evidence","photos shown in each row");
+  doc.autoTable({startY:21,margin:{left:8,right:8,top:12,bottom:12},rowPageBreak:"avoid",
+    head:[["No.","Current risk","Checklist point","Description","Recommendation","Target risk","Photo ID","Photos"]],
+    body:rows.map(r=>[r.no+(r.kind==="Good practice"?"\nGP":""),pdfTxt(r.riskTxt),pdfTxt(r.point),pdfTxt(r.desc),pdfTxt(r.rec),pdfTxt(r.tgt),pdfTxt(r.photos.map(p=>p.ref).join("\n")),""]),
+    styles:{fontSize:6.8,cellPadding:1.4,overflow:"linebreak",valign:"top",lineColor:[201,211,208],lineWidth:0.1},headStyles:{fillColor:[14,63,69],textColor:255,fontStyle:"bold"},
+    columnStyles:{0:{cellWidth:9},1:{cellWidth:19},2:{cellWidth:33},3:{cellWidth:62},4:{cellWidth:56},5:{cellWidth:17},6:{cellWidth:22},7:{cellWidth:63}},
+    didParseCell:d=>{if(d.section!=="body")return;const r=rows[d.row.index];if(d.column.index===1)riskCellStyle(d,r.band);if(d.column.index===5)riskCellStyle(d,r.tband);
+      if(d.column.index===7){const n=Math.min(r.photos.filter(p=>thumbs[p.t]).length,MAXP);if(n)d.cell.styles.minCellHeight=Math.ceil(n/3)*16+2+(r.photos.length>MAXP?4:0);}},
+    didDrawCell:d=>{if(d.section!=="body"||d.column.index!==7)return;const r=rows[d.row.index],ph=r.photos.filter(p=>thumbs[p.t]);
+      ph.slice(0,MAXP).forEach((p,k)=>{const im=thumbs[p.t],[w,h]=fitBox(im,20,15);doc.addImage(im.u,"JPEG",d.cell.x+1+(k%3)*20.5+(20-w)/2,d.cell.y+1+Math.floor(k/3)*16+(15-h)/2,w,h,undefined,"FAST");});
+      if(ph.length>MAXP){doc.setFontSize(6);doc.text("+"+(ph.length-MAXP)+" more in the Photos folder",d.cell.x+1,d.cell.y+Math.ceil(MAXP/3)*16+4);}}});
+  pdfFooter(doc,"Findings with photographic evidence");
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+// PDF with the findings table first and the photographs after it.
+async function packAnnexPdf(sc,rows,med){
+  await loadLib("jspdf");await loadLib("at");
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4",compress:true});
+  pdfHead(doc,sc,"Findings and photo annex","photographs follow the table");
+  doc.autoTable({startY:21,margin:{left:8,right:8,top:12,bottom:12},
+    head:[["No.","Current risk","Checklist point","Description","Recommendation","Target risk","Photo ID"]],
+    body:rows.map(r=>[r.no+(r.kind==="Good practice"?"\nGP":""),pdfTxt(r.riskTxt),pdfTxt(r.point),pdfTxt(r.desc),pdfTxt(r.rec),pdfTxt(r.tgt),pdfTxt(r.photos.map(p=>p.ref).join("\n"))]),
+    styles:{fontSize:6.8,cellPadding:1.3,overflow:"linebreak",valign:"top",lineColor:[201,211,208],lineWidth:0.1},headStyles:{fillColor:[14,63,69],textColor:255,fontStyle:"bold"},
+    columnStyles:{0:{cellWidth:8},1:{cellWidth:17},2:{cellWidth:28},3:{cellWidth:56},4:{cellWidth:50},5:{cellWidth:15},6:{cellWidth:20}},
+    didParseCell:d=>{if(d.section!=="body")return;const r=rows[d.row.index];if(d.column.index===1)riskCellStyle(d,r.band);if(d.column.index===5)riskCellStyle(d,r.tband);}});
+  const list=rows.flatMap(r=>r.photos.filter(p=>med[p.p]).map(p=>({r,p})));
+  list.forEach((x,k)=>{const slot=k%6;if(slot===0){doc.addPage();doc.setFontSize(12);doc.setFont("helvetica","bold");doc.setTextColor(14,63,69);doc.text("Photographic evidence",10,14);doc.setFont("helvetica","normal");doc.setTextColor(20,33,43);}
+    const X=10+(slot%2)*96,Y=20+Math.floor(slot/2)*88,im=med[x.p.p],[w,h]=fitBox(im,92,70);
+    doc.setDrawColor(201,211,208);doc.rect(X,Y,92,70);doc.addImage(im.u,"JPEG",X+(92-w)/2,Y+(70-h)/2,w,h,undefined,"FAST");
+    doc.setFontSize(8);doc.setFont("helvetica","bold");doc.text(pdfTxt(x.p.ref||"Photo"),X,Y+74);doc.setFont("helvetica","normal");
+    doc.text(doc.splitTextToSize(pdfTxt("#"+x.r.no+" "+x.r.kind+" · "+(x.r.e.item||"Other")+" · "+x.r.riskTxt),92).slice(0,2),X,Y+78);});
+  pdfFooter(doc,"Findings and photo annex");
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+// Any deliverable HTML -> A4 PDF: Paged.js lays out the pages with the print styles, html2canvas captures each page.
+let pgSeq=0;
+async function htmlToPdf(html,onp){
+  await loadLib("jspdf");
+  html=html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/@media\s+print/gi,"@media all").replace(/@media\s+screen\s+and/gi,"@media (max-width:1px) and").replace(/@media\s+screen/gi,"@media (max-width:1px)");
+  const cb="__paged"+(++pgSeq),f=document.createElement("iframe");
+  f.style.cssText="position:fixed;left:-12000px;top:0;width:1000px;height:1300px;border:0";document.body.appendChild(f);
+  try{
+    const done=new Promise((res,rej)=>{window[cb]=res;setTimeout(()=>rej(new Error("Page layout timed out")),300000);});
+    const inj='<script>window.PagedConfig={auto:true,after:function(){parent["'+cb+'"]();}};<\/script><script src="'+LIBS.paged+'"><\/script><script src="'+LIBS.h2c+'"><\/script>';
+    const d=f.contentDocument;d.open();d.write(html.replace(/<\/head>/i,inj+"</head>"));d.close();
+    onp&&onp("laying out pages");await done;
+    const w=f.contentWindow;
+    await Promise.race([Promise.all([...d.images].map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r;}))),new Promise(r=>setTimeout(r,30000))]);
+    for(let i=0;i<50&&!w.html2canvas;i++)await new Promise(r=>setTimeout(r,200));
+    if(!w.html2canvas)throw new Error("Could not load the page renderer");
+    d.querySelectorAll(".pagedjs_page img").forEach(im=>{const cs=w.getComputedStyle(im);if(cs.objectFit!=="cover")return;const b=im.getBoundingClientRect(),dv=d.createElement("div");
+      dv.style.cssText="display:block;width:"+b.width+"px;height:"+b.height+"px;background:url('"+im.src+"') center/cover no-repeat;border:"+cs.border+";border-radius:"+cs.borderRadius;im.replaceWith(dv);});
+    const pages=[...d.querySelectorAll(".pagedjs_page")],{jsPDF}=window.jspdf,pdf=new jsPDF({unit:"mm",format:"a4",compress:true});
+    for(let i=0;i<pages.length;i++){onp&&onp("page "+(i+1)+" / "+pages.length);pages[i].scrollIntoView();
+      const c=await w.html2canvas(pages[i],{scale:1.6,useCORS:true,backgroundColor:"#ffffff",logging:false});
+      if(i)pdf.addPage();pdf.addImage(c.toDataURL("image/jpeg",0.82),"JPEG",0,0,210,297,undefined,"FAST");c.width=c.height=0;}
+    return new Uint8Array(pdf.output("arraybuffer"));
+  }finally{f.remove();delete window[cb];}
+}
+let DOC_CAP=null;
+async function captureDoc(fn,...a){DOC_CAP={};try{fn(...a);await DOC_CAP.p;return DOC_CAP.html;}finally{DOC_CAP=null;}}
+let packBusy=false;
+async function makePack(v){
+  if(packBusy){toast("A pack is already being prepared.",3000);return;}
+  packBusy=true;const t0=Date.now();
+  const prog=m=>{const el=$("#zp-prog");if(el)el.textContent=m;toast(m,120000);};
+  const blobUrls0=[];
+  try{
+    prog("Loading tools…");await loadLib("jspdf");await loadLib("at");await loadLib("xlsx");
+    try{await loadResources();}catch(e){}derive();
+    const sites=v==="all"?SITES.filter(s=>D.obs.some(e=>e.scope===s.id)).map(s=>s.id):[v];
+    const common={};
+    for(const [si,sc] of sites.entries()){
+      const tag=siteTag(sc),P=m=>prog((sites.length>1?"Site "+(si+1)+"/"+sites.length+" · ":"")+"Site "+SITE[sc].no+": "+m),files=[];
+      const pf=await photoFiles(allPhotos().filter(x=>x.e.scope===sc),"1_Photos/",m=>P("photos "+m));files.push(...pf.files);
+      const rows=packRows(sc),ents=D.obs.filter(e=>e.scope===sc);
+      const tPaths=[...new Set(ents.flatMap(e=>(e.photos||[]).map(p=>p.t)))];
+      const tb=await fetchBlobs(tPaths,m=>P("thumbnails "+m)),thumbs={};
+      for(const p of tPaths)if(tb[p]){const im=await imgData(tb[p],420,0.8);if(im)thumbs[p]=im;}
+      P("Excel");files.push({name:"2_"+tag+"_Risk-matrix_Auditees_Findings.xlsx",data:await packExcel(sc,rows,thumbs)});
+      P("PDF with photos in rows");files.push({name:"3_"+tag+"_Findings_photos-in-rows.pdf",data:await packRowPdf(sc,rows,thumbs)});
+      const fPaths=[...new Set(rows.flatMap(r=>r.photos.map(p=>p.p)))],fb=await fetchBlobs(fPaths.filter(p=>!pf.byPath[p]),m=>P("photos for annex "+m)),med={};
+      for(const p of fPaths){const b=pf.byPath[p]?new Blob([pf.byPath[p]],{type:"image/jpeg"}):fb[p];const im=b?await imgData(b,1100,0.72):null;if(im)med[p]=im;}
+      P("PDF with photo annex");files.push({name:"4_"+tag+"_Findings_then_photos.pdf",data:await packAnnexPdf(sc,rows,med)});
+      if(!common.cl)common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));
+      files.push({name:"5_Deliverables/1_Security_Audit_Checklist.pdf",data:common.cl});
+      const urls={};for(const p of tPaths)if(tb[p]){const u=URL.createObjectURL(tb[p]);urls[p]=u;blobUrls0.push(u);}
+      files.push({name:"5_Deliverables/2_Security_Audit_Report_"+tag+".pdf",data:await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m))});
+      files.push({name:"5_Deliverables/3_Site_Security_Plan_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m))});
+      files.push({name:"5_Deliverables/4_Operational_Requirement_"+tag+".pdf",data:await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m))});
+      if(!common.sop)common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));
+      files.push({name:"5_Deliverables/5_Corporate_Security_SOP_Set.pdf",data:common.sop});
+      P("zipping");
+      const blob=zipBlob(files),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=tag+"_Audit-pack_"+dayKey(new Date().toISOString())+".zip";
+      document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},8000);
+      while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());
+    }
+    prog((sites.length>1?sites.length+" site packs":"Site pack")+" ready ("+Math.round((Date.now()-t0)/1000)+" s).");
+  }catch(err){prog("Could not build the pack: "+(err.message||err));}
+  finally{packBusy=false;while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());}
 }
 
 /* ================= Deliverables 3-5: Site Security Plan, Operational Requirement, corporate SOP set ================= */
@@ -1772,6 +1965,7 @@ function docShell(title,body){
    '<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 async function openDoc(title,build){
+  if(DOC_CAP){DOC_CAP.p=(async()=>{try{await loadResources();}catch(e){}derive();DOC_CAP.html=docShell(title,build());})();return;}
   const w=window.open("","_blank");if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
   w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing '+esc(title)+'…</p>');
   try{await loadResources();}catch(e){}
@@ -2598,6 +2792,7 @@ document.addEventListener("click",async ev=>{
     case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
     case "mksop":makeSOPSet();break;
     case "mkopen":makeOpenPoints();break;
+    case "mkpack":makePack($("#zp-site").value);break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
