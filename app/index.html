@@ -370,7 +370,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.31";
+const VERSION="2026-11-02.32";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -992,7 +992,7 @@ function crossRows(min){
 function crossCell(c,html){
   if(c.st==="x")return '<td class="xs-na">·</td>';
   if(c.r){const b=riskBand(c.r);return html?'<td class="r-'+b[1]+' xs-c"><b>'+c.r+'</b></td>':'<td><button type="button" class="xs-b" style="--pc:var(--'+b[1]+')" data-act="open" data-v="'+c.p.entries[0].item+'" data-s="'+c.sc+'" title="'+b[0]+'">'+c.r+'</button></td>';}
-  const t=c.st==="na"?"n/a":c.p&&c.p.status==="notapp"?"N/A":c.p?"✓":"–";return '<td class="xs-na">'+t+'</td>';
+  const t=c.st==="na"?"n/a":c.p&&c.p.status==="notapp"?"N/A":c.p&&c.p.status==="notavail"?"✗":c.p?"✓":"–";return '<td class="xs-na">'+t+'</td>';
 }
 function crossSiteHTML(){
   const min=ui.xsMin==null?10:ui.xsMin,rows=crossRows(min);
@@ -1000,7 +1000,7 @@ function crossSiteHTML(){
    '<div class="cb-ctl">'+[[20,"Critical"],[10,"High and above"],[5,"Medium and above"],[1,"All rated"]].map(([v,l])=>'<button type="button" class="chip'+(min===v?" on":"")+'" data-act="xsmin" data-v="'+v+'">'+l+'</button>').join("")+'</div>'+
    '<div class="cb-wrap" style="margin-top:8px"><table class="xs-t"><thead><tr><th>Point</th>'+SITES.map(s=>'<th>'+badge(s.id,1)+'</th>').join("")+'</tr></thead><tbody>'+
    (rows.length?rows.map(r=>'<tr><th><b>'+r.it.id+'</b> <span class="muted">'+esc((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,48))+'</span></th>'+r.c.map(c=>crossCell(c)).join("")+'</tr>').join(""):'<tr><td colspan="7" class="muted">No point at this level.</td></tr>')+
-   '</tbody></table></div><div class="small muted" style="margin-top:6px">✓ covered, no risk rated · – not logged · n/a desirable not assessed · · not in that site\'s checklist</div></div>';
+   '</tbody></table></div><div class="small muted" style="margin-top:6px">✓ covered, no risk rated · ✗ not available / not produced · – not logged · n/a desirable not assessed · · not in that site\'s checklist</div></div>';
 }
 // Category-wise status for any combination of site, type, priority and timing; cells open the points left.
 function catOf(it){return it.sec==="doc"?it.cat:it.sec==="walk"?"Walkthrough":"Stakeholder interviews";}
@@ -1610,7 +1610,7 @@ function reportHTML(r,scopes,ents,urls){
    '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p>'+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
   if(scopes.length>1){const rows=crossRows(5);
-    b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · – not logged · n/a not assessed · · not in the site checklist.</div>'+
+    b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · – not logged · n/a not assessed · · not in the site checklist.</div>'+
      '<table class="xs"><tr><th>Point</th>'+SITES.map(s=>'<th>'+E(s.no)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr><td><b>'+r.it.id+'</b> '+E((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,70))+'</td>'+r.c.map(c=>crossCell(c,true)).join("")+'</tr>').join("")+'</table>'+
      '<div class="muted">Sites: '+SITES.map(s=>E(s.no+". "+s.name)).join(" · ")+'</div></section>';}
   b+='<section class="site"><h2>Risk assessment methodology</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
