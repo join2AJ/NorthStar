@@ -142,6 +142,7 @@ main{padding:12px 14px 0;max-width:760px;margin:0 auto}
 .why-box{background:var(--brand-soft);border-left:3px solid var(--brand);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;color:var(--ink2)}.why-box b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--brand);margin-bottom:2px}
 .xs-t{border-collapse:separate;border-spacing:3px;width:100%}.xs-t th{font-size:12px;text-align:left;font-weight:600;color:var(--ink2);padding-right:6px;min-width:150px}.xs-t thead th{text-align:center;min-width:0}
 .xs-t td{text-align:center;min-width:40px}.xs-na{color:var(--muted);font-size:12px}.xs-b{width:100%;min-height:30px;border:0;border-radius:7px;background:color-mix(in srgb,var(--pc) 75%,transparent);color:#14212B;font:inherit;font-weight:700;cursor:pointer}
+.dv{margin-top:12px}.dv-h{display:flex;gap:10px;align-items:flex-start}.dv-n{flex:0 0 30px;height:30px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-weight:800}
 .linkbtn{background:none;border:0;color:var(--brand);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px}
 @media (max-width:520px){.cb-sum{grid-template-columns:repeat(3,1fr)}.cb-sum div:nth-child(n+4){display:none}}
 .brow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"nm num" "bar bar";gap:5px 10px;align-items:center;padding:8px 0}
@@ -370,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.32";
+const VERSION="2026-11-02.33";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -413,6 +414,8 @@ const sevForRisk=n=>n>=10?"high":n>=5?"med":"low";
 const LI_DEF=["",["Rare","May occur only in exceptional circumstances","Less than once in 10 years","< 5 %"],["Unlikely","Could occur at some time; not expected","Once in 5–10 years","5–20 %"],["Possible","Might occur; has happened in the industry / region","Once in 1–5 years","20–50 %"],["Likely","Will probably occur; weakness is open to exploitation","About once a year","50–80 %"],["Almost certain","Expected to occur, or the gap is being exploited now","Several times a year","> 80 %"]];
 const IM_DEF=["",["Minor","First aid only","< ₹1 lakh","< 1 hour, no output loss","Internal only, no external awareness","Minor procedural lapse"],["Moderate","Medical treatment case","₹1–10 lakh","Up to 1 shift","Local / single customer query","Observation in a customer or statutory audit"],["Significant","Reportable / lost-time injury","₹10–50 lakh","Up to 1 day; partial line stoppage","Regional media; customer escalation","Major NC in customer audit; statutory notice"],["Major","Serious injury or multiple injuries","₹50 lakh – ₹5 crore","Up to 1 week; plant-wide stoppage","National media; key customer relationship at risk","Penalty, licence suspension or customer audit failure"],["Severe","Fatality","> ₹5 crore","More than 1 week; loss of site","Sustained national / international coverage; loss of a key customer","Prosecution, licence revocation, debarment"]];
 const BAND_DEF=[["Critical","20–25","crit","Intolerable. Immediate action; interim controls within 24–72 hours; senior management owns closure within 30 days."],["High","10–19","serious","Treat as priority. Corrective action plan within 2 weeks; close within 60–90 days; monthly review."],["Medium","5–9","warn","Treat in the normal improvement plan within 3–6 months; monitor."],["Low","1–4","good","Tolerate / accept with routine monitoring; improve when the opportunity arises."]];
+const PBAR='<div class="pbar noprint"><button onclick="print()">🖨 Print / Save as PDF</button><span>Phone: tap Print, then choose <b>Save as PDF</b> as the printer.</span></div>';
+const PBAR_CSS='.pbar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#0E3F45;color:#fff;padding:10px 12px;margin:-12px -12px 12px;font:13px/1.3 sans-serif}.pbar button{background:#fff;color:#0E3F45;border:0;border-radius:8px;padding:10px 14px;font-weight:700;font-size:14px}h2,h3{break-after:avoid;page-break-after:avoid}thead{display:table-header-group}tr,img,.box,.ent{break-inside:avoid;page-break-inside:avoid}table.rm,table.hm,.smap{break-inside:avoid;page-break-inside:avoid}';
 // 5x5 colours: green Low, yellow Medium, orange High, red Critical (print-safe).
 const RISK_CSS='.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#9BD27A}.r-warn{background:#FFE066}.r-serious{background:#F7A35C}.r-crit{background:#E5534B;color:#fff}.r-crit .muted,.r-crit span{color:#fff}';
 // cells: optional {"LxI":[point ids]} – the heat map lists which points sit in each cell, with the score in the corner.
@@ -444,6 +447,8 @@ const evidLine=e=>{const r=(e.photos||[]).map(p=>photoRef(p.p)).filter(Boolean);
 // Risk cell for report tables: background in the 5x5 band colour.
 function riskCellHTML(li,im,lbl){if(!li||!im)return '<td class="muted">–</td>';const n=li*im,b=riskBand(n);return '<td class="r-'+b[1]+' rc"><b>'+n+'</b> '+b[0]+'<div>L'+li+' × I'+im+(lbl?'<br>'+lbl:'')+'</div></td>';}
 // Site perimeter from Google Earth (KML) drawn over satellite tiles; plain SVG fallback when tiles do not load.
+// Map tile placed in % of the frame so the map scales to any width (screen or A4) without an empty band.
+const tileImg=(z,tx,ty,x0,y0,W,H)=>'<img alt="" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx+'" style="position:absolute;max-width:none;left:'+((tx*256-x0)/W*100).toFixed(3)+'%;top:'+((ty*256-y0)/H*100).toFixed(3)+'%;width:'+(25600/W).toFixed(3)+'%;height:'+(25600/H).toFixed(3)+'%">';
 function siteMapHTML(g,W,H){
   if(!g||!g.poly||g.poly.length<3)return "";
   W=W||640;H=H||300;
@@ -457,14 +462,13 @@ function siteMapHTML(g,W,H){
   const cx=(wx(Math.max(...lngs),z)+wx(Math.min(...lngs),z))/2,cy=(wy(Math.min(...lats),z)+wy(Math.max(...lats),z))/2,x0=cx-W/2,y0=cy-H/2;
   let tiles="";
   for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)
-    tiles+='<img alt="" loading="eager" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx+'" style="position:absolute;left:'+(tx*256-x0).toFixed(1)+'px;top:'+(ty*256-y0).toFixed(1)+'px;width:256px;height:256px">';
+    tiles+=tileImg(z,tx,ty,x0,y0,W,H);
   const pts=g.poly.map(p=>(wx(p[1],z)-x0).toFixed(1)+","+(wy(p[0],z)-y0).toFixed(1)).join(" ");
   const pin=g.pin?[(wx(g.pin[1],z)-x0),(wy(g.pin[0],z)-y0)]:null;
   const c=g.pin||[lat0,lngs.reduce((a,b)=>a+b,0)/lngs.length];
-  return '<div class="smap" style="position:relative;width:100%;max-width:'+W+'px;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f">'+
-   '<div style="position:absolute;inset:0;transform-origin:0 0" class="smap-in" data-w="'+W+'"><div style="position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px">'+tiles+
-   '<svg width="'+W+'" height="'+H+'" style="position:absolute;left:0;top:0"><polygon points="'+pts+'" fill="rgba(251,192,45,.18)" stroke="#fbc02d" stroke-width="3" stroke-linejoin="round"/>'+
-   (pin?'<circle cx="'+pin[0].toFixed(1)+'" cy="'+pin[1].toFixed(1)+'" r="6" fill="#1976d2" stroke="#fff" stroke-width="2"/>':'')+'</svg></div></div>'+
+  return '<div class="smap" style="position:relative;width:100%;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f">'+tiles+
+   '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%"><polygon points="'+pts+'" fill="rgba(251,192,45,.18)" stroke="#fbc02d" stroke-width="3" stroke-linejoin="round"/>'+
+   (pin?'<circle cx="'+pin[0].toFixed(1)+'" cy="'+pin[1].toFixed(1)+'" r="6" fill="#1976d2" stroke="#fff" stroke-width="2"/>':'')+'</svg>'+
    '<div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeter from KML</div></div>'+
    '<div class="small muted" style="margin-top:5px">'+(g.label?esc(g.label)+' · ':'')+'Perimeter ≈ '+Math.round(per)+' m · area ≈ '+(area/4046.86).toFixed(2)+' acre ('+Math.round(area).toLocaleString("en-IN")+' m²) · centre '+c[0].toFixed(5)+', '+c[1].toFixed(5)+
    ' · <a href="https://www.google.com/maps/@'+c[0]+','+c[1]+',300m/data=!3m1!1e3" target="_blank" rel="noopener">Satellite view</a> · <a href="https://earth.google.com/web/@'+c[0]+','+c[1]+',600a,800d,35y,0h,0t,0r" target="_blank" rel="noopener">Google Earth</a></div>';
@@ -1526,25 +1530,29 @@ function pendingSheet(){
 function openReport(sc){
   pushSheet();
   const days=Array.from(new Set(D.live.filter(e=>isAudit(e)||e.kind==="visit").map(e=>dayKey(e.ts)))).sort().reverse();
-  ui.sheet={type:"report",site:sc||"all",period:days.includes(dayKey(new Date().toISOString()))?dayKey(new Date().toISOString()):"all",photos:true,days};
+  ui.sheet={type:"report",site:sc||"all",period:"all",photos:true,days};
   renderSheet();
 }
 function reportSheet(){
   const r=ui.sheet;
-  return '<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Audit report (PDF)</div></div><div class="sh-body">'+
-   '<div class="muted small">Builds a printable report from everything logged, then opens your phone\'s print screen. Choose <b>Save as PDF</b> there.</div>'+
-   '<span class="lbl">Site</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc((s.id==="G"?"":s.no+" · ")+s.name)+'</option>').join("")+'</select>'+
-   '<span class="lbl">Entries from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
-   '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:14px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
-   '<div class="hint" style="margin-top:14px">The report has: cover page, risk methodology (5 × 5 matrix, scales, references), per site the location map and perimeter, auditees, check-in/out, coverage summary, risk heat map, colour-coded findings with current and target risk, documents pending from the client, the status of every point, and each entry with who / when / GPS and photos. Point statuses are as of now; the entry log is limited to the period you pick.</div>'+
-   '<div class="card" style="margin-top:16px"><div class="card-t">Deliverable 1 · Security audit checklist</div><div class="small muted" style="margin:3px 0 8px">The common checklist instrument: all 69 documents, 10 walkthrough areas and 12 interviews with guidance, rating scales and the risk matrix.</div><button class="btn" data-act="mkchecklist">Checklist PDF</button></div>'+
-   '<div class="card" style="margin-top:12px"><div class="card-t">Points not covered (PDF)</div><div class="small muted" style="margin:3px 0 8px">List of points still open at the sites you tick – grouped by pre-audit documents, on-site documents, walkthrough and interviews – with a blank remarks column to share with the site.</div>'+
+  const card=(n,t,q,body)=>'<div class="card dv"><div class="dv-h"><span class="dv-n">'+n+'</span><div><div class="card-t">'+t+'</div><div class="small muted">'+q+'</div></div></div>'+body+'</div>';
+  return '<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Deliverables (PDF)</div></div><div class="sh-body">'+
+   '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
+   '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
+   card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="small muted" style="margin:6px 0">All 69 documents, 10 walkthrough areas and 12 interviews with why each is required, rating scales and the risk matrix.</div><div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
+   card(2,"Security Audit Report","One per designated site – findings with photographic evidence",
+     '<span class="lbl" style="margin-top:8px">Entry log from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
+     '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
+     '<div class="small muted" style="margin-top:6px">Cover, risk methodology, site map, auditees, coverage, risk heat map, colour-coded findings with current and target risk, good practices, status and risk of every point, and the entry log with photos. "All sites" adds the risk-across-sites comparison.</div>'+
+     '<div class="btn-row"><button class="btn primary" data-act="mkreport">📄 Audit report PDF</button></div>')+
+   card(3,"Site Security Plan (SSP)","One per designated site",'<div class="btn-row" style="margin-top:6px"><button class="btn primary" data-act="mkssp">📄 SSP PDF</button></div>')+
+   card(4,"Operational Requirement (OR)","One per designated site",'<div class="btn-row" style="margin-top:6px"><button class="btn primary" data-act="mkor">📄 OR PDF</button></div>')+
+   card(5,"Corporate-Level Security SOP Set","One consolidated set for the engagement",'<div class="btn-row" style="margin-top:6px"><button class="btn primary" data-act="mksop">📄 SOP set PDF</button></div>')+
+   '<div class="card" style="margin-top:12px"><div class="card-t">Points not covered (PDF)</div><div class="small muted" style="margin:3px 0 8px">Open points at the sites you tick, with a blank remarks column to share with the site.</div>'+
    '<div class="opts" id="nc-sites">'+SITES.map(x=>'<label class="opt plain" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" value="'+x.id+'"'+((lsGet("sa.ncSites")||"s5,s6").split(",").includes(x.id)?" checked":"")+'>'+esc(x.no+". "+x.name)+'</label>').join("")+'</div>'+
    '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600"><input type="checkbox" id="nc-mand" checked style="width:20px;height:20px">Mandatory points only</label>'+
    '<div class="btn-row"><button class="btn" data-act="mkopen">📄 Points not covered (PDF)</button></div></div>'+
-   '<div class="card" style="margin-top:12px"><div class="card-t">Deliverables 3–5 · Site Security Plan, Operational Requirement, SOP set</div><div class="small muted" style="margin:3px 0 8px">Built from the audit log, risk ratings, schedule and site perimeters. Pick a site above for the SSP and OR (Deliverable 2 is the audit report above). Regenerate any time – later sites work the same way.</div>'+
-   '<div class="btn-row" style="margin-top:0"><button class="btn" data-act="mkssp">3 · Site Security Plan</button><button class="btn" data-act="mkor">4 · Operational Requirement</button><button class="btn" data-act="mksop">5 · Corporate SOP set</button></div></div>'+
-   '</div><div class="sh-foot"><button class="btn primary" data-act="mkreport">Create PDF</button></div>';
+   '</div>';
 }
 async function makeReport(){
   const r=ui.sheet;r.site=$("#r-site").value;r.period=$("#r-period").value;r.photos=$("#r-photos").checked;
@@ -1566,7 +1574,7 @@ async function makeReport(){
   w.document.open();w.document.write(html);w.document.close();
   const imgs=Array.from(w.document.images);
   await Promise.race([Promise.all(imgs.map(im=>im.complete?1:new Promise(res=>{im.onload=im.onerror=res;}))),new Promise(res=>setTimeout(res,20000))]);
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
+  try{w.focus();}catch(e){}
 }
 function makeChecklist(){
   const w=window.open("","_blank");if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
@@ -1574,12 +1582,12 @@ function makeChecklist(){
   const blank='<td class="bx"></td><td class="bx"></td>';
   let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit checklist</h1><h2>Dixon Technologies (India) Limited – Selaqui, Dehradun</h2>'+
    '<table class="kv"><tr><th>Reference</th><td>NSS/DTIL/SECA/2026-07/01</td></tr><tr><th>Applies to</th><td>'+SITES.filter(s=>s.id!=="G").map(s=>E(s.no+". "+s.name)).join("; ")+'</td></tr>'+
-   '<tr><th>Parts</th><td>A. Documents and records (54) · B. Physical walkthrough (10 areas) · C. Stakeholder interviews (12) · D. Rating scales and risk matrix</td></tr><tr><th>Version</th><td>Issued '+fmtDate(dayKey(new Date().toISOString()))+'</td></tr></table>'+
-   '<p class="note">One instrument common to all sites. Each site is assessed against the same 54 documents. Mandatory items are needed to complete the audit; desirable items strengthen findings. Records containing personal data are reviewed on site only and not copied.</p>'+
+   '<tr><th>Parts</th><td>A. Documents and records (69) · B. Physical walkthrough (10 areas) · C. Stakeholder interviews (12) · D. Rating scales and risk matrix</td></tr><tr><th>Version</th><td>Issued '+fmtDate(dayKey(new Date().toISOString()))+'</td></tr></table>'+
+   '<p class="note">One instrument common to all sites. Each site is assessed against the same 69 documents. Mandatory items are needed to complete the audit; desirable items strengthen findings. Records containing personal data are reviewed on site only and not copied.</p>'+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
   b+='<section class="site"><h2>A. Documents and records</h2>';
   let last="";
-  for(const it of ITEMS.filter(i=>i.sec==="doc"&&i.scope!=="X")){
+  for(const it of ITEMS.filter(i=>i.sec==="doc")){
     if(it.cat!==last){if(last)b+='</table>';b+='<h3>'+E(it.cat)+'</h3><div class="muted">'+E(it.hint||"")+'</div><table><tr><th>ID</th><th>Document / record</th><th>Priority</th><th>When</th><th>Status</th><th>Remarks / evidence</th></tr>';last=it.cat;}
     b+='<tr><td>'+it.id+'</td><td>'+E(it.text)+(whyOf(it.id)?'<div class="muted"><i>Why: '+E(whyOf(it.id))+'</i></div>':'')+'</td><td>'+(it.mand?"Mandatory":"Desirable")+'</td><td>'+it.when+'</td>'+blank+'</tr>';
   }
@@ -1596,8 +1604,8 @@ function makeChecklist(){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
-  w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+'</style></head><body>'+b+'</body></html>');w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},500);
+  w.document.open();w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Security audit checklist</title><style>'+css+PBAR_CSS+'</style></head><body>'+PBAR+b+'</body></html>');w.document.close();
+  try{w.focus();}catch(e){}
 }
 function reportHTML(r,scopes,ents,urls){
   const E=esc,now=new Date().toISOString();
@@ -1669,7 +1677,7 @@ function reportHTML(r,scopes,ents,urls){
    RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}'+
-   '</style></head><body>'+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
+   PBAR_CSS+'</style></head><body>'+PBAR+b+'<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 
 
@@ -1724,10 +1732,10 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
  '.kv th{width:26%}.muted{color:#5E7079;font-size:8.6pt}.pb{page-break-before:always}.tag{display:inline-block;border-radius:4px;padding:0 5px;font-size:8pt;font-weight:700;background:#E6EDEB}'+
  RISK_CSS+'.rc{width:70px;text-align:center}.rc div{font-size:7.8pt}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.smap img{max-width:none}.box{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:8px 10px;margin:8px 0;page-break-inside:avoid}'+
  '.rm th span{font-weight:400;font-size:8pt}.hm td{position:relative;height:54px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:14pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600}'+
- '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
+ '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mcell.on{border:2px solid #0E5A61}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
 function docShell(title,body){
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+'</style></head><body>'+body+
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+PBAR_CSS+'</style></head><body>'+PBAR+body+
    '<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
 async function openDoc(title,build){
@@ -1738,7 +1746,7 @@ async function openDoc(title,build){
   w.document.open();w.document.write(docShell(title,build()));w.document.close();
   const imgs=Array.from(w.document.images);
   await Promise.race([Promise.all(imgs.map(im=>im.complete?1:new Promise(res=>{im.onload=im.onerror=res;}))),new Promise(res=>setTimeout(res,15000))]);
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
+  try{w.focus();}catch(e){}
 }
 // Desirable documents left unlogged at a site whose audit is marked done: reported once as a scope limitation.
 const skippedDesirable=sc=>resSite(sc).status==="done"?itemsFor(sc,"doc").filter(it=>!it.mand&&!D.pts.get(pkey(sc,it))):[];
@@ -1749,25 +1757,26 @@ const docCover=(kind,sub,extra)=>'<section class="cover"><div class="brand">Nort
   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
 // All Dixon pockets in Selaqui on one satellite view (sites whose perimeter has been marked).
 function sitesMapHTML(hl,W,H){
-  W=W||680;H=H||340;
+  W=W||900;H=H||560;
   const list=SITES.map(s=>({s,g:resGeo(s.id)})).filter(x=>x.g&&x.g.poly);
   if(!list.length)return "";
   const pts=list.flatMap(x=>x.g.poly);const lats=pts.map(p=>p[0]),lngs=pts.map(p=>p[1]);
   const wx=(lng,z)=>(lng+180)/360*256*Math.pow(2,z),wy=(lat,z)=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*256*Math.pow(2,z);};
-  let z=18;while(z>10&&((wx(Math.max(...lngs),z)-wx(Math.min(...lngs),z))>W*0.75||(wy(Math.min(...lats),z)-wy(Math.max(...lats),z))>H*0.7))z--;
+  let z=18;while(z>10&&((wx(Math.max(...lngs),z)-wx(Math.min(...lngs),z))>W*0.92||(wy(Math.min(...lats),z)-wy(Math.max(...lats),z))>H*0.86))z--;
   const cx=(wx(Math.max(...lngs),z)+wx(Math.min(...lngs),z))/2,cy=(wy(Math.min(...lats),z)+wy(Math.max(...lats),z))/2,x0=cx-W/2,y0=cy-H/2;
   let tiles="";
   for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++)
-    tiles+='<img alt="" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+ty+'/'+tx+'" style="position:absolute;left:'+(tx*256-x0).toFixed(1)+'px;top:'+(ty*256-y0).toFixed(1)+'px;width:256px;height:256px">';
+    tiles+=tileImg(z,tx,ty,x0,y0,W,H);
   const COL={s1:"#1baf7a",s2:"#9085e9",s3:"#d4558a",s4:"#e09a00",s5:"#21b021",s6:"#22a3b8"};
   const shapes=list.map(x=>{const P=x.g.poly.map(p=>[wx(p[1],z)-x0,wy(p[0],z)-y0]);const c=P.reduce((a,p)=>[a[0]+p[0]/P.length,a[1]+p[1]/P.length],[0,0]);const on=!hl||hl===x.s.id;
     return '<polygon points="'+P.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+'" fill="'+COL[x.s.id]+(on?"55":"22")+'" stroke="'+COL[x.s.id]+'" stroke-width="'+(on?3:2)+'"/>'+
-     '<g transform="translate('+c[0].toFixed(1)+','+(c[1]-14).toFixed(1)+')"><rect x="-10" y="-10" width="20" height="20" rx="5" fill="'+COL[x.s.id]+'" stroke="#fff" stroke-width="1.5"/><text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Arial">'+x.s.no+'</text></g>';}).join("");
+     '<g transform="translate('+c[0].toFixed(1)+','+(c[1]-16).toFixed(1)+')"><rect x="-13" y="-13" width="26" height="26" rx="6" fill="'+COL[x.s.id]+'" stroke="#fff" stroke-width="2"/><text y="6" text-anchor="middle" font-size="16" font-weight="700" fill="#fff" font-family="Arial">'+x.s.no+'</text>'+
+     '<text x="17" y="5" font-size="13" font-weight="700" fill="#fff" stroke="#000" stroke-width="3" paint-order="stroke" font-family="Arial">'+esc(x.s.name)+'</text></g>';}).join("");
   // straight-line distances between marked sites
   const dist=[];for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){const a=list[i].g.pin||list[i].g.poly[0],b=list[j].g.pin||list[j].g.poly[0];
     const dy=(a[0]-b[0])*111.32,dx=(a[1]-b[1])*111.32*Math.cos(a[0]*Math.PI/180);dist.push(list[i].s.no+"–"+list[j].s.no+": "+Math.hypot(dx,dy).toFixed(1)+" km");}
-  return '<div class="smap" style="position:relative;width:100%;max-width:'+W+'px;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f"><div class="smap-in" data-w="'+W+'" style="position:absolute;inset:0;transform-origin:0 0"><div style="position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px">'+tiles+
-   '<svg width="'+W+'" height="'+H+'" style="position:absolute;left:0;top:0">'+shapes+'</svg></div></div><div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeters from KML</div></div>'+
+  return '<div class="smap" style="position:relative;width:100%;aspect-ratio:'+W+'/'+H+';overflow:hidden;border-radius:8px;background:#2b3a2f">'+tiles+
+   '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%">'+shapes+'</svg><div style="position:absolute;right:4px;bottom:2px;font-size:9px;color:#fff;text-shadow:0 0 3px #000">Imagery © Esri, Maxar · perimeters from KML</div></div>'+
    '<div class="muted" style="margin-top:4px">Marked: '+list.map(x=>x.s.no+". "+esc(x.s.name)).join(" · ")+(dist.length?' · straight-line distance '+dist.join(", "):'')+'. Sites not yet marked: '+(SITES.filter(s=>!list.some(x=>x.s.id===s.id)).map(s=>s.no+". "+esc(s.name)).join(", ")||"none")+'.</div>';
 }
 // Site observations, findings and good points as they read now.
@@ -1826,7 +1835,8 @@ function siteHeader(sc){const S=SITE[sc],R=resSite(sc),g=resGeo(sc);
   return '<tr><th>Site</th><td>'+esc(S.no+". "+S.name)+'</td></tr><tr><th>Address</th><td>'+esc(R.addr||S.addr)+'</td></tr>'+(R.date?'<tr><th>Audit</th><td>'+esc(R.date)+'</td></tr>':'')+(R.spoc?'<tr><th>Site SPOC</th><td>'+esc(R.spoc)+'</td></tr>':'')+(g?'':'');}
 function contextHTML(sc){
   return '<h3>Dixon in Selaqui – operations in pockets</h3><p>Dixon operates several plants spread across the Selaqui industrial area of Dehradun (sites 1–6 of this engagement). They are separate pockets, each with its own gate, guard force and utilities, but they share the same roads, power network, labour pool, transporters and security agency. A disruption in one pocket – a road blockade, a power failure, labour unrest or a flood – can affect several plants at once, so each site plan is written to work on its own and also with the other Dixon sites nearby.</p>'+
-   sitesMapHTML(sc,680,320)+
+   sitesMapHTML(sc,900,560)+
+   '<h3>Each site close up</h3><div class="mgrid">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell'+(s.id===sc?' on':'')+'"><div class="mt"><b>'+s.no+'</b> '+esc(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div>'+
    '<h3>Dependence on utilities and access – how they can hamper operations</h3><table><tr><th>Dependency</th><th>How the site depends on it</th><th>What can go wrong</th><th>Effect on operations and security</th></tr>'+DEPENDENCIES.map(r=>'<tr>'+r.map((c,i)=>i?'<td>'+esc(c)+'</td>':'<td><b>'+esc(c)+'</b></td>').join("")+'</tr>').join("")+'</table>'+
    '<h3>PESTLE analysis</h3><table><tr><th>Factor</th><th>What applies to Dixon Selaqui</th><th>What security must cover</th></tr>'+PESTLE.map(r=>'<tr><td><b>'+r[0]+'</b></td><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join("")+'</table>';
 }
