@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.33";
+const VERSION="2026-11-02.34";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -415,7 +415,7 @@ const LI_DEF=["",["Rare","May occur only in exceptional circumstances","Less tha
 const IM_DEF=["",["Minor","First aid only","< ₹1 lakh","< 1 hour, no output loss","Internal only, no external awareness","Minor procedural lapse"],["Moderate","Medical treatment case","₹1–10 lakh","Up to 1 shift","Local / single customer query","Observation in a customer or statutory audit"],["Significant","Reportable / lost-time injury","₹10–50 lakh","Up to 1 day; partial line stoppage","Regional media; customer escalation","Major NC in customer audit; statutory notice"],["Major","Serious injury or multiple injuries","₹50 lakh – ₹5 crore","Up to 1 week; plant-wide stoppage","National media; key customer relationship at risk","Penalty, licence suspension or customer audit failure"],["Severe","Fatality","> ₹5 crore","More than 1 week; loss of site","Sustained national / international coverage; loss of a key customer","Prosecution, licence revocation, debarment"]];
 const BAND_DEF=[["Critical","20–25","crit","Intolerable. Immediate action; interim controls within 24–72 hours; senior management owns closure within 30 days."],["High","10–19","serious","Treat as priority. Corrective action plan within 2 weeks; close within 60–90 days; monthly review."],["Medium","5–9","warn","Treat in the normal improvement plan within 3–6 months; monitor."],["Low","1–4","good","Tolerate / accept with routine monitoring; improve when the opportunity arises."]];
 const PBAR='<div class="pbar noprint"><button onclick="print()">🖨 Print / Save as PDF</button><span>Phone: tap Print, then choose <b>Save as PDF</b> as the printer.</span></div>';
-const PBAR_CSS='.pbar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#0E3F45;color:#fff;padding:10px 12px;margin:-12px -12px 12px;font:13px/1.3 sans-serif}.pbar button{background:#fff;color:#0E3F45;border:0;border-radius:8px;padding:10px 14px;font-weight:700;font-size:14px}h2,h3{break-after:avoid;page-break-after:avoid}thead{display:table-header-group}tr,img,.box,.ent{break-inside:avoid;page-break-inside:avoid}table.rm,table.hm,.smap{break-inside:avoid;page-break-inside:avoid}';
+const PBAR_CSS='.pbar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#0E3F45;color:#fff;padding:10px 12px;margin:-12px -12px 12px;font:13px/1.3 sans-serif}.pbar button{background:#fff;color:#0E3F45;border:0;border-radius:8px;padding:10px 14px;font-weight:700;font-size:14px}@media print{.pbar,.noprint{display:none!important}}h2,h3{break-after:avoid;page-break-after:avoid}thead{display:table-header-group}tr,img,.box,.ent{break-inside:avoid;page-break-inside:avoid}table.rm,table.hm,.smap{break-inside:avoid;page-break-inside:avoid}';
 // 5x5 colours: green Low, yellow Medium, orange High, red Critical (print-safe).
 const RISK_CSS='.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#9BD27A}.r-warn{background:#FFE066}.r-serious{background:#F7A35C}.r-crit{background:#E5534B;color:#fff}.r-crit .muted,.r-crit span{color:#fff}';
 // cells: optional {"LxI":[point ids]} – the heat map lists which points sit in each cell, with the score in the corner.
@@ -1540,7 +1540,7 @@ function reportSheet(){
    '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
    card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="small muted" style="margin:6px 0">All 69 documents, 10 walkthrough areas and 12 interviews with why each is required, rating scales and the risk matrix.</div><div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
-   card(2,"Security Audit Report","One per designated site – findings with photographic evidence",
+   card(2,"Security Audit Report","Incorporating findings and photographic evidence where available · one per designated site",
      '<span class="lbl" style="margin-top:8px">Entry log from</span><select id="r-period"><option value="all"'+(r.period==="all"?" selected":"")+'>Whole audit (all days)</option>'+r.days.map(d=>'<option value="'+d+'"'+(r.period===d?" selected":"")+'>'+fmtDate(d)+(d===dayKey(new Date().toISOString())?" (today)":"")+'</option>').join("")+'</select>'+
      '<label class="check" style="display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:600"><input type="checkbox" id="r-photos"'+(r.photos?" checked":"")+' style="width:22px;height:22px">Include photos</label>'+
      '<div class="small muted" style="margin-top:6px">Cover, risk methodology, site map, auditees, coverage, risk heat map, colour-coded findings with current and target risk, good practices, status and risk of every point, and the entry log with photos. "All sites" adds the risk-across-sites comparison.</div>'+
@@ -1611,12 +1611,21 @@ function reportHTML(r,scopes,ents,urls){
   const E=esc,now=new Date().toISOString();
   const period=r.period==="all"?"Whole audit":fmtDate(r.period);
   const sevOrder={high:0,med:1,low:2};
-  let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit report</h1><h2>'+(r.site==="all"?"Dixon Technologies – Selaqui sites":E(SITE[r.site].name))+'</h2>'+
-   '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr><tr><th>Reference</th><td>NSS/DTIL/SECA/2026-07/01</td></tr><tr><th>Sites</th><td>'+scopes.map(sc=>E(SITE[sc].name)).join(", ")+'</td></tr>'+
-   '<tr><th>Entries from</th><td>'+E(period)+'</td></tr><tr><th>Auditors</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+'</td></tr>'+
-   '<tr><th>Generated</th><td>'+fmtFull(now)+' IST by '+E(uname(STATE.user))+'</td></tr></table>'+
-   '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p>'+
-   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
+  const rsk=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
+  const bandCount=list=>{const c={Critical:0,High:0,Medium:0,Low:0};list.forEach(e=>{const n=rsk(e);if(n&&["high","med","low"].includes(e.sev))c[riskBand(n)[0]]++;});return c;};
+  const chips=c=>'<div class="chips">'+BAND_DEF.map(([l,r2,col])=>'<div class="chip r-'+col+'"><b>'+c[l]+'</b><span>'+l+'</span></div>').join("")+'</div>';
+  const allC=bandCount(ents);
+  let b='<section class="cover"><div class="cv-band"><div class="cv-brand">NORTHSTAR SAFETY SYSTEMZ</div><div class="cv-ref">Ref. NSS/DTIL/SECA/2026-07/01</div></div>'+
+   '<div class="cv-main"><div class="cv-kicker">Deliverable 2</div><h1>Security Audit Report</h1><div class="cv-sub">incorporating findings and photographic evidence</div>'+
+   '<div class="cv-site">'+(r.site==="all"?"Dixon Technologies – all Selaqui sites":E(SITE[r.site].no+". "+SITE[r.site].name))+'</div>'+
+   '<table class="kv cv-kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr><tr><th>Site'+(scopes.length>1?"s":"")+'</th><td>'+scopes.map(sc=>E(SITE[sc].no+". "+SITE[sc].name)).join("<br>")+'</td></tr>'+
+   (scopes.length===1&&resSite(scopes[0]).addr?'<tr><th>Address</th><td>'+E(resSite(scopes[0]).addr)+'</td></tr>':'')+
+   (scopes.length===1&&resSite(scopes[0]).date?'<tr><th>Audit date</th><td>'+E(resSite(scopes[0]).date)+'</td></tr>':'')+
+   '<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+' · Northstar audit team</td></tr><tr><th>Entry log</th><td>'+E(period)+'</td></tr>'+
+   '<tr><th>Issued</th><td>'+fmtFull(now)+' IST</td></tr><tr><th>Classification</th><td>Confidential – Dixon management and Northstar only</td></tr></table>'+
+   '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
+   '<div class="cv-toc"><b>Contents</b><ol>'+(scopes.length>1?'<li>Risk across sites</li>':'')+'<li>Risk assessment methodology</li>'+scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' – at a glance, findings, good practices, status of every point'+(r.photos?', photographic evidence':'')+'</li>').join("")+'</ol></div>'+
+   '<p class="note">Compiled from the Selaqui audit field log. Every entry is stamped with the auditor, phone and server time (IST), GPS position and a SHA-256 record hash; the log is append-only. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
   if(scopes.length>1){const rows=crossRows(5);
     b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · – not logged · n/a not assessed · · not in the site checklist.</div>'+
      '<table class="xs"><tr><th>Point</th>'+SITES.map(s=>'<th>'+E(s.no)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr><td><b>'+r.it.id+'</b> '+E((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,70))+'</td>'+r.c.map(c=>crossCell(c,true)).join("")+'</tr>').join("")+'</table>'+
@@ -1624,7 +1633,11 @@ function reportHTML(r,scopes,ents,urls){
   b+='<section class="site"><h2>Risk assessment methodology</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
   for(const sc of scopes){
     const S=SITE[sc],its=viewItems(sc);
-    b+='<section class="site"><h2><span class="badge">'+E(S.no)+'</span> '+E(S.name)+'</h2><div class="muted">'+E(S.addr)+'</div>';
+    const R0=resSite(sc),sf=ents.filter(e=>e.scope===sc),st0=scopeStats(sc),bc0=bandCount(sf);
+    const top=sf.filter(e=>rsk(e)&&["high","med","low"].includes(e.sev)).sort((a,b2)=>rsk(b2)-rsk(a)).slice(0,5);
+    b+='<section class="site"><div class="sh"><span class="badge">'+E(S.no)+'</span><div><div class="sh-n">'+E(S.name)+'</div><div class="sh-a">'+E(R0.addr||S.addr)+(R0.date?' · audit '+E(R0.date):'')+'</div></div></div>'+
+     '<div class="glance"><div class="gl-t">At a glance</div><div class="gl-row"><div class="gl-k"><b>'+st0.covered+' / '+st0.total+'</b><span>points covered'+(st0.na?' ('+st0.na+' desirable not assessed)':'')+'</span></div><div class="gl-k"><b>'+st0.gaps+'</b><span>gaps (not available / non-compliant)</span></div><div class="gl-k"><b>'+sf.reduce((a,e)=>a+(e.photos||[]).length,0)+'</b><span>photographs</span></div></div>'+
+     chips(bc0)+(top.length?'<div class="gl-top"><b>Highest risks</b><ol>'+top.map(e=>'<li><span class="rtag r-'+riskBand(rsk(e))[1]+'">'+rsk(e)+'</span> <b>'+E(e.item||"Other")+'</b> '+E((e.body||"").split(/(?<=\.)\s/)[0].slice(0,150))+'</li>').join("")+'</ol></div>':'')+'</div>';
     const geo=resGeo(sc);if(geo)b+='<h3>Site location and perimeter</h3>'+siteMapHTML(geo,680,300);
     const v=(D.visits[sc]||[]).filter(inPeriodV=>r.period==="all"||dayKey(inPeriodV.ts)===r.period);
     if(v.length)b+='<h3>Site visits</h3><table><tr><th>When (IST)</th><th>Event</th><th>Auditor</th><th>GPS</th></tr>'+v.map(x=>'<tr><td>'+fmtFull(x.ts)+'</td><td>'+(x.status==="in"?"Checked in":"Checked out")+'</td><td>'+E(uname(x.author))+'</td><td>'+(x.geo?x.geo.lat.toFixed(5)+", "+x.geo.lng.toFixed(5):"–")+'</td></tr>').join("")+'</table>';
@@ -1640,7 +1653,7 @@ function reportHTML(r,scopes,ents,urls){
     rated.forEach(e=>{const k=e.extra.li+"x"+e.extra.im;(cells[k]=cells[k]||[]).push(e.item||"Other");bc[riskBand(rs(e))[0]]++;});
     if(rated.length)b+='<h3>Risk profile – current risk of every rated observation ('+rated.length+')</h3><div class="muted">Each cell shows its risk score (top left), the number of observations (large figure) and the point IDs.</div>'+riskMatrixHTML(cells)+'<div class="bandsum">'+BAND_DEF.map(([l,r2,c])=>'<span class="r-'+c+'">'+l+' <b>'+bc[l]+'</b></span>').join("")+'</div>';
     const sevCls={high:"serious",med:"warn",low:"good"};
-    b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target risk</th></tr>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
+    b+='<h3>Findings ('+f.length+')</h3>'+(f.length?'<table class="fd"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+f.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+
       (rs(e)?riskCellHTML(e.extra.li,e.extra.im,E(SEVM[e.sev].label)+" severity"):'<td class="r-'+sevCls[e.sev]+' rc"><b>'+E(SEVM[e.sev].label)+'</b><div>not scored</div></td>')+
       '<td><b>'+E(e.item||"Other")+'</b>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'<div class="muted">Other observation</div>')+evidLine(e)+'</td><td>'+E(e.body||"")+(whyOf(e.item)?'<div class="why"><b>Why it matters:</b> '+E(whyOf(e.item))+'</div>':'')+'<div class="muted">'+E(uname(e.author))+' · '+fmtFull(e.ts)+'</div></td><td>'+E(e.extra&&e.extra.rec||"–")+'</td>'+
       (e.extra&&e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">–</td>')+'</tr>').join("")+'</table>':'<p class="muted">No findings with severity in this period.</p>');
@@ -1666,13 +1679,23 @@ function reportHTML(r,scopes,ents,urls){
     b+='</section>';
   }
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Selaqui audit report '+E(period)+'</title><style>'+
-   '@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10.5pt/1.4 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
-   'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:0 0 4px;color:#0E3F45}h3{font-size:11.5pt;margin:16px 0 6px;color:#0E5A61;border-bottom:1.5px solid #0E5A61;padding-bottom:2px}'+
-   '.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55;margin-top:18px}'+
-   'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:9pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#E6EDEB}'+
+   '@page{size:A4;margin:15mm 13mm 17mm;@bottom-left{content:"Northstar Safety Systemz · Security Audit Report · Confidential";font:7.5pt Arial;color:#5E7079}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5pt Arial;color:#5E7079}}'+
+   '@page:first{@bottom-left{content:none}@bottom-right{content:none}}'+
+   '*{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}body{font:10pt/1.42 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
+   '@media screen{html{background:#dfe6e8}body{max-width:210mm;margin:0 auto;background:#fff;padding:14mm 13mm;box-shadow:0 2px 16px rgba(0,0,0,.18)}}@media print{body{padding:0}}'+
+   '.cover{page-break-after:always;min-height:250mm;display:flex;flex-direction:column}.cv-band{background:#0E3F45;color:#fff;padding:14px 16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center}.cv-brand{font-weight:800;letter-spacing:2px;font-size:11pt}.cv-ref{font-size:9pt;opacity:.85}'+
+   '.cv-main{padding:28px 4px 0}.cv-kicker{font-size:9pt;letter-spacing:1.5px;text-transform:uppercase;color:#0E5A61;font-weight:700}.cover h1{font-size:30pt;margin:6px 0 2px;color:#0E3F45;line-height:1.1}.cv-sub{font-size:12pt;color:#3C4C55}.cv-site{font-size:15pt;font-weight:700;margin:18px 0 12px;padding:8px 12px;border-left:5px solid #0E5A61;background:#EEF4F3}'+
+   '.cv-kv th{width:26%}.cv-sum{margin:14px 0}.cv-sum-t,.gl-t{font-weight:700;font-size:10pt;margin-bottom:6px;color:#0E3F45}.chips{display:flex;gap:8px}.chip{flex:1;border-radius:8px;padding:8px;text-align:center}.chip b{display:block;font-size:18pt;line-height:1.1}.chip span{font-size:8.5pt}'+
+   '.cv-toc{margin-top:8px;font-size:9.5pt}.cv-toc ol{margin:4px 0;padding-left:20px}'+
+   '.sh{display:flex;gap:10px;align-items:center;background:#0E3F45;color:#fff;border-radius:6px;padding:10px 12px;margin-bottom:10px}.sh .badge{background:#fff;color:#0E3F45;font-size:14pt;font-weight:800;padding:2px 10px;border-radius:6px}.sh-n{font-size:15pt;font-weight:700}.sh-a{font-size:8.5pt;opacity:.85}'+
+   '.glance{border:1px solid #D0DAD7;border-radius:8px;padding:10px 12px;margin:6px 0 12px;break-inside:avoid}.gl-row{display:flex;gap:8px;margin-bottom:8px}.gl-k{flex:1;background:#F2F6F5;border-radius:6px;padding:6px 8px}.gl-k b{display:block;font-size:14pt;color:#0E3F45}.gl-k span{font-size:8pt;color:#5E7079}.gl-top{margin-top:8px;font-size:9pt}.gl-top ol{margin:4px 0;padding-left:18px}.gl-top li{margin:3px 0}'+
+   '.fd{table-layout:fixed}.fd td{word-wrap:break-word}.pts{table-layout:fixed}'+
+   'h2{font-size:14pt;margin:0 0 6px;color:#0E3F45;padding-left:8px;border-left:5px solid #0E5A61}h3{font-size:11pt;margin:16px 0 6px;color:#0E5A61;border-bottom:1.5px solid #0E5A61;padding-bottom:2px}'+
+   '.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.note{font-size:8.5pt;color:#5E7079;margin-top:auto;padding-top:14px}'+
+   'table{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:8.8pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#0E5A61;color:#fff;font-weight:600}.kv th{background:#EEF4F3;color:#14212B}tbody tr:nth-child(even) td:not([class*="r-"]){background:#FAFCFB}'+
    '.kv th{width:28%}.muted{color:#5E7079;font-size:8.5pt}.badge{display:inline-block;background:#0E5A61;color:#fff;border-radius:5px;padding:0 7px}'+
-   '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}'+
-   '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:31%}.ph img{width:100%;max-height:150px;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
+   '.site{page-break-before:always}.ent{border:1px solid #D0DAD7;border-left:4px solid #0E5A61;border-radius:6px;padding:6px 8px;margin:6px 0;page-break-inside:avoid}.rm th,.hm th{background:#E6EDEB;color:#14212B}'+
+   '.eh{font-size:9.5pt}.meta{font-size:8.5pt;color:#5E7079}.body{margin-top:3px;white-space:pre-wrap}.ph{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.ph figure{margin:0;width:32.3%}.ph img{width:100%;height:42mm;object-fit:cover;border:1px solid #D0DAD7;border-radius:4px;display:block}.ph figcaption{font-size:8pt;font-weight:700;color:#3C4C55}'+
    '.sev-high{color:#b3261e;font-weight:700}.sev-med{color:#c25a1d;font-weight:700}.sev-low{color:#946200;font-weight:700}.pts td:first-child{white-space:nowrap}'+
    RISK_CSS+'.fd td{font-size:8.6pt}.fd tr{page-break-inside:avoid}.rc{width:72px;text-align:center}.rc div{font-size:7.8pt}.bandsum{display:flex;gap:6px;margin:4px 0 8px}.bandsum span{padding:3px 10px;border-radius:5px;font-size:9pt}'+
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.rtag{padding:0 5px;border-radius:4px;font-weight:700}.rm th span{font-weight:400;font-size:8pt}.rm .ax{font-size:8pt}.hm td{position:relative;height:58px;vertical-align:middle;text-align:center;padding:14px 4px 4px;width:16%}.hm .sc{position:absolute;top:2px;left:4px;font-size:8pt;font-weight:700;opacity:.75}.hm .n{font-size:15pt;font-weight:800;line-height:1}.hm .ids{font-size:7.3pt;font-weight:600;line-height:1.25;margin-top:2px}.refs{font-size:9pt;margin:4px 0;padding-left:18px}.cnt{font-size:12pt}.cnt0{color:rgba(0,0,0,.35)}.smap img{max-width:none}'+
