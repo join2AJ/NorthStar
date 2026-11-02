@@ -371,7 +371,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.52";
+const VERSION="2026-11-02.53";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1599,7 +1599,7 @@ function checklistHTML(){
   const blank='<td class="bx"></td><td class="bx"></td>';
   let b='<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit</div><h1>Security audit checklist</h1><h2>Dixon Technologies (India) Limited - Selaqui, Dehradun</h2>'+
    '<table class="kv"><tr><th>Reference</th><td>NSS/DTIL/SECA/2026-07/01</td></tr><tr><th>Applies to</th><td>'+SITES.filter(s=>s.id!=="G").map(s=>E(s.no+". "+s.name)).join("; ")+'</td></tr>'+
-   '<tr><th>Audit</th><td>'+E(AUDIT_LINE)+'</td></tr><tr><th>Parts</th><td>A. Documents and records (69) · B. Physical walkthrough (10 areas) · C. Stakeholder interviews (12) · D. Rating scales and risk matrix</td></tr>'+revRows(1)+'</table>'+REV_HIST+
+   '<tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr><tr><th>Parts</th><td>A. Documents and records (69) · B. Physical walkthrough (10 areas) · C. Stakeholder interviews (12) · D. Rating scales and risk matrix</td></tr>'+revRows(1)+'</table>'+REV_HIST+
    '<p class="note">One instrument common to all sites. Each site is assessed against the same 69 documents. Mandatory items are needed to complete the audit; desirable items strengthen findings. Records containing personal data are reviewed on site only and not copied.</p>'+delivAboutHTML(1)+
    '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
   b+='<section class="site"><h2>A. Documents and records</h2>';
@@ -1636,7 +1636,7 @@ function reportHTML(r,scopes,ents,urls){
    '<div class="cv-site">'+(r.site==="all"?"Dixon Technologies - all Selaqui sites":E(SITE[r.site].no+". "+SITE[r.site].name))+'</div>'+
    '<table class="kv cv-kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr><tr><th>Site'+(scopes.length>1?"s":"")+'</th><td>'+scopes.map(sc=>E(SITE[sc].no+". "+SITE[sc].name)).join("<br>")+'</td></tr>'+
    (scopes.length===1&&resSite(scopes[0]).addr?'<tr><th>Address</th><td>'+E(resSite(scopes[0]).addr)+'</td></tr>':'')+
-   '<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+' · Northstar audit team</td></tr><tr><th>Audit</th><td>'+E(AUDIT_LINE)+'</td></tr>'+(r.period!=="all"?'<tr><th>Entry log</th><td>'+E(period)+' only</td></tr>':'')+
+   '<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+' · Northstar audit team</td></tr><tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr>'+(r.period!=="all"?'<tr><th>Entry log</th><td>'+E(period)+' only</td></tr>':'')+
    revRows(2,r.site)+'<tr><th>Classification</th><td>Confidential - Dixon management and Northstar only</td></tr></table>'+REV_HIST+
    '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
    '<div class="cv-toc"><b>Contents</b><ol>'+(scopes.length>1?'<li>Risk across sites</li>':'')+'<li>Risk assessment methodology</li>'+scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' - at a glance, findings, good practices, status of every point'+(r.photos?', photographic evidence':'')+'</li>').join("")+'</ol></div>'+
@@ -1816,7 +1816,7 @@ async function packExcel(sc,rows,thumbs){
   const s1=wb.addWorksheet("Risk matrix",{views:[{showGridLines:false}]});
   s1.getColumn(1).width=22;for(let c=2;c<=6;c++)s1.getColumn(c).width=24;
   const t=s1.addRow(["Site "+S.no+". "+S.name]);t.font={bold:true,size:15,color:{argb:"FF0E3F45"}};
-  [R.addr||S.addr||"",AUDIT_LINE,"Client: Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01 · Northstar Safety Systemz"].filter(Boolean).forEach(x=>s1.addRow([x]).font={color:{argb:"FF3C4C55"}});
+  [R.addr||S.addr||"","Audit period: "+AUDIT_PERIOD,"Client: Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01 · Northstar Safety Systemz"].filter(Boolean).forEach(x=>s1.addRow([x]).font={color:{argb:"FF3C4C55"}});
   s1.addRow([]);s1.addRow(["Current risk of every rated observation (likelihood x impact). Each cell: score, number of observations and point IDs."]).font={italic:true,size:9};
   head(s1.addRow(["Likelihood \\ Impact"].concat([1,2,3,4,5].map(i=>i+" "+IM_L[i]))));
   for(const l of [5,4,3,2,1]){const vals=[l+" "+LI_L[l]];
@@ -1849,7 +1849,7 @@ async function packExcel(sc,rows,thumbs){
 function pdfFooter(doc,title){const n=doc.getNumberOfPages(),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
   for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(94,112,121);doc.text(pdfTxt("Northstar Safety Systemz · "+title+" · Confidential"),10,H-6);doc.text("Page "+i+" of "+n,W-10,H-6,{align:"right"});}}
 function pdfHead(doc,sc,title,sub){const S=SITE[sc],R=resSite(sc);doc.setFillColor(14,63,69);doc.rect(0,0,doc.internal.pageSize.getWidth(),17,"F");doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont("helvetica","bold");
-  doc.text(pdfTxt(title+" - Site "+S.no+". "+S.name),10,8);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(pdfTxt("Selaqui sites security audit, "+AUDIT_PERIOD+" · Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01"+(sub?" · "+sub:"")),10,13.5);doc.setTextColor(20,33,43);}
+  doc.text(pdfTxt(title+" - Site "+S.no+". "+S.name),10,8);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text(pdfTxt("Audit period "+AUDIT_PERIOD+" · Dixon Technologies (India) Limited · Ref. NSS/DTIL/SECA/2026-07/01"+(sub?" · "+sub:"")),10,13.5);doc.setTextColor(20,33,43);}
 const riskCellStyle=(d,b)=>{if(!b)return;d.cell.styles.fillColor=hexRgb(BANDHEX[b[1]]);d.cell.styles.fontStyle="bold";if(b[1]==="crit")d.cell.styles.textColor=[255,255,255];};
 // PDF with the photos in each finding's row.
 async function packRowPdf(sc,rows,thumbs){
@@ -1976,7 +1976,7 @@ function sitesKML(scs){
   for(const sc of scs){
     const S=SITE[sc],g=resGeo(sc),R=resSite(sc);
     k+='<Folder><name>'+X(S.no+". "+S.name)+'</name>';
-    if(g&&g.poly&&g.poly.length>2)k+='<Placemark><name>'+X(S.name+" perimeter")+'</name><description>'+X((R.addr||S.addr||"")+" · "+AUDIT_LINE)+'</description><styleUrl>#perim</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>'+g.poly.concat([g.poly[0]]).map(p=>p[1]+","+p[0]+",0").join(" ")+'</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>';
+    if(g&&g.poly&&g.poly.length>2)k+='<Placemark><name>'+X(S.name+" perimeter")+'</name><description>'+X((R.addr||S.addr||"")+" · Audit period: "+AUDIT_PERIOD)+'</description><styleUrl>#perim</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>'+g.poly.concat([g.poly[0]]).map(p=>p[1]+","+p[0]+",0").join(" ")+'</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>';
     if(g&&g.pin)k+='<Placemark><name>'+X(S.no+". "+S.name)+'</name><Point><coordinates>'+g.pin[1]+","+g.pin[0]+',0</coordinates></Point></Placemark>';
     k+='</Folder>';
   }
@@ -2052,7 +2052,7 @@ function delivAboutHTML(n){
 }
 const ABOUT_CSS='.about{border:1px solid #D0DAD7;border-left:5px solid #0E5A61;border-radius:8px;padding:10px 12px;margin:14px 0;background:#F7FAF9;break-inside:avoid;font-size:9pt}.about p{margin:4px 0}.ab-t{font-weight:800;color:#0E3F45;font-size:10pt;margin-bottom:4px}.ab-tb{margin-top:8px;font-size:8.5pt}.ab-tb th{background:#E6EDEB!important;color:#14212B!important}.ab-tb tr.ab-on td{background:#DDEFEA!important;font-weight:700}';
 const docCover=(kind,sub,extra,sc)=>'<section class="cover"><div class="brand">Northstar Safety Systemz · Security audit · NSS/DTIL/SECA/2026-07/01</div><h1>'+esc(kind)+'</h1><h2 style="border:0">'+sub+'</h2>'+
-  '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Audit</th><td>'+esc(AUDIT_LINE)+'</td></tr>'+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
+  '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr>'+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
   revRows(/Site Security Plan/.test(kind)?3:/Operational Requirement/.test(kind)?4:5,sc)+'<tr><th>Classification</th><td>Confidential - for Dixon management and Northstar only</td></tr></table>'+REV_HIST+
   delivAboutHTML(/Site Security Plan/.test(kind)?3:/Operational Requirement/.test(kind)?4:5)+
   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
@@ -2133,7 +2133,7 @@ const OR_TOPIC={
 const BAND_TIME={Critical:"Interim control within 72 hours; permanent fix within 30 days",High:"Action plan within 2 weeks; close within 90 days",Medium:"Close within 6 months",Low:"Close within 12 months or at the next opportunity"};
 function topicOf(e){if(["AD-09","AD-10","AD-11"].includes(e.item))return "Security governance";const s=(e.extra&&e.extra.sop)||[];return s[0]||(e.item&&sopSuggest(ITEM[e.item])[0])||"Guarding & post orders";}
 function siteHeader(sc){const S=SITE[sc],R=resSite(sc),g=resGeo(sc);
-  return '<tr><th>Site</th><td>'+esc(S.no+". "+S.name)+'</td></tr><tr><th>Address</th><td>'+esc(R.addr||S.addr)+'</td></tr>'+'<tr><th>Audit</th><td>'+esc(AUDIT_LINE)+'</td></tr>'+(R.spoc?'<tr><th>Site SPOC</th><td>'+esc(R.spoc)+'</td></tr>':'')+(g?'':'');}
+  return '<tr><th>Site</th><td>'+esc(S.no+". "+S.name)+'</td></tr><tr><th>Address</th><td>'+esc(R.addr||S.addr)+'</td></tr>'+(R.spoc?'<tr><th>Site SPOC</th><td>'+esc(R.spoc)+'</td></tr>':'')+(g?'':'');}
 function contextHTML(sc){
   return '<h3>Dixon in Selaqui - operations in pockets</h3><p>Dixon operates several plants spread across the Selaqui industrial area of Dehradun (sites 1-6 of this engagement). They are separate pockets, each with its own gate, guard force and utilities, but they share the same roads, power network, labour pool, transporters and security agency. A disruption in one pocket - a road blockade, a power failure, labour unrest or a flood - can affect several plants at once, so each site plan is written to work on its own and also with the other Dixon sites nearby.</p>'+
    sitesMapHTML(sc,900,560)+
