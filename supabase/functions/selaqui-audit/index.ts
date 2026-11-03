@@ -31,16 +31,33 @@ function randomToken() {
   return Array.from(a).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+const ENDED = "Your access to the Selaqui audit documents has ended. Contact Ajay Kumar (Northstar) to extend it.";
+const clientOpen = (u: any) => u.role !== "client" || (!u.disabled && u.access_until && new Date(u.access_until).getTime() > Date.now());
+const profile = (u: any) => ({
+  username: u.username, name: u.display_name, role: u.role,
+  perms: u.role === "client" ? (u.perms || { sites: [], items: [] }) : null,
+  accessUntil: u.access_until ? new Date(u.access_until).toISOString() : null,
+});
 async function authUser(req: Request) {
   const h = req.headers.get("authorization") || "";
   const tok = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   if (!/^[0-9a-f]{64}$/.test(tok)) throw new HttpError(401, "Please sign in again.");
+  const th = await sha256(tok);
   const rows = await sql`
-    select u.username, u.display_name from selaqui.sessions s join selaqui.users u using (username)
-    where s.token_hash = ${await sha256(tok)} and s.expires_at > now()`;
+    select u.username, u.display_name, u.role, u.perms, u.access_until, u.disabled from selaqui.sessions s join selaqui.users u using (username)
+    where s.token_hash = ${th} and s.expires_at > now()`;
   if (!rows.length) throw new HttpError(401, "Session expired. Please sign in again.");
-  return { username: rows[0].username as string, name: rows[0].display_name as string, tokenHash: await sha256(tok) };
+  const u = rows[0];
+  if (!clientOpen(u)) {
+    await sql`delete from selaqui.sessions where token_hash = ${th}`;
+    throw new HttpError(403, ENDED);
+  }
+  return { username: u.username as string, name: u.display_name as string, role: u.role as string, perms: u.perms as any, accessUntil: u.access_until, tokenHash: th, row: u };
 }
+// Sites a client may see ('G' = documents common to all sites).
+const clientSites = (me: any) => ["G", ...((me.perms?.sites || []) as string[]).filter((x) => SCOPES.has(x))];
+const CLIENT_ACTIONS = new Set(["me", "logout", "pull", "signRead", "resources", "track"]);
+const PERM_ITEMS = new Set(["1", "2", "3", "4", "5", "5.1", "5.2", "5.3", "5.4", "5.5", "6"]);
 
 /* ---------- audit trail ---------- */
 function reqMeta(req: Request) {
@@ -175,25 +192,36 @@ async function handle(req: Request, b: any) {
       await logActivity(req, username || null, "login.blocked", null, { reason: "too many failures" }, b.geo);
       throw new HttpError(429, "Too many wrong attempts. Wait 15 minutes.");
     }
-    const u = await sql`select username, display_name from selaqui.users
+    const u = await sql`select username, display_name, role, perms, access_until, disabled from selaqui.users
       where username = ${username} and pass_hash = extensions.crypt(${password}, pass_hash)`;
     if (!u.length) {
       await sql`insert into selaqui.login_failures(username) values (${username})`;
       await logActivity(req, username.slice(0, 40) || null, "login.failed", null, null, b.geo);
       throw new HttpError(401, "Wrong username or password.");
     }
+    if (!clientOpen(u[0])) {
+      await logActivity(req, username, "login.expired", null, { accessUntil: u[0].access_until, disabled: u[0].disabled }, b.geo);
+      throw new HttpError(403, ENDED);
+    }
     const tok = randomToken();
-    await sql`insert into selaqui.sessions(token_hash, username) values (${await sha256(tok)}, ${username})`;
+    if (u[0].role === "client") {
+      await sql`insert into selaqui.sessions(token_hash, username, expires_at) values (${await sha256(tok)}, ${username}, least(now() + interval '30 days', ${u[0].access_until}))`;
+    } else {
+      await sql`insert into selaqui.sessions(token_hash, username) values (${await sha256(tok)}, ${username})`;
+    }
     await sql`delete from selaqui.sessions where expires_at < now()`;
-    await logActivity(req, username, "login.ok", null, null, b.geo);
-    return { token: tok, username, name: u[0].display_name };
+    await logActivity(req, username, "login.ok", null, u[0].role === "client" ? { role: "client" } : null, b.geo);
+    return { token: tok, ...profile(u[0]) };
   }
 
   const me = await authUser(req);
+  const isClient = me.role === "client";
+  if (isClient && !CLIENT_ACTIONS.has(action)) throw new HttpError(403, "Not available for this login.");
+  if (action.startsWith("access.") && me.role !== "admin") throw new HttpError(403, "Only the audit lead can manage access.");
 
   switch (action) {
     case "me":
-      return { username: me.username, name: me.name };
+      return profile(me.row);
 
     case "logout":
       await sql`delete from selaqui.sessions where token_hash = ${me.tokenHash}`;
@@ -214,8 +242,19 @@ async function handle(req: Request, b: any) {
 
     case "pull": {
       const since = Math.max(0, Number(b.since) || 0);
-      const rows = await sql`select * from selaqui.entries where seq > ${since} order by seq limit 3000`;
-      const users = await sql`select username, display_name from selaqui.users`;
+      let rows;
+      if (isClient) {
+        const sites = clientSites(me);
+        rows = await sql`select * from selaqui.entries where seq > ${since} and (
+            (kind in ('point','note','person') and scope = any(${sql.array(sites)}))
+            or (kind = 'retract' and target in (select id from selaqui.entries where kind in ('point','note','person') and scope = any(${sql.array(sites)}))))
+          order by seq limit 3000`;
+      } else {
+        rows = await sql`select * from selaqui.entries where seq > ${since} order by seq limit 3000`;
+      }
+      const users = isClient
+        ? await sql`select username, display_name from selaqui.users where role <> 'client' or username = ${me.username}`
+        : await sql`select username, display_name from selaqui.users`;
       const ep = await sql`select value from selaqui.config where key = 'epoch'`;
       return { entries: rows.map(outEntry), more: rows.length === 3000, users, epoch: ep.length ? ep[0].value : "1" };
     }
@@ -293,8 +332,15 @@ async function handle(req: Request, b: any) {
     }
 
     case "signRead": {
-      const paths: string[] = (Array.isArray(b.paths) ? b.paths : []).slice(0, 200).map(String)
-        .filter((p) => PHOTO_RE.test(p) || /^backups\/[0-9-]{10}\/[a-z0-9-]+\.json$/.test(p));
+      let paths: string[] = (Array.isArray(b.paths) ? b.paths : []).slice(0, 200).map(String)
+        .filter((p) => PHOTO_RE.test(p) || (!isClient && /^backups\/[0-9-]{10}\/[a-z0-9-]+\.json$/.test(p)));
+      if (isClient && paths.length) {
+        const ok = await sql`select distinct v.p from selaqui.entries e, jsonb_array_elements(e.photos) ph,
+            lateral (values (ph->>'p'), (ph->>'t')) v(p)
+          where e.kind in ('point','note') and e.scope = any(${sql.array(clientSites(me))}) and v.p = any(${sql.array(paths)})`;
+        const allow = new Set(ok.map((r: any) => r.p));
+        paths = paths.filter((p) => allow.has(p));
+      }
       if (!paths.length) return { urls: {} };
       const { data, error } = await sb.storage.from(BUCKET).createSignedUrls(paths, 6 * 3600);
       if (error) throw new HttpError(500, error.message);
@@ -313,7 +359,13 @@ async function handle(req: Request, b: any) {
     case "resources": {
       // Travel details and contacts; kept on the server so they are only visible after sign-in.
       const r = await sql`select value from selaqui.config where key = 'resources'`;
-      return { resources: r.length ? JSON.parse(r[0].value) : null };
+      const res = r.length ? JSON.parse(r[0].value) : null;
+      if (isClient && res) {
+        const sites = clientSites(me);
+        return { resources: { updated: res.updated, engagement: res.engagement,
+          sites: (res.sites || []).filter((x: any) => sites.includes(x.site)).map((x: any) => ({ site: x.site, name: x.name, addr: x.addr, date: x.date, status: x.status, geo: x.geo })) } };
+      }
+      return { resources: res };
     }
 
     case "backupNow":
@@ -326,6 +378,73 @@ async function handle(req: Request, b: any) {
         : await sql`select * from selaqui.activity order by id desc limit 300`;
       const chk = await sql`select selaqui.verify_chains() v`;
       return { activity: rows.map(outActivity), check: chk[0].v };
+    }
+
+    case "track": {
+      // Usage events from the app: document generated (with how long it took) and a heartbeat while signed in.
+      const ev = String(b.event || "");
+      if (ev === "ping") { await logActivity(req, me.username, "session.ping", null, null, null); return { ok: true }; }
+      if (ev !== "doc" && ev !== "pack") throw new HttpError(400, "Bad event");
+      const d = b.detail && typeof b.detail === "object" ? b.detail : {};
+      const detail = { doc: str(d.doc, 60), site: str(d.site, 8), items: Array.isArray(d.items) ? d.items.slice(0, 12).map((x: unknown) => String(x).slice(0, 6)) : null,
+        ms: Math.max(0, Math.min(36e5, Math.round(Number(d.ms) || 0))), ok: d.ok !== false, files: Number(d.files) || null, mb: Number(d.mb) || null };
+      await logActivity(req, me.username, ev === "pack" ? "report.pack" : "report.doc", detail.site, detail, b.geo);
+      return { ok: true };
+    }
+
+    case "access.list": {
+      const rows = await sql`select username, display_name, perms, access_until, disabled, created_by, created_at, note from selaqui.users where role = 'client' order by created_at`;
+      return { clients: rows.map((r: any) => ({ ...r, access_until: r.access_until ? new Date(r.access_until).toISOString() : null, created_at: new Date(r.created_at).toISOString() })) };
+    }
+
+    case "access.save": {
+      const username = String(b.username || "").toLowerCase().trim();
+      if (!/^[a-z0-9._-]{3,30}$/.test(username)) throw new HttpError(400, "User name: 3-30 letters, numbers, dot, dash or underscore.");
+      const ex = await sql`select role from selaqui.users where username = ${username}`;
+      if (ex.length && ex[0].role !== "client") throw new HttpError(400, "That user name belongs to an auditor.");
+      const name = String(b.name || "").trim().slice(0, 80);
+      if (!name) throw new HttpError(400, "Enter the person's name.");
+      const sites = (Array.isArray(b.sites) ? b.sites : []).map(String).filter((x: string) => SCOPES.has(x) && x !== "G");
+      const items = (Array.isArray(b.items) ? b.items : []).map(String).filter((x: string) => PERM_ITEMS.has(x));
+      if (!sites.length || !items.length) throw new HttpError(400, "Choose at least one site and one document.");
+      const until = new Date(String(b.until || ""));
+      if (isNaN(until.getTime())) throw new HttpError(400, "Bad end date.");
+      const pw = String(b.password || "");
+      if (!ex.length && pw.length < 8) throw new HttpError(400, "Set a password of at least 8 characters.");
+      if (pw && pw.length < 8) throw new HttpError(400, "Use at least 8 characters for the password.");
+      const perms = { sites, items };
+      if (!ex.length) {
+        await sql`insert into selaqui.users(username, display_name, pass_hash, role, perms, access_until, disabled, created_by, note)
+          values (${username}, ${name}, extensions.crypt(${pw}, extensions.gen_salt('bf', 10)), 'client', ${sql.json(perms)}, ${until.toISOString()}, ${!!b.disabled}, ${me.username}, ${str(b.note, 300)})`;
+      } else {
+        await sql`update selaqui.users set display_name = ${name}, perms = ${sql.json(perms)}, access_until = ${until.toISOString()}, disabled = ${!!b.disabled}, note = ${str(b.note, 300)} where username = ${username}`;
+        if (pw) await sql`update selaqui.users set pass_hash = extensions.crypt(${pw}, extensions.gen_salt('bf', 10)) where username = ${username}`;
+        await sql`update selaqui.sessions set expires_at = least(expires_at, ${until.toISOString()}) where username = ${username}`;
+        if (b.disabled || pw) await sql`delete from selaqui.sessions where username = ${username}`;
+      }
+      await logActivity(req, me.username, ex.length ? "access.updated" : "access.granted", username,
+        { name, sites, items, until: until.toISOString(), disabled: !!b.disabled, passwordChanged: !!pw }, b.geo);
+      return { ok: true };
+    }
+
+    case "access.delete": {
+      const username = String(b.username || "").toLowerCase().trim();
+      const ex = await sql`select role from selaqui.users where username = ${username}`;
+      if (!ex.length || ex[0].role !== "client") throw new HttpError(400, "That client login was not found.");
+      await sql`delete from selaqui.sessions where username = ${username}`;
+      await sql`delete from selaqui.users where username = ${username}`;
+      await logActivity(req, me.username, "access.removed", username, null, b.geo);
+      return { ok: true };
+    }
+
+    case "access.analytics": {
+      // Every event by or about a client login, newest first.
+      const rows = await sql`select a.* from selaqui.activity a
+        where a.actor in (select username from selaqui.users where role = 'client')
+           or (a.action like 'access.%')
+           or (a.action in ('login.failed','login.expired','login.blocked') and a.actor not in ('ajay','anis'))
+        order by a.id desc limit 5000`;
+      return { events: rows.map(outActivity) };
     }
 
     default:

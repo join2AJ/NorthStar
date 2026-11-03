@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.62";
+const VERSION="2026-11-03.63";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -717,6 +717,7 @@ async function api(action,body,opts){
     const r=await fetch(API,{method:"POST",signal:ctl.signal,headers:Object.assign({"content-type":"application/json"},STATE.token?{authorization:"Bearer "+STATE.token}:{}),body:JSON.stringify(Object.assign({action,geo},body||{}))});
     const j=await r.json().catch(()=>({error:"Bad response ("+r.status+")"}));
     if(r.status===401&&action!=="login"){signOut(true);}
+    else if(r.status===403&&action!=="login"&&/access .*has ended/i.test(j.error||"")){signOut(true,j.error);}
     if(!r.ok){const er=new Error(j.error||("Error "+r.status));er.status=r.status;throw er;}
     return j;
   }finally{clearTimeout(to);}
@@ -988,6 +989,7 @@ function renderTabs(){
 function render(){
   if(!STATE.user||!STATE.token){showLogin();return;}
   $("#login").hidden=true;
+  if(isClient()){derive();renderClientTop();$("#tabs").innerHTML="";const m=$("#main");m.className="v-client";renderClient(m);$("#fab").hidden=true;if(ui.sheet)renderSheet();return;}
   derive();renderTop();renderTabs();
   const m=$("#main");m.className="v-"+ui.tab;
   (({dash:renderDash,sites:renderSites,list:renderList,feed:renderFeed,info:renderInfo,more:renderMore})[ui.tab]||renderDash)(m);
@@ -1612,7 +1614,7 @@ function reportSheet(){
    '</div>';
 }
 async function makeReport(){
-  const r=ui.sheet;r.site=$("#r-site").value;r.period=$("#r-period").value;r.photos=$("#r-photos").checked;
+  const r=ui.sheet&&ui.sheet.type==="report"?ui.sheet:{};r.site=$("#r-site").value;r.period=$("#r-period").value;r.photos=$("#r-photos").checked;
   const w=window.open("","_blank");
   if(!w){toast("Allow pop-ups for this site, then try again.",4500);return;}
   w.document.write('<p style="font:16px sans-serif;padding:20px">Preparing report…</p>');
@@ -2012,7 +2014,8 @@ async function makePack(v,sel){
     a.download=pdfNameX("Audit Pack",all?"all":v)+".zip";
     document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},15000);
     prog((all?"All-sites pack":"Site pack")+" ready - "+zw.count+" files, "+Math.round(blob.size/1048576)+" MB ("+Math.round((Date.now()-t0)/1000)+" s).");
-  }catch(err){prog("Could not build the pack: "+(err.message||err));}
+    trackUse("pack",{doc:"Site pack ZIP",site:v,items:[...sel],ms:Date.now()-t0,files:zw.count,mb:Math.round(blob.size/1048576)});
+  }catch(err){prog("Could not build the pack: "+(err.message||err));trackUse("pack",{doc:"Site pack ZIP",site:v,items:[...sel],ms:Date.now()-t0,ok:false});}
   finally{packBusy=false;while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());}
 }
 // KML for Google Earth: site perimeter and site pin only.
@@ -2212,7 +2215,7 @@ function heatHTML(sd){const cells={};sd.obs.filter(sd.rs).forEach(e=>{const k=e.
 
 function makeSSP(sc){
   const S=SITE[sc];
-  openDoc(pdfName(3,"Site Security Plan",sc),()=>{
+  return openDoc(pdfName(3,"Site Security Plan",sc),()=>{
     const sd=siteData(sc),R=resSite(sc),g=resGeo(sc),st=(id)=>{const p=D.pts.get(sc+"|"+id);return p&&p.status?ST[p.status].label:"Not covered";};
     let b=docCover("Site Security Plan (SSP)",esc(S.no+". "+S.name),siteHeader(sc),sc);
     b+='<section class="pb"><h2>1. Purpose, scope and use of this plan</h2><p>This Site Security Plan sets out how '+esc(S.name)+' protects its people, material, information and production against security threats, and how it responds when something goes wrong. It is based on the on-site security audit, document review, walkthrough and stakeholder interviews carried out by the Northstar audit team, and on the risk ratings in the audit report. It covers the whole premises inside the boundary shown below, all employees, contract workers, visitors, vehicles and material.</p>'+
@@ -2244,7 +2247,7 @@ function makeSSP(sc){
 }
 function makeOR(sc){
   const S=SITE[sc];
-  openDoc(pdfName(4,"Operational Requirement",sc),()=>{
+  return openDoc(pdfName(4,"Operational Requirement",sc),()=>{
     const sd=siteData(sc);
     let b=docCover("Operational Requirement (OR)",esc(S.no+". "+S.name),siteHeader(sc),sc);
     b+='<section class="pb"><h2>1. Purpose</h2><p>This Operational Requirement states what the site needs its security measures to achieve, in terms that can be designed, procured and tested. Each requirement comes from an audit finding, carries the current and target risk, an owner, a timeline by risk band and acceptance criteria. Technical specifications (camera models, reader types) are left to the design stage; the OR fixes the outcome to be achieved.</p>'+
@@ -2543,7 +2546,7 @@ function makeOpenPoints(){
       '<p class="note">'+scs.map(sc=>esc(SITE[sc].no+". "+SITE[sc].name)).join(" · ")+' · '+total+' open point'+(total===1?"":"s")+' · audit period '+AUDIT_PERIOD+'</p><button class="noprint" onclick="print()">Print / Save as PDF</button></section>'+body;});
 }
 function makeSOPSet(){
-  openDoc(pdfName(5,"Corporate Security SOP Set"),()=>{
+  return openDoc(pdfName(5,"Corporate Security SOP Set"),()=>{
     const done=SITES.filter(s=>D.obs.some(e=>e.scope===s.id));
     const gapAt=(s,ids)=>ids.map(id=>({s,id,p:D.pts.get(s.id+"|"+id)})).filter(x=>x.p&&(["high","med","low"].includes(x.p.sev)||["notavail","noncomp","improve"].includes(x.p.status)));
     const T=(h,rows)=>'<table class="stk"><tr>'+h.map(c=>'<th>'+esc(c)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr>'+r.map((c,i)=>'<td data-l="'+esc(h[i])+'">'+(i?esc(c):'<b>'+esc(c)+'</b>')+'</td>').join("")+'</tr>').join("")+'</table>';
@@ -2672,6 +2675,7 @@ function renderMore(m){
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
    '<div class="btn-row"><button class="btn primary" data-act="report">📄 Report (PDF)</button><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
+   (isAdmin()?'<div class="card" style="border-left:5px solid var(--brand)"><div class="card-t">Client access &amp; analytics</div><div class="small muted" style="margin:3px 0 8px">Give Northstar (or anyone else) a download-only login for chosen sites and documents, for a set period (10 days by default). See when they signed in, for how long, and what they generated.</div><div class="btn-row"><button class="btn primary" data-act="access">Manage client access</button></div></div>':'')+
    '<div class="small muted" style="margin:0 0 10px;text-align:center">App version '+VERSION+'</div>'+
    '<div class="card"><div class="card-t">Before each site</div><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Tap the GPS chip and allow location.</li><li>Take one test photo and check it shows in Activity.</li><li>Check in at the gate; check out when you leave.</li><li>Before leaving, make sure the sync chip says <b>Synced</b>.</li></ul></div>';
   loadBackups();
@@ -2742,6 +2746,7 @@ function formHTML(sec){
 function renderSheet(){
   const sh=$("#sheet");sh.hidden=false;$("#fab").hidden=true;document.body.classList.add("sheet-open");
   const keep=sh.scrollTop;
+  if(ui.sheet.type==="access"){sh.innerHTML=accessSheet();sh.scrollTop=keep;return;}
   if(ui.sheet.type==="point"){
     const it=ITEM[ui.sheet.item],sc=ui.sheet.scope,p=D.pts.get(sc+"|"+it.id);
     lsSet("sa.lastScope",sc);
@@ -2868,32 +2873,169 @@ async function dlPhoto(path){
   catch(e){window.open(u,"_blank","noopener");}
 }
 
+
+/* ================= Client (read-only) logins and Ajay's access manager ================= */
+// The signed-in profile: role "admin" (Ajay: manages client access, sees analytics), "auditor", or "client" (downloads only).
+let PROF=null,ACC=null;
+function loadProf(){try{PROF=JSON.parse(localStorage.getItem("sa.prof")||"null");}catch(e){PROF=null;}applyProf();}
+function saveProf(p){PROF=p||null;try{p?localStorage.setItem("sa.prof",JSON.stringify(p)):localStorage.removeItem("sa.prof");}catch(e){}applyProf();}
+function applyProf(){if(PROF&&PROF.role==="client"&&PROF.username){const n=PROF.name||PROF.username,w=n.split(/\s+/).filter(Boolean);USERS[PROF.username]={name:n,short:w[0]||n,ini:(w.map(x=>x[0]).join("").slice(0,2)||"C").toUpperCase(),client:true};}}
+const isClient=()=>!!(PROF&&PROF.role==="client"&&PROF.username===STATE.user);
+const isAdmin=()=>PROF&&PROF.username===STATE.user?PROF.role==="admin":STATE.user==="ajay";
+const clientCan=k=>((PROF&&PROF.perms&&PROF.perms.items)||[]).some(x=>x===k||(x==="5"&&k.startsWith("5.")));
+const clientSiteIds=()=>((PROF&&PROF.perms&&PROF.perms.sites)||[]).filter(x=>SITE[x]);
+const AUDITORS=["ajay","anis"];
+function leftTxt(until){const ms=Date.parse(until)-Date.now();if(!(ms>0))return "ended";const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);return d?d+" day"+(d>1?"s":"")+" "+h+" h":h?h+" h "+m+" min":m+" min";}
+const fmtIST=t=>t?fmtFull(t)+" IST":"-";
+// Usage tracking for client logins: which document, which site, how long it took.
+function trackUse(event,detail){if(isClient())api("track",{event,detail}).catch(()=>{});}
+function trackRun(doc,site,fn){const t0=Date.now();let r;try{r=fn();}catch(e){trackUse("doc",{doc,site,ms:Date.now()-t0,ok:false});throw e;}
+  Promise.resolve(r).then(()=>trackUse("doc",{doc,site,ms:Date.now()-t0}),()=>trackUse("doc",{doc,site,ms:Date.now()-t0,ok:false}));}
+setInterval(()=>{if(isClient()&&STATE.token&&!document.hidden)api("track",{event:"ping"}).catch(()=>{});},120000);
+
+function renderClientTop(){
+  $("#top").innerHTML='<div class="top-row"><div class="app-title">'+LOGO+'Selaqui audit documents</div><button class="me" type="button" data-act="signout">'+av(STATE.user)+esc(USERS[STATE.user]?USERS[STATE.user].short:STATE.user)+' · Sign out</button></div>'+
+   '<div class="sub-row"><button type="button" class="chip-h '+(STATE.syncing?"wait":STATE.syncErr?"bad":STATE.lastSync?"ok":"wait")+'" data-act="syncnow"><i></i>'+esc(STATE.syncing?"Loading…":STATE.syncErr?"Retrying":STATE.lastSync?"Up to date":"Loading data…")+'</button></div>';
+}
+function renderClient(m){
+  const sites=clientSiteIds(),until=PROF.accessUntil,docs=[["5.1","mkchecklist","Security Audit Checklist",false],["5.2","mkreport","Security Audit Report",true],["5.3","mkssp","Site Security Plan (SSP)",true],["5.4","mkor","Operational Requirement (OR)",true],["5.5","mksop","Corporate Security SOP Set",false]].filter(d=>clientCan(d[0]));
+  const parts=PACK_PARTS.filter(([k])=>clientCan(k)||(k==="5"&&docs.length));
+  const siteOpts=sel=>sites.map(s=>'<option value="'+s+'"'+(s===sel?" selected":"")+'>'+esc(SITE[s].no+" · "+SITE[s].name)+'</option>').join("");
+  const ready=STATE.lastSync&&D&&D.obs&&D.obs.length;
+  let h='<div class="h-page">Selaqui security audit - documents</div><div class="muted small">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div>';
+  h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div><div class="small" style="margin-top:4px">Signed in as <b>'+esc(uname(STATE.user))+'</b>. You can download the documents below for '+sites.map(s=>esc(SITE[s].no+". "+SITE[s].name)).join(", ")+'.</div>'+
+     '<div style="margin-top:8px;font-size:15px"><b id="cl-left">Available for '+esc(leftTxt(until))+'</b> <span class="muted small">· until '+esc(fmtIST(until))+'</span></div>'+
+     '<div class="small muted" style="margin-top:4px">After that the documents are no longer available from this login. Contact Ajay Kumar (Northstar) to extend access.</div></div>';
+  if(!ready)h+='<div class="card"><div class="small">Loading the audit data… This takes a few seconds on first sign-in.</div></div>';
+  if(docs.length)h+='<div class="card"><div class="card-t">Documents (PDF)</div><div class="small muted" style="margin:3px 0 8px">Each opens in a new tab with a Print / Save as PDF button.</div>'+
+     '<span class="lbl">Site</span><select id="r-site">'+siteOpts(sites[0])+'</select><select id="r-period" hidden><option value="all" selected>all</option></select><input type="checkbox" id="r-photos" checked hidden>'+
+     '<div class="btn-row" style="flex-wrap:wrap">'+docs.map(d=>'<button class="btn primary" data-act="'+d[1]+'"'+(ready?"":" disabled")+'>📄 '+esc(d[2])+'</button>').join("")+'</div></div>';
+  if(parts.length)h+='<div class="card"><div class="card-t">📦 Download as ZIP</div><div class="small muted" style="margin:3px 0 8px">Tick what to include. Allow a few minutes per site and keep this screen open.</div>'+
+     '<select id="zp-site">'+siteOpts(sites[0])+(sites.length>1?'<option value="all">All my sites - one ZIP, a folder per site</option>':'')+'</select>'+
+     '<div id="zp-parts" style="display:grid;gap:6px;margin-top:8px">'+parts.map(([k,l])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'" checked style="width:20px;height:20px;flex:none">'+esc(l)+'</label>').join("")+'</div>'+
+     '<div class="btn-row"><button class="btn primary" data-act="mkpack"'+(ready?"":" disabled")+'>📦 Download ZIP</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>';
+  m.innerHTML=h;
+}
+setInterval(()=>{const el=$("#cl-left");if(el&&PROF&&PROF.accessUntil)el.textContent="Available for "+leftTxt(PROF.accessUntil);},60000);
+
+// ---- Ajay: manage client logins and see how they use them
+function openAccess(){pushSheet();ui.sheet={type:"access",view:"list",edit:null};renderSheet();loadAccess();}
+async function loadAccess(){
+  try{const [l,a]=await Promise.all([api("access.list"),api("access.analytics")]);ACC={clients:l.clients,events:a.events,err:""};}
+  catch(e){ACC={clients:(ACC&&ACC.clients)||[],events:(ACC&&ACC.events)||[],err:e.message};}
+  if(ui.sheet&&ui.sheet.type==="access")renderSheet();
+}
+const partLabel=k=>{const p=PACK_PARTS.find(x=>x[0]===k);return p?p[1].replace(/ - .*$/,"").replace(/:$/,""):k;};
+const toLocalInput=t=>{const d=new Date(Date.parse(t)+19800000);return d.toISOString().slice(0,16);};
+const fromLocalInput=v=>new Date(Date.parse(v+":00Z")-19800000).toISOString();
+function accStatus(c){if(c.disabled)return ["Disabled","neutral"];const ms=Date.parse(c.access_until)-Date.now();return ms>0?["Active · "+leftTxt(c.access_until)+" left","good"]:["Ended","crit"];}
+// Sessions: a login plus the activity that follows it (heartbeat every 2 minutes), closed by sign-out, the next login or 15 minutes of silence.
+function accStats(u,ev){
+  const E=ev.filter(e=>e.actor===u).sort((a,b)=>a.id-b.id),S=[];let cur=null;
+  for(const e of E){const t=Date.parse(e.at);
+    if(e.action==="login.ok"){if(cur)S.push(cur);cur={start:t,end:t};continue;}
+    if(!cur)continue;
+    if(t-cur.end>15*60000){S.push(cur);cur=null;continue;}
+    cur.end=t;if(e.action==="logout"){S.push(cur);cur=null;}}
+  if(cur)S.push(cur);
+  const docs=E.filter(e=>e.action==="report.doc"),packs=E.filter(e=>e.action==="report.pack");
+  return {logins:E.filter(e=>e.action==="login.ok").length,last:(E.filter(e=>e.action==="login.ok").pop()||{}).at,mins:S.reduce((a,s)=>a+(s.end-s.start),0)/6e4,sessions:S.length,
+    docs,packs,failed:E.filter(e=>/login\.(failed|blocked|expired)/.test(e.action)).length,
+    avg:(()=>{const x=docs.concat(packs).filter(e=>e.detail&&e.detail.ms);return x.length?x.reduce((a,e)=>a+e.detail.ms,0)/x.length:0;})()};
+}
+const dur=ms=>ms>=60000?(ms/60000).toFixed(1)+" min":(ms/1000).toFixed(1)+" s";
+const EVL={"login.ok":"Signed in","logout":"Signed out","login.failed":"Wrong password","login.blocked":"Blocked (too many attempts)","login.expired":"Tried after access ended","report.doc":"Opened document","report.pack":"Downloaded ZIP","session.ping":"Active","access.granted":"Access given","access.updated":"Access changed","access.removed":"Access removed"};
+function accessSheet(){
+  const S=ui.sheet,A=ACC,nm=u=>((A&&A.clients||[]).find(c=>c.username===u)||{}).display_name||uname(u)||"-";
+  let h='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Client access &amp; analytics</div></div><div class="sh-body">';
+  if(!A)return h+'<div class="muted">Loading…</div></div>';
+  if(A.err)h+='<div class="card" style="border-left:5px solid var(--crit)"><div class="small">Could not load: '+esc(A.err)+'</div></div>';
+  h+='<div class="seg" style="margin:0 0 12px">'+[["list","Logins"],["stats","Analytics"]].map(([k,l])=>'<button type="button" data-act="acview" data-v="'+k+'" class="'+(S.view===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  if(S.edit){
+    const c=S.edit,nw=!!c.isNew,P=c.perms||{sites:[],items:[]},until=c.access_until||new Date(Date.now()+10*864e5).toISOString();
+    h+='<div class="card"><div class="card-t">'+(nw?"Give access":"Change access - "+esc(c.display_name))+'</div>'+
+     '<span class="lbl">Name</span><input id="ac-name" value="'+esc(c.display_name||"")+'" placeholder="e.g. Northstar management">'+
+     '<span class="lbl">User name (for sign-in)</span><input id="ac-user" value="'+esc(c.username||"")+'"'+(nw?"":" readonly")+' placeholder="e.g. northstar" autocapitalize="off">'+
+     '<span class="lbl">Password '+(nw?"(at least 8 characters)":"(leave blank to keep the current one)")+'</span><input id="ac-pw" type="text" autocomplete="off" placeholder="'+(nw?"Set a password":"Unchanged")+'">'+
+     '<span class="lbl">Sites</span><div id="ac-sites" style="display:grid;gap:6px">'+SITES.map(s=>'<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" value="'+s.id+'"'+((P.sites||[]).includes(s.id)?" checked":"")+' style="width:20px;height:20px">'+esc(s.no+". "+s.name)+'</label>').join("")+'</div>'+
+     '<span class="lbl">What they can download</span><div id="ac-items" style="display:grid;gap:6px">'+PACK_PARTS.map(([k,l])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'"'+((P.items||[]).includes(k)||((P.items||[]).includes("5")&&k.startsWith("5."))?" checked":"")+' style="width:20px;height:20px;flex:none">'+esc(l)+'</label>').join("")+'</div>'+
+     '<span class="lbl">Access ends (IST)</span><input id="ac-until" type="datetime-local" value="'+toLocalInput(until)+'"><div class="btn-row" style="margin-top:6px"><button class="btn sm" data-act="acdays" data-v="10">10 days from now</button><button class="btn sm" data-act="acdays" data-v="30">30 days</button></div>'+
+     '<label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="ac-dis"'+(c.disabled?" checked":"")+' style="width:20px;height:20px">Disable this login now</label>'+
+     '<span class="lbl">Note (only you see this)</span><input id="ac-note" value="'+esc(c.note||"")+'">'+
+     '<div class="btn-row"><button class="btn primary" data-act="acsave">Save</button><button class="btn" data-act="accancel">Cancel</button></div><div class="small" id="ac-err" style="color:var(--crit);margin-top:6px"></div></div>';
+    return h+'</div>';
+  }
+  if(S.view==="list"){
+    h+='<div class="btn-row" style="margin-top:0"><button class="btn primary" data-act="acnew">+ Give access</button><button class="btn" data-act="acreload">Refresh</button></div>';
+    if(!A.clients.length)h+='<div class="empty">No client logins yet. Use "Give access" to create one (for example for Northstar management).</div>';
+    h+=A.clients.map(c=>{const st=accStatus(c),P=c.perms||{};const x=accStats(c.username,A.events);
+      return '<div class="card"><div class="card-h"><div><div class="card-t">'+esc(c.display_name)+' <span class="muted small">@'+esc(c.username)+'</span></div><div class="small" style="margin-top:4px"><span class="pill" style="--pc:var(--'+st[1]+')">'+esc(st[0])+'</span> until '+esc(fmtIST(c.access_until))+'</div></div></div>'+
+       '<div class="small" style="margin-top:6px"><b>Sites:</b> '+(P.sites||[]).map(s=>SITE[s]?esc(SITE[s].no+". "+SITE[s].name):s).join(", ")+'<br><b>Can download:</b> '+(P.items||[]).map(k=>esc(partLabel(k))).join(", ")+(c.note?'<br><span class="muted">'+esc(c.note)+'</span>':'')+'</div>'+
+       '<div class="small muted" style="margin-top:6px">'+x.logins+' sign-in'+(x.logins===1?"":"s")+' · '+Math.round(x.mins)+' min signed in · '+x.docs.length+' document'+(x.docs.length===1?"":"s")+' · '+x.packs.length+' ZIP'+(x.packs.length===1?"":"s")+(x.last?' · last sign-in '+esc(fmtIST(x.last)):'')+'</div>'+
+       '<div class="btn-row"><button class="btn sm" data-act="acedit" data-v="'+esc(c.username)+'">Change</button><button class="btn sm" data-act="acext" data-v="'+esc(c.username)+'">+10 days</button><button class="btn sm" data-act="actoggle" data-v="'+esc(c.username)+'">'+(c.disabled?"Enable":"Disable")+'</button><button class="btn sm danger" data-act="acdel" data-v="'+esc(c.username)+'">Remove</button></div></div>';}).join("");
+    return h+'</div>';
+  }
+  // analytics
+  const rows=A.clients.map(c=>[c,accStats(c.username,A.events)]);
+  h+='<div class="card"><div class="card-t">Summary</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Client</th><th>Sign-ins</th><th>Last sign-in</th><th>Time signed in</th><th>Documents</th><th>ZIPs</th><th>Avg. time to generate</th><th>Failed / late sign-ins</th></tr>'+
+    (rows.length?rows.map(([c,x])=>'<tr><td><b>'+esc(c.display_name)+'</b><div class="muted">@'+esc(c.username)+'</div></td><td class="n">'+x.logins+'</td><td>'+esc(x.last?fmtIST(x.last):"-")+'</td><td class="n">'+Math.round(x.mins)+' min</td><td class="n">'+x.docs.length+'</td><td class="n">'+x.packs.length+'</td><td class="n">'+(x.avg?dur(x.avg):"-")+'</td><td class="n">'+x.failed+'</td></tr>').join(""):'<tr><td colspan="8" class="muted">No client logins yet.</td></tr>')+'</table></div></div>';
+  const R={};for(const e of A.events.filter(e=>e.action==="report.doc"||e.action==="report.pack")){const d=e.detail||{},k=e.actor+"|"+(d.doc||"")+"|"+(d.site||"");(R[k]=R[k]||{who:e.actor,doc:d.doc||(e.action==="report.pack"?"Site pack":""),site:d.site,n:0,ms:[],last:e.at}).n++;if(d.ms)R[k].ms.push(d.ms);}
+  h+='<div class="card"><div class="card-t">What was generated</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Client</th><th>Document</th><th>Site</th><th>Times</th><th>Avg. time</th><th>Slowest</th><th>Last</th></tr>'+
+    (Object.values(R).length?Object.values(R).sort((a,b)=>b.n-a.n).map(r=>'<tr><td>'+esc(nm(r.who))+'</td><td>'+esc(r.doc)+'</td><td>'+esc(r.site&&SITE[r.site]?SITE[r.site].no+". "+SITE[r.site].name:r.site==="all"?"All sites":"-")+'</td><td class="n">'+r.n+'</td><td class="n">'+(r.ms.length?dur(r.ms.reduce((a,b)=>a+b,0)/r.ms.length):"-")+'</td><td class="n">'+(r.ms.length?dur(Math.max(...r.ms)):"-")+'</td><td>'+esc(fmtIST(r.last))+'</td></tr>').join(""):'<tr><td colspan="7" class="muted">Nothing generated yet.</td></tr>')+'</table></div></div>';
+  const rec=A.events.filter(e=>e.action!=="session.ping").slice(0,60);
+  h+='<div class="card"><div class="card-t">Recent activity</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>When (IST)</th><th>Who</th><th>What</th><th>Details</th><th class="ad-hn">Device</th></tr>'+
+    (rec.length?rec.map(e=>{const d=e.detail||{};const det=e.action==="report.doc"||e.action==="report.pack"?[d.doc,d.site&&SITE[d.site]?"Site "+SITE[d.site].no:d.site==="all"?"All sites":"",d.ms?dur(d.ms):"",d.mb?d.mb+" MB":"",d.ok===false?"failed":""].filter(Boolean).join(" · "):e.action.startsWith("access.")?(e.target||"")+(d.until?" · until "+fmtIST(d.until):""):"";
+      return '<tr><td>'+esc(fmtFull(e.at))+'</td><td>'+esc(nm(e.actor))+'</td><td>'+esc(EVL[e.action]||e.action)+'</td><td>'+esc(det)+'</td><td class="ad-hn muted">'+esc(((e.ua||"").match(/\(([^)]+)\)/)||[,""])[1].slice(0,40))+'</td></tr>';}).join(""):'<tr><td colspan="5" class="muted">No activity yet.</td></tr>')+'</table></div></div>';
+  return h+'</div>';
+}
+async function accSave(){
+  const S=ui.sheet,c=S.edit,err=$("#ac-err");err.textContent="";
+  const body={username:$("#ac-user").value.trim().toLowerCase(),name:$("#ac-name").value.trim(),password:$("#ac-pw").value,
+    sites:[...document.querySelectorAll("#ac-sites input:checked")].map(x=>x.value),items:[...document.querySelectorAll("#ac-items input:checked")].map(x=>x.value),
+    until:$("#ac-until").value?fromLocalInput($("#ac-until").value):"",disabled:$("#ac-dis").checked,note:$("#ac-note").value};
+  try{await api("access.save",body);toast(c.isNew?"Access given. Share the user name and password with them.":"Access updated.",4500);S.edit=null;await loadAccess();}
+  catch(e){err.textContent=e.message;}
+}
+async function accQuick(u,fn){const c=(ACC&&ACC.clients||[]).find(x=>x.username===u);if(!c)return;const b={username:c.username,name:c.display_name,sites:(c.perms||{}).sites||[],items:(c.perms||{}).items||[],until:c.access_until,disabled:c.disabled,note:c.note||""};fn(b);
+  try{await api("access.save",b);await loadAccess();}catch(e){toast(e.message,4000);}}
+
 /* ================= login ================= */
 let loginWho="";
+let loginMsg="";
 function showLogin(){
+  const cl=loginWho==="__client"||(loginWho&&!AUDITORS.includes(loginWho));
   const L=$("#login");L.hidden=false;$("#top").innerHTML="";$("#tabs").innerHTML="";$("#main").innerHTML="";$("#fab").hidden=true;
   L.innerHTML='<form class="box" id="login-form">'+LOGO.replace('width="22" height="22"','width="44" height="44"')+'<h1>Selaqui security audit</h1><p>Dixon sites · Northstar · sign in to log and see both auditors\' work.</p>'+
-   '<div class="who-pick">'+Object.keys(USERS).map(u=>'<button type="button" data-act="lwho" data-v="'+u+'" class="'+(loginWho===u?"on":"")+'">'+av(u,"lg")+esc(USERS[u].name)+'</button>').join("")+'</div>'+
+   '<div class="who-pick">'+AUDITORS.map(u=>'<button type="button" data-act="lwho" data-v="'+u+'" class="'+(loginWho===u?"on":"")+'">'+av(u,"lg")+esc(USERS[u].name)+'</button>').join("")+
+   '<button type="button" data-act="lwho" data-v="__client" class="'+(cl?"on":"")+'"><span class="av lg" style="background:#5E7079">NS</span>Northstar / client</button></div>'+
+   (cl?'<input type="text" id="l-user" placeholder="User name" autocomplete="username" autocapitalize="off" value="'+esc(loginWho!=="__client"?loginWho:"")+'">':'')+
    '<input type="password" id="l-pw" placeholder="Password" autocomplete="current-password"'+(loginWho?"":" disabled")+'>'+
-   '<button class="btn" type="submit"'+(loginWho?"":" disabled")+'>Sign in</button><div class="err" id="l-err"></div></form>';
-  if(loginWho)setTimeout(()=>{const p=$("#l-pw");p&&p.focus();},50);
+   '<button class="btn" type="submit"'+(loginWho?"":" disabled")+'>Sign in</button><div class="err" id="l-err">'+esc(loginMsg)+'</div></form>';
+  loginMsg="";
+  if(loginWho)setTimeout(()=>{const p=cl&&!$("#l-user").value?$("#l-user"):$("#l-pw");p&&p.focus();},50);
 }
 async function doLogin(){
-  const pw=$("#l-pw").value;if(!loginWho||!pw)return;
+  const pw=$("#l-pw").value;const lu=$("#l-user");const uname0=lu?lu.value.trim().toLowerCase():loginWho;if(!loginWho||!pw||!uname0)return;
   const btn=$("#login-form .btn");btn.disabled=true;btn.textContent="Signing in…";$("#l-err").textContent="";
   try{
     startGeo();await Promise.race([stamp(),new Promise(r=>setTimeout(r,3500))]);
-    const r=await api("login",{username:loginWho,password:pw});
+    const r=await api("login",{username:uname0,password:pw});
     if(STATE.user&&STATE.user!==r.username&&STATE.outbox.size){$("#l-err").textContent="This phone has unsent entries from "+uname(STATE.user)+". Sign in as them first to upload.";btn.disabled=false;btn.textContent="Sign in";return;}
+    // A client login only ever holds its own sites' data on the device; switching to or from one clears the local copy.
+    const prevOwner=lsGet("sa.dataOwner"),prevRole=lsGet("sa.dataRole");
+    if(prevOwner&&prevOwner!==r.username&&(r.role==="client"||prevRole==="client")){STATE.synced.clear();STATE.lastSeq=0;if(idb){try{await reqP(tx("entries","readwrite").clear());await dbPut("meta",0,"lastSeq");}catch(e){}}STATE.ver++;}
+    lsSet("sa.dataOwner",r.username);lsSet("sa.dataRole",r.role||"auditor");
+    saveProf({username:r.username,name:r.name,role:r.role||"auditor",perms:r.perms||null,accessUntil:r.accessUntil||null});
     STATE.user=r.username;STATE.token=r.token;lsSet("sa.user",r.username);lsSet("sa.token",r.token);
-    startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
+    if(!isClient())startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
+    if(isClient())api("track",{event:"ping"}).catch(()=>{});
   }catch(e){$("#l-err").textContent=e.name==="AbortError"?"No response. Check the signal and try again.":e.message;btn.disabled=false;btn.textContent="Sign in";}
 }
-function signOut(expired){
+function signOut(expired,msg){
   if(!expired&&STATE.outbox.size&&!confirm(STATE.outbox.size+" entries have not uploaded yet. They stay on this phone and upload when "+uname(STATE.user)+" signs in again. Sign out?"))return;
   if(!expired)api("logout").catch(()=>{});
   STATE.token="";lsSet("sa.token",null);loginWho=STATE.user;
-  if(expired)toast("Please sign in again.");
+  if(expired){loginMsg=msg||"";toast(msg||"Please sign in again.",msg?6000:3000);}
   showLogin();
 }
 
@@ -2923,11 +3065,22 @@ document.addEventListener("click",async ev=>{
     case "pending":pushSheet();ui.sheet={type:"pending"};renderSheet();$("#sheet").scrollTop=0;break;
     case "copyreq":{const g=pendingGroups(null)[Number(v)];if(g){try{await navigator.clipboard.writeText(requestText(g));toast("Copied.");}catch(e){toast("Could not copy.");}}break;}
     case "report":openReport(v||null);break;
-    case "mkreport":makeReport();break;
-    case "mkchecklist":makeChecklist();break;
-    case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}(a==="mkssp"?makeSSP:makeOR)(sc);break;}
-    case "mksop":makeSOPSet();break;
+    case "mkreport":trackRun("D2 Security Audit Report",($("#r-site")||{}).value,()=>makeReport());break;
+    case "mkchecklist":trackRun("D1 Security Audit Checklist","",()=>makeChecklist());break;
+    case "mkssp":case "mkor":{const sc=$("#r-site").value;if(!SITE[sc]){toast("Pick one site above for the "+(a==="mkssp"?"Site Security Plan":"Operational Requirement")+".",3500);break;}trackRun(a==="mkssp"?"D3 Site Security Plan":"D4 Operational Requirement",sc,()=>(a==="mkssp"?makeSSP:makeOR)(sc));break;}
+    case "mksop":trackRun("D5 Corporate Security SOP Set","",()=>makeSOPSet());break;
     case "mkopen":makeOpenPoints();break;
+    case "access":openAccess();break;
+    case "acview":ui.sheet.view=v;ui.sheet.edit=null;renderSheet();break;
+    case "acreload":loadAccess();break;
+    case "acnew":ui.sheet.edit={isNew:true,perms:{sites:[],items:PACK_PARTS.map(x=>x[0])},access_until:new Date(Date.now()+10*864e5).toISOString()};renderSheet();break;
+    case "acedit":ui.sheet.edit=Object.assign({},(ACC.clients||[]).find(x=>x.username===v));renderSheet();break;
+    case "accancel":ui.sheet.edit=null;renderSheet();break;
+    case "acsave":accSave();break;
+    case "acdays":{const el=$("#ac-until");if(el)el.value=toLocalInput(new Date(Date.now()+Number(v)*864e5).toISOString());break;}
+    case "acext":accQuick(v,b=>{b.until=new Date(Math.max(Date.now(),Date.parse(b.until)||0)+10*864e5).toISOString();b.disabled=false;});toast("Extended by 10 days.");break;
+    case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;
+    case "acdel":if(confirm("Remove the login @"+v+"? They will no longer be able to sign in. Their activity stays in the audit trail.")){api("access.delete",{username:v}).then(loadAccess).catch(e=>toast(e.message,4000));}break;
     case "mkpack":{const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);if(!sel.length){toast("Tick at least one item to include.",3000);break;}lsSet("sa.packParts",sel.join(","));makePack($("#zp-site").value,sel);break;}
     case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
@@ -3027,9 +3180,11 @@ setInterval(()=>{if(STATE.user&&STATE.token&&!document.hidden)renderTop();},3000
     // A new version took over: reload once to use it, unless a form is open (then the next open picks it up).
     navigator.serviceWorker.addEventListener("controllerchange",()=>{if(had&&!ui.sheet&&!STATE.syncing)location.reload();});
   }
+  loadProf();
   loginWho=STATE.user;
   render();
-  if(STATE.token){startGeo();scheduleSync(50);setTimeout(()=>loadResources(true),1500);}
+  if(STATE.token){if(!isClient())startGeo();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
+    api("me").then(p=>{saveProf({username:p.username,name:p.name,role:p.role,perms:p.perms,accessUntil:p.accessUntil});render();}).catch(()=>{});}
 })();
 })();
 </script>
