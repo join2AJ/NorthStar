@@ -392,7 +392,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.68";
+const VERSION="2026-11-03.70";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -971,7 +971,10 @@ const ICON={
 const LOGO='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>';
 function renderTop(){
   if(!STATE.user){$("#top").innerHTML="";return;}
-  if(isClient()){renderClientTop();return;}
+  if(isClient()){renderClientTop();
+    // The client screen was drawn before the first sync finished: redraw it once the data is ready.
+    const m=$("#main");if(m&&m.querySelector("[data-pending]")&&STATE.lastSync&&D&&D.obs&&D.obs.length&&!packBusy&&!ui.sheet)renderClient(m);
+    return;}
   const g=GEO.last,st=GEO.state;
   const gl=st==="ok"&&g?"GPS ±"+Math.round(g.acc)+" m":st==="wait"?"Finding GPS…":st==="denied"?"GPS blocked":st==="unsupported"?"No GPS":"Turn on GPS";
   const gc=st==="ok"?"ok":st==="wait"?"wait":st==="idle"?"":"bad";
@@ -2921,7 +2924,7 @@ function renderClient(m){
      '<p style="margin:8px 0 0;font-size:15px">Congratulations - the security audit of the Dixon Technologies sites at Selaqui, Dehradun, carried out from <b>'+AUDIT_PERIOD+'</b>, has been completed successfully.</p>'+
      '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports site-wise or as a ZIP.</p><div class="btn-row"><button class="btn" data-act="tosec" data-v="cl-risk">📊 Risk analytics</button><button class="btn primary" data-act="tosec" data-v="cl-reports">📥 Go to the reports</button></div>'+
      '<div class="small muted" style="margin-top:8px">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div></div>';
-  h+='<div id="cl-risk" class="h-page" style="margin-top:16px;scroll-margin-top:130px">📊 Combined risk picture - all six sites</div>'+(ready?auditDashHTML():'<div class="card"><div class="small">Loading the risk analytics… This takes a few seconds on first sign-in.</div></div>');
+  h+='<div id="cl-risk" class="h-page" style="margin-top:16px;scroll-margin-top:130px">📊 Combined risk picture - all six sites</div>'+(ready?auditDashHTML():'<div class="card" data-pending="1"><div class="small">Loading the risk analytics… This takes a few seconds on first sign-in.</div></div>');
   h+='<div id="cl-reports" class="rep-banner" data-act="tosec" data-v="cl-reports" role="button" tabindex="0"><div class="rep-ic">📥</div><div><div class="rep-t">Reports - download here</div><div class="rep-s">Choose site-wise reports or a ZIP download below.</div></div></div>';
   h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div>'+
      '<div style="margin-top:6px;font-size:15px">Please download your reports within <b>10 days</b>. Your account access will be revoked on <b>'+esc(fmtIST(until))+'</b>.</div>'+
@@ -2941,8 +2944,8 @@ function renderClient(m){
   m.innerHTML=h;updateZipTree();
   try{const fab=$("#cl-fab"),rb=$("#cl-reports");new IntersectionObserver(es=>{const r=es[0].boundingClientRect;fab.classList.toggle("off",es[0].isIntersecting||r.top<0);}).observe(rb);
     new IntersectionObserver(es=>{if(es[0].isIntersecting)fab.classList.add("off");}).observe($("#zp-parts")||rb);}catch(e){}
-  const ck="sa.cheer."+String(STATE.token||"").slice(-12);let seen=false;try{seen=!!sessionStorage.getItem(ck);sessionStorage.setItem(ck,"1");}catch(e){}
-  if(!seen&&!window.__cheered){window.__cheered=1;setTimeout(confettiBlast,300);}
+  // Celebrate on every sign-in and every time the app is opened (once per page load, not on each data refresh).
+  if(!window.__cheered){window.__cheered=1;setTimeout(confettiBlast,300);}
 }
 function confettiBlast(){
   if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
@@ -3133,7 +3136,7 @@ async function doLogin(){
     lsSet("sa.dataOwner",r.username);lsSet("sa.dataRole",r.role||"auditor");
     saveProf({username:r.username,name:r.name,role:r.role||"auditor",perms:r.perms||null,accessUntil:r.accessUntil||null});
     STATE.user=r.username;STATE.token=r.token;lsSet("sa.user",r.username);lsSet("sa.token",r.token);
-    if(!isClient())startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
+    window.__cheered=0;if(!isClient())startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
     api("track",{event:"ping"}).catch(()=>{});
   }catch(e){$("#l-err").textContent=e.name==="AbortError"?"No response. Check the signal and try again.":e.message;btn.disabled=false;btn.textContent="Sign in";}
 }
