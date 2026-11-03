@@ -402,7 +402,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.72";
+const VERSION="2026-11-03.73";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1989,6 +1989,7 @@ async function htmlToPdf(html,onp){
 let DOC_CAP=null;
 async function captureDoc(fn,...a){DOC_CAP={};try{fn(...a);await DOC_CAP.p;return DOC_CAP.html;}finally{DOC_CAP=null;}}
 const PACK_PARTS=[["1","1. Site photos (full size) with photo index"],["2","2. Excel - risk matrix, auditees, findings with photos in the row"],["3","3. Findings PDF - photos in each row"],["4","4. Findings PDF - table, then photos"],["5","5. Deliverables (PDF):"],["5.1","5.1 Security Audit Checklist"],["5.2","5.2 Security Audit Report"],["5.3","5.3 Site Security Plan (SSP)"],["5.4","5.4 Operational Requirement (OR)"],["5.5","5.5 Corporate Security SOP Set"],["6","6. KML map file - site perimeter and location pin (opens in Google Earth)"]];
+document.addEventListener("input",ev=>{if(ev.target&&ev.target.id==="ac-pw-ok"){const b=$("#ac-pw-apply");if(b)b.disabled=ev.target.value.trim().toLowerCase()!=="saved";}});
 document.addEventListener("change",ev=>{const t=ev.target;if(!t||!t.closest||!t.closest("#zp-parts"))return;const all=[...document.querySelectorAll("#zp-parts input")],kids=all.filter(x=>x.value.startsWith("5.")),par=all.find(x=>x.value==="5");
   if(t===par)kids.forEach(x=>x.checked=par.checked);else if(kids.includes(t)&&par)par.checked=kids.some(x=>x.checked);});
 let PACK_NUM=null;
@@ -3120,8 +3121,12 @@ function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v))),m=v/p;const n
 function accPwHTML(A){
   const S=ui.sheet,users=(A.users||[]).slice().sort((a,b)=>({admin:0,auditor:1,client:2}[a.role]??3)-({admin:0,auditor:1,client:2}[b.role]??3)||a.username.localeCompare(b.username));
   const rl=r=>r==="admin"?"Admin + auditor":r==="client"?"Client (download only)":"Auditor";
-  let h='<div class="card" id="ac-pw-card" style="border-left:5px solid var(--brand)"><div class="card-t">🔑 Passwords and sign-ins</div><div class="small muted" style="margin:3px 0 8px">Generate a new password for anyone - you do not need their old one. They are signed out on every device and must sign in with the new password. The password is shown once: copy it before leaving this screen.</div>';
-  if(S.pwShown)h+='<div class="card" style="background:var(--brand-soft);border-color:var(--brand);margin:0 0 10px"><div class="small">New password for <b>'+esc(S.pwShown.name)+'</b> (@'+esc(S.pwShown.username)+'):</div><div style="font:700 22px/1.3 ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;margin:6px 0;user-select:all" id="ac-pw-new">'+esc(S.pwShown.password)+'</div><div class="btn-row" style="margin-top:4px"><button class="btn sm primary" data-act="accopypw">Copy</button><button class="btn sm" data-act="achidepw">Done</button></div></div>';
+  let h='<div class="card" id="ac-pw-card" style="border-left:5px solid var(--brand)"><div class="card-t">🔑 Passwords and sign-ins</div><div class="small muted" style="margin:3px 0 8px">Generate a new password for anyone - you do not need their old one. It is shown once. Save it, then type <b>saved</b> to apply it: only then does it replace the old password and sign that person out on their other devices.</div>';
+  const P=S.pwShown;
+  if(P&&P.applied)h+='<div class="card" style="border-left:5px solid var(--good);margin:0 0 10px"><div class="small">✓ The new password for <b>'+esc(P.name)+'</b> (@'+esc(P.username)+') is now active.'+(P.username===STATE.user?' You stay signed in on this phone; your other devices are signed out.':' They have been signed out on every device.')+'</div><div class="btn-row" style="margin-top:6px"><button class="btn sm" data-act="achidepw">Done</button></div></div>';
+  else if(P)h+='<div class="card" style="background:var(--brand-soft);border-color:var(--brand);margin:0 0 10px"><div class="small">New password for <b>'+esc(P.name)+'</b> (@'+esc(P.username)+') - <b>not applied yet</b>. The old password still works.</div><div style="font:700 22px/1.3 ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;margin:6px 0;user-select:all" id="ac-pw-new">'+esc(P.password)+'</div><div class="btn-row" style="margin-top:2px"><button class="btn sm" data-act="accopypw">Copy</button></div>'+
+     '<span class="lbl">Step 2 - Save it somewhere safe, then type <b>saved</b> below</span><input id="ac-pw-ok" autocomplete="off" autocapitalize="off" placeholder="Type saved">'+
+     '<div class="btn-row"><button class="btn primary" data-act="acapplypw" id="ac-pw-apply" disabled>Apply new password</button><button class="btn" data-act="accancelpw">Cancel</button></div><div class="small muted">Not applied within 15 minutes? It expires and the old password stays.</div></div>';
   h+=users.map(u=>'<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)"><div><b>'+esc(u.display_name||u.username)+'</b> <span class="muted small">@'+esc(u.username)+(u.username===STATE.user?" · you":"")+'</span><div class="small muted">'+esc(rl(u.role))+'</div></div><button class="btn sm" data-act="acnewpw" data-v="'+esc(u.username)+'">New password</button></div>').join("");
   h+='<div class="btn-row" style="border-top:1px solid var(--line);padding-top:10px"><button class="btn danger" data-act="acsignoutall">Sign out everyone</button></div><div class="small muted">Signs out every phone and browser except this one.</div></div>';
   return h;
@@ -3268,10 +3273,13 @@ document.addEventListener("click",async ev=>{
     case "acdays":{const el=$("#ac-until");if(el)el.value=toLocalInput(new Date(Date.now()+Number(v)*864e5).toISOString());break;}
     case "acext":accQuick(v,b=>{b.until=new Date(Math.max(Date.now(),Date.parse(b.until)||0)+10*864e5).toISOString();b.disabled=false;});toast("Extended by 10 days.");break;
     case "acnewpw":{const u=((ACC&&ACC.users)||[]).find(x=>x.username===v)||{username:v};
-      if(!confirm("Generate a new password for "+(u.display_name||v)+" (@"+v+")? Their old password stops working and they are signed out on every device"+(v===STATE.user?" except this one":"")+"."))break;
-      api("access.resetPassword",{username:v}).then(r=>{ui.sheet.pwShown={username:r.username,name:u.display_name||r.username,password:r.password};renderSheet();const c=$("#ac-pw-card");if(c)c.scrollIntoView({block:"start"});toast("New password created. Copy it now.",4000);}).catch(e=>toast(e.message,4500));break;}
+      if(ui.sheet.pwShown&&!ui.sheet.pwShown.applied&&ui.sheet.pwShown.username!==v){toast("Apply or cancel the password shown first.",3500);break;}
+      api("access.resetPassword",{username:v}).then(r=>{ui.sheet.pwShown={username:r.username,name:u.display_name||r.username,password:r.password};renderSheet();const c=$("#ac-pw-card");if(c)c.scrollIntoView({block:"start"});toast("New password created. Save it, then type saved to apply.",4500);}).catch(e=>toast(e.message,4500));break;}
+    case "acapplypw":{const P=ui.sheet&&ui.sheet.pwShown,ok=$("#ac-pw-ok");if(!P||!ok)break;if(ok.value.trim().toLowerCase()!=="saved"){toast("Type saved to apply.",3000);break;}
+      api("access.resetPassword",{username:P.username,confirm:ok.value}).then(()=>{ui.sheet.pwShown={username:P.username,name:P.name,applied:true};renderSheet();toast("New password applied.",3500);}).catch(e=>toast(e.message,4500));break;}
+    case "accancelpw":{const P=ui.sheet&&ui.sheet.pwShown;if(P)api("access.resetPassword",{username:P.username,cancel:true}).catch(()=>{});ui.sheet.pwShown=null;renderSheet();toast("Cancelled. The old password still works.",3000);break;}
     case "accopypw":{const t=ui.sheet&&ui.sheet.pwShown&&ui.sheet.pwShown.password;if(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied.",2000)).catch(()=>toast("Select the password and copy it.",3000));}break;}
-    case "achidepw":if(ui.sheet)ui.sheet.pwShown=null;renderSheet();break;
+    case "achidepw":if(ui.sheet&&ui.sheet.pwShown&&!ui.sheet.pwShown.applied)break;if(ui.sheet)ui.sheet.pwShown=null;renderSheet();break;
     case "acsignoutall":if(confirm("Sign out everyone (Ajay, Anis and client logins) on every device except this one?")){api("access.signOutAll").then(r=>toast("Signed out "+r.sessions+" session"+(r.sessions===1?"":"s")+".",4000)).catch(e=>toast(e.message,4500));}break;
     case "acreset":if(confirm("Reset the analytics for @"+v+"? Their sign-ins, time and downloads will count from now, and they will be signed out. The audit trail keeps every record.")){api("access.resetStats",{username:v}).then(()=>{toast("Analytics for @"+v+" now count from this moment.",4000);loadAccess();}).catch(e=>toast(e.message,4000));}break;
     case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;

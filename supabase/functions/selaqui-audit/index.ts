@@ -438,21 +438,38 @@ async function handle(req: Request, b: any) {
     }
 
     case "access.resetPassword": {
-      // Admin generates a new password for anyone (auditor, admin or client). It is returned once and never stored in plain text.
+      // Two steps. 1) Generate: a new password is created and shown once, but NOT applied - the old one keeps working.
+      // 2) Apply (confirm = "saved"): only after the admin types "saved" does the new password replace the old one.
+      // The pending password is kept only as a bcrypt hash for 15 minutes.
       const username = String(b.username || "").toLowerCase().trim();
       const ex = await sql`select username from selaqui.users where username = ${username}`;
       if (!ex.length) throw new HttpError(400, "That user was not found.");
+      const cur = await sql`select value from selaqui.config where key = 'pw_pending'`;
+      const pend = cur.length ? JSON.parse(cur[0].value) : {};
+      for (const k of Object.keys(pend)) if (Date.parse(pend[k].exp) < Date.now()) delete pend[k];
+      const savePend = () => sql`insert into selaqui.config(key, value) values ('pw_pending', ${JSON.stringify(pend)}) on conflict (key) do update set value = excluded.value`;
+      if (b.cancel) { delete pend[username]; await savePend(); return { ok: true, cancelled: true }; }
+      if (b.confirm !== undefined) {
+        if (String(b.confirm).trim().toLowerCase() !== "saved") throw new HttpError(400, "Type saved to apply the new password.");
+        const p = pend[username];
+        if (!p) throw new HttpError(400, "No new password is waiting, or it expired after 15 minutes. Generate a new one.");
+        await sql`update selaqui.users set pass_hash = ${p.h} where username = ${username}`;
+        delete pend[username]; await savePend();
+        await sql`delete from selaqui.sessions where username = ${username} and token_hash <> ${me.tokenHash}`;
+        await sql`delete from selaqui.login_failures where username = ${username}`;
+        await logActivity(req, me.username, "password.reset", username, { by: me.username }, b.geo);
+        return { ok: true, applied: true, username };
+      }
       const A = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
       let pw = "";
       while (!(/[0-9]/.test(pw) && /[A-Z]/.test(pw) && /[a-z]/.test(pw))) {
         const r = new Uint32Array(12); crypto.getRandomValues(r);
         pw = Array.from(r, (x) => A[x % A.length]).join("");
       }
-      await sql`update selaqui.users set pass_hash = extensions.crypt(${pw}, extensions.gen_salt('bf', 10)) where username = ${username}`;
-      await sql`delete from selaqui.sessions where username = ${username} and token_hash <> ${me.tokenHash}`;
-      await sql`delete from selaqui.login_failures where username = ${username}`;
-      await logActivity(req, me.username, "password.reset", username, { by: me.username }, b.geo);
-      return { ok: true, username, password: pw };
+      const hh = await sql`select extensions.crypt(${pw}, extensions.gen_salt('bf', 10)) h`;
+      pend[username] = { h: hh[0].h, exp: new Date(Date.now() + 15 * 60000).toISOString(), by: me.username };
+      await savePend();
+      return { ok: true, pending: true, username, password: pw };
     }
 
     case "access.signOutAll": {
