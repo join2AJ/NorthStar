@@ -402,7 +402,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.71";
+const VERSION="2026-11-03.72";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -2996,7 +2996,7 @@ function accStats(u,ev){
     avg:(()=>{const x=docs.concat(packs).filter(e=>e.detail&&e.detail.ms);return x.length?x.reduce((a,e)=>a+e.detail.ms,0)/x.length:0;})()};
 }
 const dur=ms=>ms>=60000?(ms/60000).toFixed(1)+" min":(ms/1000).toFixed(1)+" s";
-const EVL={"entry.added":"Added observation","entry.edited":"Edited observation","entry.photos-added":"Added photos","entry.withdrawn":"Withdrew entry","note.added":"Added note","photo.upload":"Uploaded photos","auditee.added":"Added auditee","auditee.updated":"Updated auditee","auditee.removed":"Removed auditee","expense.added":"Added expense","password.changed":"Changed password","backup.created":"Backup made","backup.downloaded":"Downloaded backup","entries.restored":"Restored entries","entries.moved":"Moved entries","entries.folded":"Merged entries","login.ok":"Signed in","logout":"Signed out","login.failed":"Wrong password","login.blocked":"Blocked (too many attempts)","login.expired":"Tried after access ended","report.doc":"Opened document","report.pack":"Downloaded ZIP","session.ping":"Active","access.granted":"Access given","access.updated":"Access changed","access.removed":"Access removed","access.stats-reset":"Analytics reset"};
+const EVL={"entry.added":"Added observation","entry.edited":"Edited observation","entry.photos-added":"Added photos","entry.withdrawn":"Withdrew entry","note.added":"Added note","photo.upload":"Uploaded photos","auditee.added":"Added auditee","auditee.updated":"Updated auditee","auditee.removed":"Removed auditee","expense.added":"Added expense","password.changed":"Changed password","backup.created":"Backup made","backup.downloaded":"Downloaded backup","entries.restored":"Restored entries","entries.moved":"Moved entries","entries.folded":"Merged entries","login.ok":"Signed in","logout":"Signed out","login.failed":"Wrong password","login.blocked":"Blocked (too many attempts)","login.expired":"Tried after access ended","report.doc":"Opened document","report.pack":"Downloaded ZIP","session.ping":"Active","access.granted":"Access given","access.updated":"Access changed","access.removed":"Access removed","access.stats-reset":"Analytics reset","password.reset":"Password reset by admin","sessions.signed-out-all":"Signed out everyone"};
 function accessSheet(){
   const S=ui.sheet,A=ACC,nm=u=>(((A&&A.users)||[]).find(c=>c.username===u)||((A&&A.clients)||[]).find(c=>c.username===u)||{}).display_name||uname(u)||"-";
   let h='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Access &amp; analytics</div></div><div class="sh-body">';
@@ -3025,6 +3025,7 @@ function accessSheet(){
        '<div class="small" style="margin-top:6px"><b>Sites:</b> '+(P.sites||[]).map(s=>SITE[s]?esc(SITE[s].no+". "+SITE[s].name):s).join(", ")+'<br><b>Can download:</b> '+(P.items||[]).map(k=>esc(partLabel(k))).join(", ")+(c.note?'<br><span class="muted">'+esc(c.note)+'</span>':'')+'</div>'+
        '<div class="small muted" style="margin-top:6px">'+x.logins+' sign-in'+(x.logins===1?"":"s")+' · '+(((A.sessions||[]).find(z=>z.actor===c.username)||{}).minutes||0)+' min active · '+x.docs.length+' document'+(x.docs.length===1?"":"s")+' · '+x.packs.length+' ZIP'+(x.packs.length===1?"":"s")+(x.last?' · last sign-in '+esc(fmtIST(x.last)):'')+'</div>'+
        '<div class="btn-row"><button class="btn sm" data-act="acedit" data-v="'+esc(c.username)+'">Change</button><button class="btn sm" data-act="acext" data-v="'+esc(c.username)+'">+10 days</button><button class="btn sm" data-act="actoggle" data-v="'+esc(c.username)+'">'+(c.disabled?"Enable":"Disable")+'</button><button class="btn sm danger" data-act="acdel" data-v="'+esc(c.username)+'">Remove</button><button class="btn sm" data-act="acreset" data-v="'+esc(c.username)+'">Reset analytics</button></div></div>';}).join("");
+    h+=accPwHTML(A);
     return h+'</div>';
   }
   // analytics: everyone (Ajay, Anis and client logins)
@@ -3115,6 +3116,16 @@ function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v))),m=v/p;const n
   document.addEventListener("pointermove",e=>{const el=e.target.closest&&e.target.closest(".vz [data-tip]");if(el)show(el,e.clientX,e.clientY);else hide();});
   document.addEventListener("pointerdown",e=>{const el=e.target.closest&&e.target.closest(".vz [data-tip]");if(el)show(el,e.clientX,e.clientY);else hide();});
   addEventListener("scroll",hide,true);})();
+// ---- admin: new password for anyone, sign everyone out
+function accPwHTML(A){
+  const S=ui.sheet,users=(A.users||[]).slice().sort((a,b)=>({admin:0,auditor:1,client:2}[a.role]??3)-({admin:0,auditor:1,client:2}[b.role]??3)||a.username.localeCompare(b.username));
+  const rl=r=>r==="admin"?"Admin + auditor":r==="client"?"Client (download only)":"Auditor";
+  let h='<div class="card" id="ac-pw-card" style="border-left:5px solid var(--brand)"><div class="card-t">🔑 Passwords and sign-ins</div><div class="small muted" style="margin:3px 0 8px">Generate a new password for anyone - you do not need their old one. They are signed out on every device and must sign in with the new password. The password is shown once: copy it before leaving this screen.</div>';
+  if(S.pwShown)h+='<div class="card" style="background:var(--brand-soft);border-color:var(--brand);margin:0 0 10px"><div class="small">New password for <b>'+esc(S.pwShown.name)+'</b> (@'+esc(S.pwShown.username)+'):</div><div style="font:700 22px/1.3 ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;margin:6px 0;user-select:all" id="ac-pw-new">'+esc(S.pwShown.password)+'</div><div class="btn-row" style="margin-top:4px"><button class="btn sm primary" data-act="accopypw">Copy</button><button class="btn sm" data-act="achidepw">Done</button></div></div>';
+  h+=users.map(u=>'<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)"><div><b>'+esc(u.display_name||u.username)+'</b> <span class="muted small">@'+esc(u.username)+(u.username===STATE.user?" · you":"")+'</span><div class="small muted">'+esc(rl(u.role))+'</div></div><button class="btn sm" data-act="acnewpw" data-v="'+esc(u.username)+'">New password</button></div>').join("");
+  h+='<div class="btn-row" style="border-top:1px solid var(--line);padding-top:10px"><button class="btn danger" data-act="acsignoutall">Sign out everyone</button></div><div class="small muted">Signs out every phone and browser except this one.</div></div>';
+  return h;
+}
 async function accSave(){
   const S=ui.sheet,c=S.edit,err=$("#ac-err");err.textContent="";
   const body={username:$("#ac-user").value.trim().toLowerCase(),name:$("#ac-name").value.trim(),password:$("#ac-pw").value,
@@ -3256,6 +3267,12 @@ document.addEventListener("click",async ev=>{
     case "acsave":accSave();break;
     case "acdays":{const el=$("#ac-until");if(el)el.value=toLocalInput(new Date(Date.now()+Number(v)*864e5).toISOString());break;}
     case "acext":accQuick(v,b=>{b.until=new Date(Math.max(Date.now(),Date.parse(b.until)||0)+10*864e5).toISOString();b.disabled=false;});toast("Extended by 10 days.");break;
+    case "acnewpw":{const u=((ACC&&ACC.users)||[]).find(x=>x.username===v)||{username:v};
+      if(!confirm("Generate a new password for "+(u.display_name||v)+" (@"+v+")? Their old password stops working and they are signed out on every device"+(v===STATE.user?" except this one":"")+"."))break;
+      api("access.resetPassword",{username:v}).then(r=>{ui.sheet.pwShown={username:r.username,name:u.display_name||r.username,password:r.password};renderSheet();const c=$("#ac-pw-card");if(c)c.scrollIntoView({block:"start"});toast("New password created. Copy it now.",4000);}).catch(e=>toast(e.message,4500));break;}
+    case "accopypw":{const t=ui.sheet&&ui.sheet.pwShown&&ui.sheet.pwShown.password;if(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copied.",2000)).catch(()=>toast("Select the password and copy it.",3000));}break;}
+    case "achidepw":if(ui.sheet)ui.sheet.pwShown=null;renderSheet();break;
+    case "acsignoutall":if(confirm("Sign out everyone (Ajay, Anis and client logins) on every device except this one?")){api("access.signOutAll").then(r=>toast("Signed out "+r.sessions+" session"+(r.sessions===1?"":"s")+".",4000)).catch(e=>toast(e.message,4500));}break;
     case "acreset":if(confirm("Reset the analytics for @"+v+"? Their sign-ins, time and downloads will count from now, and they will be signed out. The audit trail keeps every record.")){api("access.resetStats",{username:v}).then(()=>{toast("Analytics for @"+v+" now count from this moment.",4000);loadAccess();}).catch(e=>toast(e.message,4000));}break;
     case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;
     case "acdel":if(confirm("Remove the login @"+v+"? They will no longer be able to sign in. Their activity stays in the audit trail.")){api("access.delete",{username:v}).then(loadAccess).catch(e=>toast(e.message,4000));}break;

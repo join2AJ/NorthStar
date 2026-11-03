@@ -437,6 +437,31 @@ async function handle(req: Request, b: any) {
       return { ok: true };
     }
 
+    case "access.resetPassword": {
+      // Admin generates a new password for anyone (auditor, admin or client). It is returned once and never stored in plain text.
+      const username = String(b.username || "").toLowerCase().trim();
+      const ex = await sql`select username from selaqui.users where username = ${username}`;
+      if (!ex.length) throw new HttpError(400, "That user was not found.");
+      const A = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+      let pw = "";
+      while (!(/[0-9]/.test(pw) && /[A-Z]/.test(pw) && /[a-z]/.test(pw))) {
+        const r = new Uint32Array(12); crypto.getRandomValues(r);
+        pw = Array.from(r, (x) => A[x % A.length]).join("");
+      }
+      await sql`update selaqui.users set pass_hash = extensions.crypt(${pw}, extensions.gen_salt('bf', 10)) where username = ${username}`;
+      await sql`delete from selaqui.sessions where username = ${username} and token_hash <> ${me.tokenHash}`;
+      await sql`delete from selaqui.login_failures where username = ${username}`;
+      await logActivity(req, me.username, "password.reset", username, { by: me.username }, b.geo);
+      return { ok: true, username, password: pw };
+    }
+
+    case "access.signOutAll": {
+      // Sign out every session except the admin's current one.
+      const n = await sql`delete from selaqui.sessions where token_hash <> ${me.tokenHash} returning username`;
+      await logActivity(req, me.username, "sessions.signed-out-all", null, { sessions: n.length, users: [...new Set(n.map((r: any) => r.username))] }, b.geo);
+      return { ok: true, sessions: n.length };
+    }
+
     case "access.resetStats": {
       // Start a person's analytics afresh. The hash-chained audit trail itself is never edited; analytics simply count from this moment.
       const username = String(b.username || "").toLowerCase().trim();
