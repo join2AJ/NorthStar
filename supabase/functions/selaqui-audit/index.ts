@@ -437,19 +437,38 @@ async function handle(req: Request, b: any) {
       return { ok: true };
     }
 
+    case "access.resetStats": {
+      // Start a person's analytics afresh. The hash-chained audit trail itself is never edited; analytics simply count from this moment.
+      const username = String(b.username || "").toLowerCase().trim();
+      if (!/^[a-z0-9._-]{2,40}$/.test(username)) throw new HttpError(400, "Bad user name.");
+      const cur = await sql`select value from selaqui.config where key = 'analytics_reset'`;
+      const rs = cur.length ? JSON.parse(cur[0].value) : {};
+      rs[username] = new Date().toISOString();
+      await sql`insert into selaqui.config(key, value) values ('analytics_reset', ${JSON.stringify(rs)}) on conflict (key) do update set value = excluded.value`;
+      const u = await sql`select role from selaqui.users where username = ${username}`;
+      if (u.length && u[0].role === "client") await sql`delete from selaqui.sessions where username = ${username}`;
+      await sql`delete from selaqui.login_failures where username = ${username}`;
+      await logActivity(req, me.username, "access.stats-reset", username, { from: rs[username] }, b.geo);
+      return { ok: true, from: rs[username] };
+    }
+
     case "access.analytics": {
       // Everyone's activity for the admin: totals per person and action, active time per person, and recent events.
-      const counts = await sql`select actor, action, count(*)::int n, max(at) last from selaqui.activity where actor is not null group by actor, action`;
+      // Rows before a person's analytics reset (config 'analytics_reset') are left out.
+      const rr = await sql`select value from selaqui.config where key = 'analytics_reset'`;
+      const RS = rr.length ? JSON.parse(rr[0].value) : {};
+      const keep = sql`at > coalesce((${JSON.stringify(RS)}::text::jsonb ->> actor)::timestamptz, '-infinity'::timestamptz)`;
+      const counts = await sql`select actor, action, count(*)::int n, max(at) last from selaqui.activity where actor is not null and ${keep} group by actor, action`;
       // A session is a run of activity by one person with no gap over 15 minutes (the app reports every 2 minutes while open); a sign-in starts a new one.
-      const sessions = await sql`with e as (select actor, at, action, lag(at) over (partition by actor order by at) pa from selaqui.activity where actor is not null and action not like 'login.failed' and action not like 'login.blocked' and action not like 'login.expired'),
+      const sessions = await sql`with e as (select actor, at, action, lag(at) over (partition by actor order by at) pa from selaqui.activity where actor is not null and ${keep} and action not like 'login.failed' and action not like 'login.blocked' and action not like 'login.expired'),
         s as (select actor, at, sum(case when pa is null or at - pa > interval '15 minutes' or action = 'login.ok' then 1 else 0 end) over (partition by actor order by at) sid from e),
         g as (select actor, sid, min(at) t0, max(at) t1 from s group by actor, sid)
         select actor, count(*)::int sessions, round(sum(extract(epoch from t1 - t0)) / 60)::int minutes, min(t0) first, max(t1) last from g group by actor`;
-      const events = await sql`select * from selaqui.activity where actor is not null and action <> 'session.ping' order by id desc limit 3000`;
+      const events = await sql`select * from selaqui.activity where actor is not null and ${keep} and action <> 'session.ping' order by id desc limit 3000`;
       const users = await sql`select username, display_name, role from selaqui.users`;
       const iso = (t: any) => (t ? new Date(t).toISOString() : null);
       return { counts: counts.map((r: any) => ({ ...r, last: iso(r.last) })), sessions: sessions.map((r: any) => ({ ...r, first: iso(r.first), last: iso(r.last) })),
-        events: events.map(outActivity), users };
+        events: events.map(outActivity), users, resets: RS };
     }
 
     default:
