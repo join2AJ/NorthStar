@@ -369,6 +369,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 @keyframes repPulse{0%{box-shadow:0 0 0 0 rgba(43,179,177,.7)}70%{box-shadow:0 0 0 14px rgba(43,179,177,0)}100%{box-shadow:0 0 0 0 rgba(43,179,177,0)}}
 .wv{display:inline-block;animation:wv 1s ease-in-out 3;transform-origin:70% 80%}@keyframes wv{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg) scale(1.15)}75%{transform:rotate(12deg) scale(1.15)}}
 @media (prefers-reduced-motion:reduce){.rep-banner,.wv{animation:none}}
+.rep-banner{cursor:pointer}.cl-fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:50;border:0;border-radius:999px;padding:12px 18px;font:700 15px/1 system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,var(--brand),#1d7f8c);box-shadow:0 6px 20px rgba(0,0,0,.28);transition:opacity .25s,transform .25s}.cl-fab.off{opacity:0;transform:translateY(20px);pointer-events:none}
 </style>
 </head>
 <body>
@@ -391,7 +392,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.66";
+const VERSION="2026-11-03.67";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -2916,14 +2917,13 @@ function renderClient(m){
   const ready=STATE.lastSync&&D&&D.obs&&D.obs.length;
   let h='<div class="card" style="margin-top:4px;background:var(--brand-soft);border-color:var(--brand)"><div style="font:400 24px/1.25 Georgia,\'Times New Roman\',serif;color:var(--ink)"><span class="wv">🎉</span> Welcome, '+esc(uname(STATE.user))+'</div>'+
      '<p style="margin:8px 0 0;font-size:15px">Congratulations - the security audit of the Dixon Technologies sites at Selaqui, Dehradun, carried out from <b>'+AUDIT_PERIOD+'</b>, has been completed successfully.</p>'+
-     '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports one by one or together as a ZIP.</p><div class="btn-row"><button class="btn primary" data-act="toreports">📥 Go to the reports</button></div>'+
+     '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports one by one or together as a ZIP.</p><div class="btn-row"><button class="btn" data-act="tosec" data-v="cl-risk">📊 Risk analytics</button><button class="btn primary" data-act="tosec" data-v="cl-reports">📥 Go to the reports</button></div>'+
      '<div class="small muted" style="margin-top:8px">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div></div>';
-  if(ready)h+='<div class="h-page" style="margin-top:16px">Combined risk picture</div>'+auditDashHTML();
-  h+='<div id="cl-reports" class="rep-banner"><div class="rep-ic">📥</div><div><div class="rep-t">Reports - download here</div><div class="rep-s">Your access, the PDF documents and the ZIP download are in this section.</div></div></div>';
+  h+='<div id="cl-risk" class="h-page" style="margin-top:16px;scroll-margin-top:130px">📊 Combined risk picture - all six sites</div>'+(ready?auditDashHTML():'<div class="card"><div class="small">Loading the risk analytics… This takes a few seconds on first sign-in.</div></div>');
+  h+='<div id="cl-reports" class="rep-banner" data-act="tosec" data-v="cl-reports" role="button" tabindex="0"><div class="rep-ic">📥</div><div><div class="rep-t">Reports - download here</div><div class="rep-s">Your access, the PDF documents and the ZIP download are in this section.</div></div></div>';
   h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div><div class="small" style="margin-top:4px">Signed in as <b>'+esc(uname(STATE.user))+'</b>. You can download the reports for '+sites.map(s=>esc(SITE[s].no+". "+SITE[s].name)).join(", ")+'.</div>'+
      '<div style="margin-top:8px;font-size:15px"><b id="cl-left">Available for '+esc(leftTxt(until))+'</b> <span class="muted small">· until '+esc(fmtIST(until))+'</span></div>'+
      '<div class="small muted" style="margin-top:4px">After that the documents are no longer available from this login. Contact Ajay Kumar (Northstar) to extend access.</div></div>';
-  if(!ready)h+='<div class="card"><div class="small">Loading the audit data… This takes a few seconds on first sign-in.</div></div>';
   if(docs.length)h+='<div class="card"><div class="card-t">Documents (PDF)</div><div class="small muted" style="margin:3px 0 8px">Each opens in a new tab with a Print / Save as PDF button.</div>'+
      '<span class="lbl">Site</span><select id="r-site">'+siteOpts(sites[0])+'</select><select id="r-period" hidden><option value="all" selected>all</option></select><input type="checkbox" id="r-photos" checked hidden>'+
      '<div class="btn-row" style="flex-wrap:wrap">'+docs.map(d=>'<button class="btn primary" data-act="'+d[1]+'"'+(ready?"":" disabled")+'>📄 '+esc(d[2])+'</button>').join("")+'</div></div>';
@@ -2931,7 +2931,10 @@ function renderClient(m){
      '<select id="zp-site">'+siteOpts(sites[0])+(sites.length>1?'<option value="all">All sites - one ZIP, a folder per site</option>':'')+'</select>'+
      '<div id="zp-parts" style="display:grid;gap:6px;margin-top:8px">'+parts.map(([k])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'" checked style="width:20px;height:20px;flex:none">'+esc(plabel(k))+'</label>').join("")+'</div>'+
      ZIP_TREE_BOX+'<div class="btn-row"><button class="btn primary" data-act="mkpack"'+(ready?"":" disabled")+'>📦 Download ZIP</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>';
+  h+='<button type="button" id="cl-fab" class="cl-fab" data-act="tosec" data-v="cl-reports">📥 Reports</button>';
   m.innerHTML=h;updateZipTree();
+  try{const fab=$("#cl-fab"),rb=$("#cl-reports");new IntersectionObserver(es=>{const r=es[0].boundingClientRect;fab.classList.toggle("off",es[0].isIntersecting||r.top<0);}).observe(rb);
+    new IntersectionObserver(es=>{if(es[0].isIntersecting)fab.classList.add("off");}).observe($("#zp-parts")||rb);}catch(e){}
   const ck="sa.cheer."+String(STATE.token||"").slice(-12);let seen=false;try{seen=!!sessionStorage.getItem(ck);sessionStorage.setItem(ck,"1");}catch(e){}
   if(!seen&&!window.__cheered){window.__cheered=1;setTimeout(confettiBlast,300);}
 }
@@ -3177,7 +3180,7 @@ document.addEventListener("click",async ev=>{
     case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;
     case "acdel":if(confirm("Remove the login @"+v+"? They will no longer be able to sign in. Their activity stays in the audit trail.")){api("access.delete",{username:v}).then(loadAccess).catch(e=>toast(e.message,4000));}break;
     case "mkpack":{const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);if(!sel.length){toast("Tick at least one item to include.",3000);break;}lsSet("sa.packParts",sel.join(","));makePack($("#zp-site").value,sel);break;}
-    case "toreports":{const r=$("#cl-reports");if(r){r.scrollIntoView({behavior:"smooth",block:"start"});r.classList.remove("flash");void r.offsetWidth;r.classList.add("flash");}break;}
+    case "tosec":case "toreports":{const r=$("#"+(v||"cl-reports"));if(r){r.scrollIntoView({behavior:"smooth",block:"start"});if(r.classList.contains("rep-banner")){r.classList.remove("flash");void r.offsetWidth;r.classList.add("flash");}}break;}
     case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");updateZipTree();break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
