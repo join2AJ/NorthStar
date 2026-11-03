@@ -31,7 +31,7 @@ function randomToken() {
   return Array.from(a).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const ENDED = "Your access to the Selaqui audit documents has ended. Contact Ajay Kumar (Northstar) to extend it.";
+const ENDED = "Your access to the Selaqui audit documents has ended.";
 const clientOpen = (u: any) => u.role !== "client" || (!u.disabled && u.access_until && new Date(u.access_until).getTime() > Date.now());
 const profile = (u: any) => ({
   username: u.username, name: u.display_name, role: u.role,
@@ -386,7 +386,7 @@ async function handle(req: Request, b: any) {
       if (ev === "ping") { await logActivity(req, me.username, "session.ping", null, null, null); return { ok: true }; }
       if (ev !== "doc" && ev !== "pack") throw new HttpError(400, "Bad event");
       const d = b.detail && typeof b.detail === "object" ? b.detail : {};
-      const detail = { doc: str(d.doc, 60), site: str(d.site, 8), items: Array.isArray(d.items) ? d.items.slice(0, 12).map((x: unknown) => String(x).slice(0, 6)) : null,
+      const detail = { doc: str(d.doc, 60), site: str(d.site, 24), items: Array.isArray(d.items) ? d.items.slice(0, 12).map((x: unknown) => String(x).slice(0, 6)) : null,
         ms: Math.max(0, Math.min(36e5, Math.round(Number(d.ms) || 0))), ok: d.ok !== false, files: Number(d.files) || null, mb: Number(d.mb) || null };
       await logActivity(req, me.username, ev === "pack" ? "report.pack" : "report.doc", detail.site, detail, b.geo);
       return { ok: true };
