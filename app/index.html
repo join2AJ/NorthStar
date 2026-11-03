@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.64";
+const VERSION="2026-11-03.65";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1596,7 +1596,7 @@ function reportSheet(){
    '<select id="zp-site">'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'<option value="all">All sites - one ZIP, a folder per site</option></select>'+
    '<div class="small" style="margin:10px 0 4px;font-weight:700">Include in the ZIP (tick what you need)</div><div id="zp-parts" style="display:grid;gap:6px">'+PACK_PARTS.map(([k,l])=>{const on=packSel().includes(k);return '<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'"'+(on?" checked":"")+' style="width:20px;height:20px;flex:none">'+esc(l)+'</label>';}).join("")+'</div>'+
    '<div class="btn-row" style="margin-top:6px"><button class="btn sm" data-act="zpall" data-v="1">Select all</button><button class="btn sm" data-act="zpall" data-v="0">Clear</button></div>'+
-   '<div class="btn-row"><button class="btn primary" data-act="mkpack">📦 Download site pack</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>'+
+   ZIP_TREE_BOX+'<div class="btn-row"><button class="btn primary" data-act="mkpack">📦 Download site pack</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
    card(1,"Security Audit Checklist","One instrument, common to the engagement",'<div class="btn-row" style="margin-top:4px"><button class="btn primary" data-act="mkchecklist">📄 Checklist PDF</button></div>')+
    card(2,"Security Audit Report","Incorporating findings and photographic evidence where available · one per designated site",
@@ -2764,7 +2764,7 @@ function renderSheet(){
   }else if(ui.sheet.type==="pending"){
     sh.innerHTML=pendingSheet();
   }else if(ui.sheet.type==="report"){
-    sh.innerHTML=reportSheet();
+    sh.innerHTML=reportSheet();updateZipTree();
   }else if(ui.sheet.type==="expense"){
     sh.innerHTML='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">New expense claim</div></div><div class="sh-body">'+expenseForm()+'</div>'+
      '<div class="sh-foot"><button class="btn primary" data-act="save"'+(draft.busy?" disabled":"")+'>Save claim</button></div>';
@@ -2902,8 +2902,13 @@ function renderClient(m){
   const parts=PACK_PARTS.filter(([k])=>clientCan(k)||(k==="5"&&docs.length));
   const siteOpts=sel=>sites.map(s=>'<option value="'+s+'"'+(s===sel?" selected":"")+'>'+esc(SITE[s].no+" · "+SITE[s].name)+'</option>').join("");
   const ready=STATE.lastSync&&D&&D.obs&&D.obs.length;
-  let h='<div class="h-page">Selaqui security audit - documents</div><div class="muted small">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div>';
-  h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div><div class="small" style="margin-top:4px">Signed in as <b>'+esc(uname(STATE.user))+'</b>. You can download the documents below for '+sites.map(s=>esc(SITE[s].no+". "+SITE[s].name)).join(", ")+'.</div>'+
+  let h='<div class="card" style="margin-top:4px;background:var(--brand-soft);border-color:var(--brand)"><div style="font:400 24px/1.25 Georgia,\'Times New Roman\',serif;color:var(--ink)">Welcome, '+esc(uname(STATE.user))+'</div>'+
+     '<p style="margin:8px 0 0;font-size:15px">Congratulations - the security audit of the Dixon Technologies sites at Selaqui, Dehradun, carried out from <b>'+AUDIT_PERIOD+'</b>, has been completed successfully.</p>'+
+     '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports one by one or together as a ZIP.</p>'+
+     '<div class="small muted" style="margin-top:8px">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div></div>';
+  if(ready)h+='<div class="h-page" style="margin-top:16px">Combined risk picture</div>'+auditDashHTML();
+  h+='<div class="h-page" style="margin-top:16px">Reports</div>';
+  h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div><div class="small" style="margin-top:4px">Signed in as <b>'+esc(uname(STATE.user))+'</b>. You can download the reports for '+sites.map(s=>esc(SITE[s].no+". "+SITE[s].name)).join(", ")+'.</div>'+
      '<div style="margin-top:8px;font-size:15px"><b id="cl-left">Available for '+esc(leftTxt(until))+'</b> <span class="muted small">· until '+esc(fmtIST(until))+'</span></div>'+
      '<div class="small muted" style="margin-top:4px">After that the documents are no longer available from this login. Contact Ajay Kumar (Northstar) to extend access.</div></div>';
   if(!ready)h+='<div class="card"><div class="small">Loading the audit data… This takes a few seconds on first sign-in.</div></div>';
@@ -2911,10 +2916,10 @@ function renderClient(m){
      '<span class="lbl">Site</span><select id="r-site">'+siteOpts(sites[0])+'</select><select id="r-period" hidden><option value="all" selected>all</option></select><input type="checkbox" id="r-photos" checked hidden>'+
      '<div class="btn-row" style="flex-wrap:wrap">'+docs.map(d=>'<button class="btn primary" data-act="'+d[1]+'"'+(ready?"":" disabled")+'>📄 '+esc(d[2])+'</button>').join("")+'</div></div>';
   if(parts.length)h+='<div class="card"><div class="card-t">📦 Download as ZIP</div><div class="small muted" style="margin:3px 0 8px">Tick what to include. Allow a few minutes per site and keep this screen open.</div>'+
-     '<select id="zp-site">'+siteOpts(sites[0])+(sites.length>1?'<option value="all">All my sites - one ZIP, a folder per site</option>':'')+'</select>'+
+     '<select id="zp-site">'+siteOpts(sites[0])+(sites.length>1?'<option value="all">All sites - one ZIP, a folder per site</option>':'')+'</select>'+
      '<div id="zp-parts" style="display:grid;gap:6px;margin-top:8px">'+parts.map(([k,l])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'" checked style="width:20px;height:20px;flex:none">'+esc(l)+'</label>').join("")+'</div>'+
-     '<div class="btn-row"><button class="btn primary" data-act="mkpack"'+(ready?"":" disabled")+'>📦 Download ZIP</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>';
-  m.innerHTML=h;
+     ZIP_TREE_BOX+'<div class="btn-row"><button class="btn primary" data-act="mkpack"'+(ready?"":" disabled")+'>📦 Download ZIP</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>';
+  m.innerHTML=h;updateZipTree();
 }
 setInterval(()=>{const el=$("#cl-left");if(el&&PROF&&PROF.accessUntil)el.textContent="Available for "+leftTxt(PROF.accessUntil);},60000);
 
@@ -3017,6 +3022,52 @@ async function accSave(){
 async function accQuick(u,fn){const c=(ACC&&ACC.clients||[]).find(x=>x.username===u);if(!c)return;const b={username:c.username,name:c.display_name,sites:(c.perms||{}).sites||[],items:(c.perms||{}).items||[],until:c.access_until,disabled:c.disabled,note:c.note||""};fn(b);
   try{await api("access.save",b);await loadAccess();}catch(e){toast(e.message,4000);}}
 
+// What the site pack ZIP will contain, as a folder tree, for the chosen site(s) and ticked items.
+const PACK_WHAT={"1":"Every photograph taken at the site, full size, named by its evidence number (e.g. S1-AD-31-P01), plus Photo_index.csv listing each photo's point, observation, risk and time.",
+ "2":"Excel workbook: sheet 1 the site's 5 × 5 risk matrix, sheet 2 the auditees, sheet 3 every finding with current risk, recommendation, target risk, photo numbers and the photos in the row.",
+ "3":"PDF of the findings table with the photographs in each finding's row.",
+ "4":"PDF of the findings table followed by the photographs, six to a page, each captioned with its evidence number.",
+ "5.1":"Security Audit Checklist - the 69 documents, 10 walkthrough areas and 12 interviews used at every site.",
+ "5.2":"Security Audit Report - methodology, risk matrix, critical risks, site profile and map, auditees, findings with photographs, good practices and the status of every point.",
+ "5.3":"Site Security Plan (SSP) - how the site is to be protected from now on.",
+ "5.4":"Operational Requirement (OR) - what has to be fixed or procured, by whom and by when.",
+ "5.5":"Corporate Security SOP Set - 17 controlled SOPs with formats, common to all Dixon sites in Selaqui.",
+ "6":"KML map file - the site perimeter and location pin; opens in Google Earth."};
+function zipTreeText(v,sel){
+  const has=k=>sel.includes(k)||(k.startsWith("5.")&&sel.includes("5")&&!sel.some(x=>x.startsWith("5.")));
+  const all=v==="all",scs=all?SITES.filter(s=>D&&D.obs&&D.obs.some(e=>e.scope===s.id)).map(s=>s.id):[v];
+  const ph=sc=>D&&D.obs?D.obs.filter(e=>e.scope===sc).reduce((a,e)=>a+(e.photos||[]).length,0):0;
+  const lines=[],leaf=(arr,pre)=>arr.forEach((x,i)=>{const last=i===arr.length-1;if(typeof x==="string")lines.push(pre+(last?"└─ ":"├─ ")+x);else{lines.push(pre+(last?"└─ ":"├─ ")+x[0]);leaf(x[1],pre+(last?"   ":"│  "));}});
+  const site=sc=>{const t=[];
+    if(has("1"))t.push(["1_Photos/  ("+ph(sc)+" photos)",["Photo_index.csv","S"+SITE[sc].no+"-AD-31-P01_….jpg  …"]]);
+    if(has("2"))t.push(pdfNameX("Findings Workbook",sc)+".xlsx");
+    if(has("3"))t.push(pdfNameX("Findings Photos in Rows",sc)+".pdf");
+    if(has("4"))t.push(pdfNameX("Findings then Photos",sc)+".pdf");
+    const d=[];if(!all&&has("5.1"))d.push(pdfName(1,"Security Audit Checklist")+".pdf");
+    if(has("5.2"))d.push(pdfName(2,"Security Audit Report",sc)+".pdf");if(has("5.3"))d.push(pdfName(3,"Site Security Plan",sc)+".pdf");if(has("5.4"))d.push(pdfName(4,"Operational Requirement",sc)+".pdf");
+    if(!all&&has("5.5"))d.push(pdfName(5,"Corporate Security SOP Set")+".pdf");
+    if(d.length)t.push(["5_Deliverables/",d]);
+    if(has("6"))t.push(pdfNameX("Site Map",sc)+".kml");
+    return t;};
+  let top;
+  if(all){const c=[];if(has("6"))c.push("Dixon_Selaqui_Site_Map_All_Sites.kml");if(has("5.1"))c.push(pdfName(1,"Security Audit Checklist")+".pdf");if(has("5.5"))c.push(pdfName(5,"Corporate Security SOP Set")+".pdf");
+    top=(c.length?[["0_Common/",c]]:[]).concat(scs.map(sc=>[siteTag(sc)+"/",site(sc)]));}
+  else top=site(v);
+  lines.push(pdfNameX("Audit Pack",all?"all":v)+".zip");leaf(top,"");
+  return lines.join("\n");
+}
+function zipWhatHTML(sel){
+  const keys=Object.keys(PACK_WHAT).filter(k=>sel.includes(k)||(k.startsWith("5.")&&sel.includes("5")&&!sel.some(x=>x.startsWith("5."))));
+  return keys.length?'<ul class="small" style="margin:6px 0 0;padding-left:18px">'+keys.map(k=>'<li><b>'+esc(PACK_PARTS.find(p=>p[0]===k)[1].replace(/:$/,""))+'</b> - '+esc(PACK_WHAT[k])+'</li>').join("")+'</ul>':'<div class="small muted">Tick at least one item.</div>';
+}
+function updateZipTree(){
+  const t=$("#zp-tree"),w=$("#zp-what"),s=$("#zp-site");if(!t||!s)return;
+  const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);
+  t.textContent=sel.length?zipTreeText(s.value,sel):"Tick at least one item to include.";if(w)w.innerHTML=zipWhatHTML(sel);
+}
+document.addEventListener("change",ev=>{const t=ev.target;if(t&&t.closest&&(t.closest("#zp-parts")||t.id==="zp-site"))setTimeout(updateZipTree,0);});
+const ZIP_TREE_BOX='<div class="small" style="margin-top:12px;font-weight:700">What the ZIP will contain</div><pre id="zp-tree" style="margin:6px 0 0;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflow-x:auto"></pre><div id="zp-what"></div>';
+
 /* ================= login ================= */
 let loginWho="";
 let loginMsg="";
@@ -3101,7 +3152,7 @@ document.addEventListener("click",async ev=>{
     case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;
     case "acdel":if(confirm("Remove the login @"+v+"? They will no longer be able to sign in. Their activity stays in the audit trail.")){api("access.delete",{username:v}).then(loadAccess).catch(e=>toast(e.message,4000));}break;
     case "mkpack":{const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);if(!sel.length){toast("Tick at least one item to include.",3000);break;}lsSet("sa.packParts",sel.join(","));makePack($("#zp-site").value,sel);break;}
-    case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");break;
+    case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");updateZipTree();break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
     case "newexp":{let pre=null;try{pre=v?JSON.parse(v):null;}catch(x){}openExpense(pre);break;}
