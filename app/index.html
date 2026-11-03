@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.60";
+const VERSION="2026-11-03.61";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -427,7 +427,16 @@ const sevForRisk=n=>n>=10?"high":n>=5?"med":"low";
 const LI_DEF=["",["Rare","May occur only in exceptional circumstances","Less than once in 10 years","< 5 %"],["Unlikely","Could occur at some time; not expected","Once in 5-10 years","5-20 %"],["Possible","Might occur; has happened in the industry / region","Once in 1-5 years","20-50 %"],["Likely","Will probably occur; weakness is open to exploitation","About once a year","50-80 %"],["Almost certain","Expected to occur, or the gap is being exploited now","Several times a year","> 80 %"]];
 const IM_DEF=["",["Minor","First aid only","< ₹1 lakh","< 1 hour, no output loss","Internal only, no external awareness","Minor procedural lapse"],["Moderate","Medical treatment case","₹1-10 lakh","Up to 1 shift","Local / single customer query","Observation in a customer or statutory audit"],["Significant","Reportable / lost-time injury","₹10-50 lakh","Up to 1 day; partial line stoppage","Regional media; customer escalation","Major NC in customer audit; statutory notice"],["Major","Serious injury or multiple injuries","₹50 lakh - ₹5 crore","Up to 1 week; plant-wide stoppage","National media; key customer relationship at risk","Penalty, licence suspension or customer audit failure"],["Severe","Fatality","> ₹5 crore","More than 1 week; loss of site","Sustained national / international coverage; loss of a key customer","Prosecution, licence revocation, debarment"]];
 const BAND_DEF=[["Critical","20-25","crit","Intolerable. Immediate action; interim controls within 24-72 hours; senior management owns closure within 30 days."],["High","10-19","serious","Treat as priority. Corrective action plan within 2 weeks; close within 60-90 days; monthly review."],["Medium","5-9","warn","Treat in the normal improvement plan within 3-6 months; monitor."],["Low","1-4","good","Tolerate / accept with routine monitoring; improve when the opportunity arises."]];
-const PBAR='<div class="pbar noprint"><button onclick="print()">🖨 Print / Save as PDF</button><span>Phone: tap Print, then choose <b>Save as PDF</b> as the printer.</span></div>';
+const PBAR='<div class="pbar noprint"><button onclick="pagedPrint(this)">🖨 Print / Save as PDF</button><span>Phone: tap Print, then choose <b>Save as PDF</b> as the printer.</span></div>'+
+ '<script>function pagedPrint(btn){if(window.__paged){window.print();return;}btn.disabled=true;btn.textContent="Preparing pages…";'+
+ 'var css=[].map.call(document.querySelectorAll("style"),function(x){return x.textContent;}).join("\\n").replace(/@media\\s+print/gi,"@media all").replace(/@media\\s+screen\\s+and/gi,"@media (max-width:1px) and").replace(/@media\\s+screen/gi,"@media (max-width:1px)");'+
+ 'var bd=document.body.cloneNode(true);[].forEach.call(bd.querySelectorAll("script,style,.pbar,.noprint"),function(x){x.remove();});var tpl=document.createElement("template");tpl.innerHTML=bd.innerHTML;'+
+ 'var s=document.createElement("script");s.src="https://unpkg.com/pagedjs@0.4.3/dist/paged.min.js";'+
+ 's.onerror=function(){btn.disabled=false;btn.textContent="🖨 Print / Save as PDF";window.print();};'+
+ 's.onload=function(){[].forEach.call(document.querySelectorAll("style"),function(x){x.remove();});document.body.innerHTML="";'+
+ 'new PagedModule.Previewer().preview(tpl.content,[{"doc.css":css}],document.body).then(function(){window.__paged=true;var st=document.createElement("style");st.textContent="@page{size:A4;margin:0}@page:first{size:A4;margin:0}@media print{html,body{padding:0!important;margin:0!important}.pagedjs_page{height:297mm!important;overflow:hidden!important}.pp-btn{display:none!important}.pagedjs_page_content *{break-before:auto!important;page-break-before:auto!important;break-after:auto!important;page-break-after:auto!important}}@media screen{body{background:#dfe6e8}.pagedjs_page{background:#fff;margin:0 auto 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}}";document.head.appendChild(st);'+
+ 'var b=document.createElement("button");b.className="pp-btn";b.textContent="🖨 Print / Save as PDF";b.style.cssText="position:fixed;top:10px;right:10px;z-index:9;padding:10px 14px;border:0;border-radius:8px;background:#0E5A61;color:#fff;font:600 14px sans-serif";b.onclick=function(){window.print();};document.body.appendChild(b);setTimeout(function(){window.print();},400);});};'+
+ 'document.head.appendChild(s);}<\/script>';
 const PBAR_CSS='.pbar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#0E3F45;color:#fff;padding:10px 12px;margin:-12px -12px 12px;font:13px/1.3 sans-serif}.pbar button{background:#fff;color:#0E3F45;border:0;border-radius:8px;padding:10px 14px;font-weight:700;font-size:14px}@media print{.pbar,.noprint{display:none!important}}h2,h3{break-after:avoid;page-break-after:avoid}thead{display:table-header-group}tr,img,.box,.ent{break-inside:avoid;page-break-inside:avoid}table.rm,table.hm,.smap{break-inside:avoid;page-break-inside:avoid}';
 // 5x5 colours: green Low, yellow Medium, orange High, red Critical (print-safe).
 const RISK_CSS='.rm td{text-align:center;font-weight:700}.rm td span{font-weight:400;font-size:8pt}.r-good{background:#9BD27A}.r-warn{background:#FFE066}.r-serious{background:#F7A35C}.r-crit{background:#E5534B;color:#fff}.r-crit .muted,.r-crit span{color:#fff}';
@@ -1660,7 +1669,7 @@ function checklistHTML(){
    '<h3>Walkthrough rating</h3><table><tr><th>Rating</th><th>Meaning</th></tr>'+STATUS.walk.map(([k,l])=>'<tr><td>'+E(l)+'</td><td>'+E({ok:"Control in place and working as observed",observed:"Seen, no rating needed",improve:"Control exists but is weak or inconsistent",noncomp:"Control absent or not working",notapp:"Not relevant to this site"}[k]||"")+'</td></tr>').join("")+'</table>'+
    '<h3>Finding severity</h3><table><tr><th>Severity</th><th>Use when</th></tr><tr><td>High</td><td>Exposure that could lead to serious loss, injury or breach; act immediately</td></tr><tr><td>Medium</td><td>Weakness that should be fixed within weeks</td></tr><tr><td>Low</td><td>Improvement, fix in the normal course</td></tr><tr><td>Good practice</td><td>Worth keeping and replicating</td></tr></table>'+
    riskMethodHTML()+'</section>';
-  const css='@page{size:A4;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10pt/1.35 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
+  const css='@page{size:A4;margin:12mm 12mm 16mm;@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5pt Arial;color:#5E7079}}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10pt/1.35 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
    'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:0 0 4px;color:#0E3F45}h3{font-size:11pt;margin:14px 0 3px;color:#0E5A61}.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55;margin-top:18px}'+
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
@@ -1675,7 +1684,7 @@ function reportHTML(r,scopes,ents,urls){
   const bandCount=list=>{const c={Critical:0,High:0,Medium:0,Low:0};list.forEach(e=>{const n=rsk(e);if(n&&["high","med","low"].includes(e.sev))c[riskBand(n)[0]]++;});return c;};
   const chips=c=>'<div class="chips">'+BAND_DEF.map(([l,r2,col])=>'<div class="chip r-'+col+'"><b>'+c[l]+'</b><span>'+l+'</span></div>').join("")+'</div>';
   const allC=bandCount(ents);
-  let b='<section class="cover"><div class="cv-band"><div class="cv-brand">NORTHSTAR SAFETY SYSTEMZ</div><div class="cv-ref">Ref. NSS/DTIL/SECA/2026-07/01</div></div>'+
+  let b='<section class="cover" id="sec-about"><div class="cv-band"><div class="cv-brand">NORTHSTAR SAFETY SYSTEMZ</div><div class="cv-ref">Ref. NSS/DTIL/SECA/2026-07/01</div></div>'+
    '<div class="cv-main"><div class="cv-kicker">Deliverable 2</div><h1>Security Audit Report</h1><div class="cv-sub">incorporating findings and photographic evidence</div>'+
    '<div class="cv-site">'+(r.site==="all"?"Dixon Technologies - all Selaqui sites":E(SITE[r.site].no+". "+SITE[r.site].name))+'</div>'+
    '<table class="kv cv-kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr><tr><th>Site'+(scopes.length>1?"s":"")+'</th><td>'+scopes.map(sc=>E(SITE[sc].no+". "+SITE[sc].name)).join("<br>")+'</td></tr>'+
@@ -1683,20 +1692,15 @@ function reportHTML(r,scopes,ents,urls){
    '<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+' · Northstar audit team</td></tr><tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr>'+(r.period!=="all"?'<tr><th>Entry log</th><td>'+E(period)+' only</td></tr>':'')+
    revRows(2,r.site)+'<tr><th>Classification</th><td>Confidential - Dixon management and Northstar only</td></tr></table>'+revHist(r.site)+
    '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
-   '<div class="cv-toc"><b>How this report is organised</b><ol>'+
-   '<li>About this report - purpose, scope and how the observations were agreed (this page)</li>'+
-   '<li>Risk assessment methodology and the 5 × 5 risk matrix</li>'+
-   '<li>Critical risks - findings rated 20-25, with their photographic evidence numbers</li>'+
-   (scopes.length>1?'<li>Dixon sites in Selaqui and risk across sites</li>':'')+
-   scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' - at a glance, location, auditees, coverage, risk profile, findings (photographs below each finding), good practices, status of every point and the field entry log</li>').join("")+'</ol></div>'+
+   '<div class="cv-toc">'+tocTable([["sec-about","About this report - purpose, scope and how the observations were agreed"],["sec-method","Risk assessment methodology and the 5 × 5 risk matrix"],["sec-crit","Critical risks - findings rated 20-25, with their photographic evidence numbers"]].concat(scopes.length>1?[["sec-sites","Dixon sites in Selaqui and risk across sites"]]:[]).concat(scopes.map(sc=>["sec-"+sc,E(SITE[sc].no+". "+SITE[sc].name)+' - at a glance, location, auditees, coverage, risk profile, findings (photographs below each finding), good practices, status of every point and the field entry log'])),"Index - how this report is organised")+'</div>'+
    delivAboutHTML(2)+'<p class="note"><b>Every observation in this document was discussed with the site auditees during the audit before it was recorded.</b> The report is compiled from the Selaqui audit field log, which is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
-  b+='<section class="site"><h2>2. Risk assessment methodology and risk matrix</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
+  b+='<section class="site" id="sec-method"><h2>2. Risk assessment methodology and risk matrix</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
   {const crit=ents.filter(e=>rsk(e)>=20&&["high","med","low"].includes(e.sev)).sort((a,b2)=>rsk(b2)-rsk(a)||(a.scope<b2.scope?-1:1));
-   b+='<section class="site"><h2>3. Critical risks</h2><div class="muted">Findings rated 20-25 (critical): interim controls within 24-72 hours and closure owned by senior management. The photographic evidence numbers refer to the photographs shown below each finding in the site section.</div>'+
+   b+='<section class="site" id="sec-crit"><h2>3. Critical risks</h2><div class="muted">Findings rated 20-25 (critical): interim controls within 24-72 hours and closure owned by senior management. The photographic evidence numbers refer to the photographs shown below each finding in the site section.</div>'+
     (crit.length?'<table class="fd fd6"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Site and point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+
      crit.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+riskCellHTML(e.extra.li,e.extra.im,"Critical")+'<td><b>'+E(SITE[e.scope]?SITE[e.scope].no+". "+SITE[e.scope].name:"")+'</b><div><b>'+E(e.item||"Other")+'</b></div>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"-")+'</td>'+(e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">-</td>')+'</tr>').join("")+'</table>':'<p class="muted">No finding is rated critical.</p>')+'</section>';}
   if(scopes.length>1){const rows=crossRows(5);
-    b+='<section class="site"><h2>4. Dixon sites in Selaqui</h2>'+sitesMapHTML(null,900,560)+'<div class="mgrid" style="margin-top:10px">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell"><div class="mt"><b>'+s.no+'</b> '+E(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div></section>';
+    b+='<section class="site" id="sec-sites"><h2>4. Dixon sites in Selaqui</h2>'+sitesMapHTML(null,900,560)+'<div class="mgrid" style="margin-top:10px">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell"><div class="mt"><b>'+s.no+'</b> '+E(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div></section>';
     b+='<section class="site"><h2>4. Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · - not logged · n/a not assessed · · not in the site checklist.</div>'+
      '<table class="xs"><tr><th>Point</th>'+SITES.map(s=>'<th>'+E(s.no)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr><td><b>'+r.it.id+'</b> '+E((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,70))+'</td>'+r.c.map(c=>crossCell(c,true)).join("")+'</tr>').join("")+'</table>'+
      '<div class="muted">Sites: '+SITES.map(s=>E(s.no+". "+s.name)).join(" · ")+'</div></section>';}
@@ -1704,7 +1708,7 @@ function reportHTML(r,scopes,ents,urls){
     const S=SITE[sc],its=viewItems(sc);
     const R0=resSite(sc),sf=ents.filter(e=>e.scope===sc),st0=scopeStats(sc),bc0=bandCount(sf);
     const top=sf.filter(e=>rsk(e)&&["high","med","low"].includes(e.sev)).sort((a,b2)=>rsk(b2)-rsk(a)).slice(0,5);
-    b+='<section class="site"><div class="sh"><span class="badge">'+E(S.no)+'</span><div><div class="sh-n">'+E(S.name)+'</div><div class="sh-a">'+E(R0.addr||S.addr)+'</div></div></div>'+
+    b+='<section class="site" id="sec-'+sc+'"><div class="sh"><span class="badge">'+E(S.no)+'</span><div><div class="sh-n">'+E(S.name)+'</div><div class="sh-a">'+E(R0.addr||S.addr)+'</div></div></div>'+
      '<div class="glance"><div class="gl-t">At a glance</div><div class="gl-row"><div class="gl-k"><b>'+st0.covered+' / '+st0.total+'</b><span>points covered'+(st0.na?' ('+st0.na+' desirable not assessed)':'')+'</span></div><div class="gl-k"><b>'+sf.filter(e=>rsk(e)>=5&&["high","med","low"].includes(e.sev)).length+'</b><span>observations rated Medium risk or higher</span></div><div class="gl-k"><b>'+sf.reduce((a,e)=>a+(e.photos||[]).length,0)+'</b><span>photographs</span></div></div>'+
      chips(bc0)+(top.length?'<div class="gl-top"><b>Highest risks</b><ol>'+top.map(e=>'<li><span class="rtag r-'+riskBand(rsk(e))[1]+'">'+rsk(e)+'</span> <b>'+E(e.item||"Other")+'</b> '+E((e.body||"").split(/(?<=\.)\s/)[0].slice(0,150))+'</li>').join("")+'</ol></div>':'')+'</div>';
     const geo=resGeo(sc);if(geo)b+='<h3>Site location and perimeter</h3>'+siteMapHTML(geo,680,300)+'<h3>Location among the Dixon sites in Selaqui</h3>'+sitesMapHTML(sc,900,520);
@@ -1946,6 +1950,7 @@ async function packAnnexPdf(sc,rows,med){
 let pgSeq=0;
 async function htmlToPdf(html,onp){
   await loadLib("jspdf");
+  {const bi=html.search(/<body[^>]*>/i);if(bi>0){const st=[];const tail=html.slice(bi).replace(/<style[^>]*>[\s\S]*?<\/style>/gi,m=>{st.push(m);return "";});html=html.slice(0,bi).replace(/<\/head>/i,st.join("")+"</head>")+tail;}}
   html=html.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/@media\s+print/gi,"@media all").replace(/@media\s+screen\s+and/gi,"@media (max-width:1px) and").replace(/@media\s+screen/gi,"@media (max-width:1px)");
   const cb="__paged"+(++pgSeq),f=document.createElement("iframe");
   f.style.cssText="position:fixed;left:-12000px;top:0;width:1000px;height:1300px;border:0";document.body.appendChild(f);
@@ -2053,7 +2058,7 @@ function zipWriter(){
 
 /* ================= Deliverables 3-5: Site Security Plan, Operational Requirement, corporate SOP set ================= */
 // Built from the audit log, the site schedule (Resources) and the KML perimeters, so every site can be produced the same way.
-const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10.5pt/1.45 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
+const DOC_CSS='@page{size:A4;margin:14mm 12mm 16mm;@bottom-left{content:"Northstar Safety Systemz · Confidential";font:7.5pt Arial;color:#5E7079}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:7.5pt Arial;color:#5E7079}}@page:first{@bottom-left{content:none}@bottom-right{content:none}}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font:10.5pt/1.45 "Segoe UI",Roboto,Arial,sans-serif;color:#14212B;margin:0;padding:12px}'+
  'h1{font-size:24pt;margin:8px 0 4px;color:#0E3F45}h2{font-size:15pt;margin:18px 0 6px;color:#0E3F45;border-bottom:2px solid #0E5A61;padding-bottom:3px}h3{font-size:11.5pt;margin:14px 0 5px;color:#0E5A61}'+
  '.brand{font-size:9pt;letter-spacing:.6px;text-transform:uppercase;color:#586A72}.cover{padding:30px 0}.note{font-size:9pt;color:#3C4C55}p{margin:5px 0}ul,ol{margin:4px 0 6px;padding-left:20px}li{margin:2px 0}'+
  'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:9pt}th,td{border:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}'+
@@ -2063,11 +2068,15 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
  '.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}@media screen and (max-width:600px){.mgrid{grid-template-columns:1fr}}'+
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mcell.on{border:2px solid #0E5A61}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
+// Index: S. No., section and page. Page numbers are filled in when the document is laid out as pages (Print / Save as PDF).
+const TOC_CSS='.toc-t{width:100%;border-collapse:collapse;font-size:9.5pt;margin-top:4px}.toc-t th,.toc-t td{border:0;border-bottom:1px solid #D0DAD7;padding:4px 6px;text-align:left;vertical-align:top;background:none}.toc-t th{color:#0E3F45;font-weight:700}.toc-t .sn{width:46px}.toc-t .pg{width:56px;text-align:right}.toc-t a.pgn{color:inherit;text-decoration:none}.toc-t a.pgn::after{content:target-counter(attr(href url),page)}@media screen{.toc-t .pg{display:none}}';
+const tocTable=(rows,title)=>'<style>'+TOC_CSS+'</style><div class="toc-h">'+(title||"Index")+'</div><table class="toc-t"><tr><th class="sn">S. No.</th><th>Section</th><th class="pg">Page</th></tr>'+rows.map((r,i)=>'<tr><td class="sn">'+(i+1)+'</td><td>'+r[1]+'</td><td class="pg"><a class="pgn" href="#'+r[0]+'"></a></td></tr>').join("")+'</table>';
 // Contents list built from a document's section headings, placed right after its cover.
 function withContents(body){
-  const i0=body.indexOf("</section>"),hs=[];body.slice(i0<0?0:i0).replace(/<h2[^>]*>([\s\S]*?)<\/h2>/g,(m,t)=>{const x=t.replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();if(x&&!hs.includes(x))hs.push(x);return m;});
-  if(hs.length<2)return body;
-  const toc='<style>.toc-sec{border:1px solid #D0DAD7;border-radius:8px;padding:10px 14px;margin:10px 0 14px;break-inside:avoid}.toc-h{font-weight:700;color:#0E3F45;margin-bottom:4px}.toc-l{columns:2 260px;column-gap:28px;margin:0;padding-left:20px;font-size:9pt}.toc-l li{break-inside:avoid;margin:1px 0}</style><section class="toc-sec"><div class="toc-h">How this document is organised</div><ol class="toc-l">'+hs.map(h=>'<li>'+h+'</li>').join("")+'</ol></section>';
+  const i0=body.indexOf("</section>");if(i0<0)return body;const hs=[];let n=0;
+  const rest=body.slice(i0).replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/g,(m,at,t)=>{const x=t.replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();if(!x||/\bid=/.test(at))return m;const id="sec-"+(++n);hs.push([id,x]);return '<h2 id="'+id+'"'+at+'>'+t+'</h2>';});
+  if(hs.length<2)return body;body=body.slice(0,i0)+rest;
+  const toc='<style>.toc-sec{border:1px solid #D0DAD7;border-radius:8px;padding:10px 14px;margin:10px 0 14px;break-before:page;page-break-before:always}.toc-t tr{break-inside:avoid}.toc-h{font-weight:700;color:#0E3F45;margin-bottom:4px}</style><section class="toc-sec">'+tocTable(hs,"Index - how this document is organised")+'</section>';
   return i0<0?toc+body:body.slice(0,i0+10)+toc+body.slice(i0+10);
 }
 function docShell(title,body){
