@@ -438,13 +438,18 @@ async function handle(req: Request, b: any) {
     }
 
     case "access.analytics": {
-      // Every event by or about a client login, newest first.
-      const rows = await sql`select a.* from selaqui.activity a
-        where a.actor in (select username from selaqui.users where role = 'client')
-           or (a.action like 'access.%')
-           or (a.action in ('login.failed','login.expired','login.blocked') and a.actor not in ('ajay','anis'))
-        order by a.id desc limit 5000`;
-      return { events: rows.map(outActivity) };
+      // Everyone's activity for the admin: totals per person and action, active time per person, and recent events.
+      const counts = await sql`select actor, action, count(*)::int n, max(at) last from selaqui.activity where actor is not null group by actor, action`;
+      // A session is a run of activity by one person with no gap over 15 minutes (the app reports every 2 minutes while open); a sign-in starts a new one.
+      const sessions = await sql`with e as (select actor, at, action, lag(at) over (partition by actor order by at) pa from selaqui.activity where actor is not null and action not like 'login.failed' and action not like 'login.blocked' and action not like 'login.expired'),
+        s as (select actor, at, sum(case when pa is null or at - pa > interval '15 minutes' or action = 'login.ok' then 1 else 0 end) over (partition by actor order by at) sid from e),
+        g as (select actor, sid, min(at) t0, max(at) t1 from s group by actor, sid)
+        select actor, count(*)::int sessions, round(sum(extract(epoch from t1 - t0)) / 60)::int minutes, min(t0) first, max(t1) last from g group by actor`;
+      const events = await sql`select * from selaqui.activity where actor is not null and action <> 'session.ping' order by id desc limit 3000`;
+      const users = await sql`select username, display_name, role from selaqui.users`;
+      const iso = (t: any) => (t ? new Date(t).toISOString() : null);
+      return { counts: counts.map((r: any) => ({ ...r, last: iso(r.last) })), sessions: sessions.map((r: any) => ({ ...r, first: iso(r.first), last: iso(r.last) })),
+        events: events.map(outActivity), users };
     }
 
     default:

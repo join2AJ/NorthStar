@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.63";
+const VERSION="2026-11-03.64";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1386,7 +1386,7 @@ function renderTrail(m){
   h+='<div class="card '+(ok?"trail-ok":"trail-bad")+'" style="margin-top:10px"><div class="card-t">'+(ok?"✓ Chain intact":"⚠ Chain broken")+'</div><div class="small" style="margin-top:3px">'+
      c.entries.rows+' log entries · '+c.activity.rows+' trail records checked just now'+(ok?'':'<br>First mismatch: '+esc(c.entries.firstBad||c.activity.firstBad))+'</div>'+
      '<div class="btn-row"><button class="btn sm" data-act="trailreload">Re-check</button></div></div>';
-  let list=T.rows;if(ui.feedWho!=="all")list=list.filter(r=>r.actor===ui.feedWho);
+  let list=T.rows.filter(r=>r.action!=="session.ping");if(ui.feedWho!=="all")list=list.filter(r=>r.actor===ui.feedWho);
   h+='<div class="seg" style="margin:0 0 10px">'+[["all","Both"],["ajay","Ajay"],["anis","Anis"]].map(([k,l])=>'<button type="button" data-act="trailwho" data-v="'+k+'" class="'+(ui.feedWho===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   h+=list.length?list.map(r=>{const u=USERS[r.actor]?r.actor:null;const d=r.detail||{};
     const what=[d.name?d.name+(d.designation?" · "+d.designation:""):"",d.amount?inr(d.amount)+(d.vendor?" · "+d.vendor:""):"",d.category&&EXP_CATM[d.category]?EXP_CATM[d.category].label:"",d.scope&&SITE[d.scope]?SITE[d.scope].name:"",d.point||"",d.status&&ST[d.status]?ST[d.status].label:"",d.severity&&SEVM[d.severity]?SEVM[d.severity].label:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):"",d.files?d.files.length+" file"+(d.files.length>1?"s":""):"",d.trigger?d.trigger:"",d.entries!=null?d.entries+" entries":""].filter(Boolean).join(" · ");
@@ -2675,7 +2675,7 @@ function renderMore(m){
    '<div id="blist" class="blist"><div class="muted">Loading…</div></div><div class="btn-row"><button class="btn" data-act="backupnow">Back up now</button></div></div>'+
    '<div class="card"><div class="card-t">Export</div><div class="small muted" style="margin:3px 0 8px">For the report: one row per audit point, or the full log of every entry.</div>'+
    '<div class="btn-row"><button class="btn primary" data-act="report">📄 Report (PDF)</button><button class="btn" data-act="csv1">Point status (CSV)</button><button class="btn" data-act="csv2">Full log (CSV)</button><button class="btn" data-act="json">Full log (JSON)</button><button class="btn" data-act="csv3">Audit trail (CSV)</button></div></div>'+
-   (isAdmin()?'<div class="card" style="border-left:5px solid var(--brand)"><div class="card-t">Client access &amp; analytics</div><div class="small muted" style="margin:3px 0 8px">Give Northstar (or anyone else) a download-only login for chosen sites and documents, for a set period (10 days by default). See when they signed in, for how long, and what they generated.</div><div class="btn-row"><button class="btn primary" data-act="access">Manage client access</button></div></div>':'')+
+   (isAdmin()?'<div class="card" style="border-left:5px solid var(--brand)"><div class="card-t">Access &amp; analytics (admin)</div><div class="small muted" style="margin:3px 0 8px">Approve report access for Northstar (or anyone else): a download-only login for chosen sites and documents, for a set period (10 days by default). See everyone\'s activity - Ajay, Anis and client logins: sign-ins, active time, entries, edits, photos, documents generated and how long they took.</div><div class="btn-row"><button class="btn primary" data-act="access">Open access &amp; analytics</button></div></div>':'')+
    '<div class="small muted" style="margin:0 0 10px;text-align:center">App version '+VERSION+'</div>'+
    '<div class="card"><div class="card-t">Before each site</div><ul class="small" style="margin:6px 0 0;padding-left:18px"><li>Tap the GPS chip and allow location.</li><li>Take one test photo and check it shows in Activity.</li><li>Check in at the gate; check out when you leave.</li><li>Before leaving, make sure the sync chip says <b>Synced</b>.</li></ul></div>';
   loadBackups();
@@ -2888,10 +2888,10 @@ const AUDITORS=["ajay","anis"];
 function leftTxt(until){const ms=Date.parse(until)-Date.now();if(!(ms>0))return "ended";const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);return d?d+" day"+(d>1?"s":"")+" "+h+" h":h?h+" h "+m+" min":m+" min";}
 const fmtIST=t=>t?fmtFull(t)+" IST":"-";
 // Usage tracking for client logins: which document, which site, how long it took.
-function trackUse(event,detail){if(isClient())api("track",{event,detail}).catch(()=>{});}
+function trackUse(event,detail){if(STATE.token)api("track",{event,detail}).catch(()=>{});}
 function trackRun(doc,site,fn){const t0=Date.now();let r;try{r=fn();}catch(e){trackUse("doc",{doc,site,ms:Date.now()-t0,ok:false});throw e;}
   Promise.resolve(r).then(()=>trackUse("doc",{doc,site,ms:Date.now()-t0}),()=>trackUse("doc",{doc,site,ms:Date.now()-t0,ok:false}));}
-setInterval(()=>{if(isClient()&&STATE.token&&!document.hidden)api("track",{event:"ping"}).catch(()=>{});},120000);
+setInterval(()=>{if(STATE.token&&!document.hidden)api("track",{event:"ping"}).catch(()=>{});},120000);
 
 function renderClientTop(){
   $("#top").innerHTML='<div class="top-row"><div class="app-title">'+LOGO+'Selaqui audit documents</div><button class="me" type="button" data-act="signout">'+av(STATE.user)+esc(USERS[STATE.user]?USERS[STATE.user].short:STATE.user)+' · Sign out</button></div>'+
@@ -2921,8 +2921,8 @@ setInterval(()=>{const el=$("#cl-left");if(el&&PROF&&PROF.accessUntil)el.textCon
 // ---- Ajay: manage client logins and see how they use them
 function openAccess(){pushSheet();ui.sheet={type:"access",view:"list",edit:null};renderSheet();loadAccess();}
 async function loadAccess(){
-  try{const [l,a]=await Promise.all([api("access.list"),api("access.analytics")]);ACC={clients:l.clients,events:a.events,err:""};}
-  catch(e){ACC={clients:(ACC&&ACC.clients)||[],events:(ACC&&ACC.events)||[],err:e.message};}
+  try{const [l,a]=await Promise.all([api("access.list"),api("access.analytics")]);ACC={clients:l.clients,events:a.events,counts:a.counts,sessions:a.sessions,users:a.users,err:""};}
+  catch(e){ACC=Object.assign({clients:[],events:[],counts:[],sessions:[],users:[]},ACC||{},{err:e.message});}
   if(ui.sheet&&ui.sheet.type==="access")renderSheet();
 }
 const partLabel=k=>{const p=PACK_PARTS.find(x=>x[0]===k);return p?p[1].replace(/ - .*$/,"").replace(/:$/,""):k;};
@@ -2944,13 +2944,13 @@ function accStats(u,ev){
     avg:(()=>{const x=docs.concat(packs).filter(e=>e.detail&&e.detail.ms);return x.length?x.reduce((a,e)=>a+e.detail.ms,0)/x.length:0;})()};
 }
 const dur=ms=>ms>=60000?(ms/60000).toFixed(1)+" min":(ms/1000).toFixed(1)+" s";
-const EVL={"login.ok":"Signed in","logout":"Signed out","login.failed":"Wrong password","login.blocked":"Blocked (too many attempts)","login.expired":"Tried after access ended","report.doc":"Opened document","report.pack":"Downloaded ZIP","session.ping":"Active","access.granted":"Access given","access.updated":"Access changed","access.removed":"Access removed"};
+const EVL={"entry.added":"Added observation","entry.edited":"Edited observation","entry.photos-added":"Added photos","entry.withdrawn":"Withdrew entry","note.added":"Added note","photo.upload":"Uploaded photos","auditee.added":"Added auditee","auditee.updated":"Updated auditee","auditee.removed":"Removed auditee","expense.added":"Added expense","password.changed":"Changed password","backup.created":"Backup made","backup.downloaded":"Downloaded backup","entries.restored":"Restored entries","entries.moved":"Moved entries","entries.folded":"Merged entries","login.ok":"Signed in","logout":"Signed out","login.failed":"Wrong password","login.blocked":"Blocked (too many attempts)","login.expired":"Tried after access ended","report.doc":"Opened document","report.pack":"Downloaded ZIP","session.ping":"Active","access.granted":"Access given","access.updated":"Access changed","access.removed":"Access removed"};
 function accessSheet(){
-  const S=ui.sheet,A=ACC,nm=u=>((A&&A.clients||[]).find(c=>c.username===u)||{}).display_name||uname(u)||"-";
-  let h='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Client access &amp; analytics</div></div><div class="sh-body">';
+  const S=ui.sheet,A=ACC,nm=u=>(((A&&A.users)||[]).find(c=>c.username===u)||((A&&A.clients)||[]).find(c=>c.username===u)||{}).display_name||uname(u)||"-";
+  let h='<div class="sh-top"><button class="x" data-act="close">Back</button><div class="sh-title">Access &amp; analytics</div></div><div class="sh-body">';
   if(!A)return h+'<div class="muted">Loading…</div></div>';
   if(A.err)h+='<div class="card" style="border-left:5px solid var(--crit)"><div class="small">Could not load: '+esc(A.err)+'</div></div>';
-  h+='<div class="seg" style="margin:0 0 12px">'+[["list","Logins"],["stats","Analytics"]].map(([k,l])=>'<button type="button" data-act="acview" data-v="'+k+'" class="'+(S.view===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
+  h+='<div class="seg" style="margin:0 0 12px">'+[["list","Northstar / client access"],["stats","Analytics - everyone"]].map(([k,l])=>'<button type="button" data-act="acview" data-v="'+k+'" class="'+(S.view===k?"on":"")+'">'+l+'</button>').join("")+'</div>';
   if(S.edit){
     const c=S.edit,nw=!!c.isNew,P=c.perms||{sites:[],items:[]},until=c.access_until||new Date(Date.now()+10*864e5).toISOString();
     h+='<div class="card"><div class="card-t">'+(nw?"Give access":"Change access - "+esc(c.display_name))+'</div>'+
@@ -2971,20 +2971,38 @@ function accessSheet(){
     h+=A.clients.map(c=>{const st=accStatus(c),P=c.perms||{};const x=accStats(c.username,A.events);
       return '<div class="card"><div class="card-h"><div><div class="card-t">'+esc(c.display_name)+' <span class="muted small">@'+esc(c.username)+'</span></div><div class="small" style="margin-top:4px"><span class="pill" style="--pc:var(--'+st[1]+')">'+esc(st[0])+'</span> until '+esc(fmtIST(c.access_until))+'</div></div></div>'+
        '<div class="small" style="margin-top:6px"><b>Sites:</b> '+(P.sites||[]).map(s=>SITE[s]?esc(SITE[s].no+". "+SITE[s].name):s).join(", ")+'<br><b>Can download:</b> '+(P.items||[]).map(k=>esc(partLabel(k))).join(", ")+(c.note?'<br><span class="muted">'+esc(c.note)+'</span>':'')+'</div>'+
-       '<div class="small muted" style="margin-top:6px">'+x.logins+' sign-in'+(x.logins===1?"":"s")+' · '+Math.round(x.mins)+' min signed in · '+x.docs.length+' document'+(x.docs.length===1?"":"s")+' · '+x.packs.length+' ZIP'+(x.packs.length===1?"":"s")+(x.last?' · last sign-in '+esc(fmtIST(x.last)):'')+'</div>'+
+       '<div class="small muted" style="margin-top:6px">'+x.logins+' sign-in'+(x.logins===1?"":"s")+' · '+(((A.sessions||[]).find(z=>z.actor===c.username)||{}).minutes||0)+' min active · '+x.docs.length+' document'+(x.docs.length===1?"":"s")+' · '+x.packs.length+' ZIP'+(x.packs.length===1?"":"s")+(x.last?' · last sign-in '+esc(fmtIST(x.last)):'')+'</div>'+
        '<div class="btn-row"><button class="btn sm" data-act="acedit" data-v="'+esc(c.username)+'">Change</button><button class="btn sm" data-act="acext" data-v="'+esc(c.username)+'">+10 days</button><button class="btn sm" data-act="actoggle" data-v="'+esc(c.username)+'">'+(c.disabled?"Enable":"Disable")+'</button><button class="btn sm danger" data-act="acdel" data-v="'+esc(c.username)+'">Remove</button></div></div>';}).join("");
     return h+'</div>';
   }
-  // analytics
-  const rows=A.clients.map(c=>[c,accStats(c.username,A.events)]);
-  h+='<div class="card"><div class="card-t">Summary</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Client</th><th>Sign-ins</th><th>Last sign-in</th><th>Time signed in</th><th>Documents</th><th>ZIPs</th><th>Avg. time to generate</th><th>Failed / late sign-ins</th></tr>'+
-    (rows.length?rows.map(([c,x])=>'<tr><td><b>'+esc(c.display_name)+'</b><div class="muted">@'+esc(c.username)+'</div></td><td class="n">'+x.logins+'</td><td>'+esc(x.last?fmtIST(x.last):"-")+'</td><td class="n">'+Math.round(x.mins)+' min</td><td class="n">'+x.docs.length+'</td><td class="n">'+x.packs.length+'</td><td class="n">'+(x.avg?dur(x.avg):"-")+'</td><td class="n">'+x.failed+'</td></tr>').join(""):'<tr><td colspan="8" class="muted">No client logins yet.</td></tr>')+'</table></div></div>';
-  const R={};for(const e of A.events.filter(e=>e.action==="report.doc"||e.action==="report.pack")){const d=e.detail||{},k=e.actor+"|"+(d.doc||"")+"|"+(d.site||"");(R[k]=R[k]||{who:e.actor,doc:d.doc||(e.action==="report.pack"?"Site pack":""),site:d.site,n:0,ms:[],last:e.at}).n++;if(d.ms)R[k].ms.push(d.ms);}
-  h+='<div class="card"><div class="card-t">What was generated</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Client</th><th>Document</th><th>Site</th><th>Times</th><th>Avg. time</th><th>Slowest</th><th>Last</th></tr>'+
-    (Object.values(R).length?Object.values(R).sort((a,b)=>b.n-a.n).map(r=>'<tr><td>'+esc(nm(r.who))+'</td><td>'+esc(r.doc)+'</td><td>'+esc(r.site&&SITE[r.site]?SITE[r.site].no+". "+SITE[r.site].name:r.site==="all"?"All sites":"-")+'</td><td class="n">'+r.n+'</td><td class="n">'+(r.ms.length?dur(r.ms.reduce((a,b)=>a+b,0)/r.ms.length):"-")+'</td><td class="n">'+(r.ms.length?dur(Math.max(...r.ms)):"-")+'</td><td>'+esc(fmtIST(r.last))+'</td></tr>').join(""):'<tr><td colspan="7" class="muted">Nothing generated yet.</td></tr>')+'</table></div></div>';
-  const rec=A.events.filter(e=>e.action!=="session.ping").slice(0,60);
-  h+='<div class="card"><div class="card-t">Recent activity</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>When (IST)</th><th>Who</th><th>What</th><th>Details</th><th class="ad-hn">Device</th></tr>'+
-    (rec.length?rec.map(e=>{const d=e.detail||{};const det=e.action==="report.doc"||e.action==="report.pack"?[d.doc,d.site&&SITE[d.site]?"Site "+SITE[d.site].no:d.site==="all"?"All sites":"",d.ms?dur(d.ms):"",d.mb?d.mb+" MB":"",d.ok===false?"failed":""].filter(Boolean).join(" · "):e.action.startsWith("access.")?(e.target||"")+(d.until?" · until "+fmtIST(d.until):""):"";
+  // analytics: everyone (Ajay, Anis and client logins)
+  const users=A.users||[],role=u=>{const x=users.find(y=>y.username===u);return x?(x.role==="admin"?"Admin + auditor":x.role==="client"?"Client (download only)":"Auditor"):"Former client";};
+  const people=[...new Set((A.counts||[]).map(c=>c.actor).concat(users.map(u=>u.username)))].filter(Boolean).sort((a,b)=>(AUDITORS.indexOf(a)+1||9)-(AUDITORS.indexOf(b)+1||9)||a.localeCompare(b));
+  const cnt=(u,re)=>(A.counts||[]).filter(c=>c.actor===u&&re.test(c.action)).reduce((s,c)=>s+c.n,0);
+  const lastOf=u=>(A.counts||[]).filter(c=>c.actor===u&&c.action!=="session.ping").map(c=>c.last).sort().pop();
+  const ses=u=>(A.sessions||[]).find(x=>x.actor===u)||{sessions:0,minutes:0};
+  const gen=u=>A.events.filter(e=>e.actor===u&&/report\.(doc|pack)/.test(e.action)&&e.detail&&e.detail.ms);
+  const hm=m=>m>=60?Math.floor(m/60)+" h "+(m%60)+" min":m+" min";
+  const who=S.who||"all",sel=e=>who==="all"||e.actor===who;
+  h+='<div class="card"><div class="card-t">Everyone at a glance</div><div class="small muted" style="margin-top:3px">Active time counts the stretches when a person was using the app (no gap over 15 minutes). Entries include observations, notes and auditees; edits are new versions of an observation.</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Person</th><th>Role</th><th>Sign-ins</th><th>Active time</th><th>Last active</th><th>Entries added</th><th>Edits</th><th>Photos</th><th>Documents</th><th>ZIPs</th><th>Avg. time to generate</th><th>Failed sign-ins</th></tr>'+
+    people.map(u=>{const g=gen(u),s=ses(u);return '<tr><td><b>'+esc(nm(u))+'</b><div class="muted">@'+esc(u)+'</div></td><td>'+esc(role(u))+'</td><td class="n">'+cnt(u,/^login\.ok$/)+'</td><td class="n">'+hm(s.minutes||0)+'</td><td>'+esc(fmtIST(lastOf(u)))+'</td><td class="n">'+cnt(u,/^(entry\.added|note\.added|auditee\.added)$/)+'</td><td class="n">'+cnt(u,/^(entry\.edited|auditee\.updated)$/)+'</td><td class="n">'+(A.events.filter(e=>e.actor===u&&e.action==="photo.upload").reduce((a,e)=>a+((e.detail&&e.detail.files||[]).filter(f=>!/-t\.jpg$/.test(f)).length),0))+'</td><td class="n">'+cnt(u,/^report\.doc$/)+'</td><td class="n">'+cnt(u,/^report\.pack$/)+'</td><td class="n">'+(g.length?dur(g.reduce((a,e)=>a+e.detail.ms,0)/g.length):"-")+'</td><td class="n">'+cnt(u,/^login\.(failed|blocked|expired)$/)+'</td></tr>';}).join("")+'</table></div></div>';
+  h+='<div class="seg" style="margin:0 0 12px;flex-wrap:wrap">'+[["all","Everyone"]].concat(people.map(u=>[u,nm(u)])).map(([k,l])=>'<button type="button" data-act="acwho" data-v="'+esc(k)+'" class="'+(who===k?"on":"")+'">'+esc(l)+'</button>').join("")+'</div>';
+  // activity by day (IST)
+  const day=t=>new Date(Date.parse(t)+19800000).toISOString().slice(0,10),days={};
+  for(const e of A.events.filter(sel)){const d=day(e.at);(days[d]=days[d]||{n:0,ent:0,ed:0,doc:0,sign:0}).n++;const D0=days[d];if(/^(entry\.added|note\.added|auditee\.added)$/.test(e.action))D0.ent++;else if(/^(entry\.edited|auditee\.updated)$/.test(e.action))D0.ed++;else if(/^report\./.test(e.action))D0.doc++;else if(e.action==="login.ok")D0.sign++;}
+  h+='<div class="card"><div class="card-t">Activity by day'+(who==="all"?"":" - "+esc(nm(who)))+'</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Day</th><th>Sign-ins</th><th>Entries added</th><th>Edits</th><th>Documents / ZIPs</th><th>All actions</th></tr>'+
+    (Object.keys(days).length?Object.keys(days).sort().reverse().map(d=>{const x=days[d];return '<tr><td>'+esc(fmtDate(d))+'</td><td class="n">'+x.sign+'</td><td class="n">'+x.ent+'</td><td class="n">'+x.ed+'</td><td class="n">'+x.doc+'</td><td class="n">'+x.n+'</td></tr>';}).join(""):'<tr><td colspan="6" class="muted">No activity.</td></tr>')+'</table></div></div>';
+  const R={};for(const e of A.events.filter(e=>sel(e)&&(e.action==="report.doc"||e.action==="report.pack"))){const d=e.detail||{},k=e.actor+"|"+(d.doc||"")+"|"+(d.site||"");(R[k]=R[k]||{who:e.actor,doc:d.doc||(e.action==="report.pack"?"Site pack":""),site:d.site,n:0,ms:[],last:e.at}).n++;if(d.ms)R[k].ms.push(d.ms);}
+  h+='<div class="card"><div class="card-t">Documents and ZIPs generated</div><div class="ad-scroll" style="margin-top:6px"><table class="ad-t"><tr><th>Person</th><th>Document</th><th>Site</th><th>Times</th><th>Avg. time</th><th>Slowest</th><th>Last</th></tr>'+
+    (Object.values(R).length?Object.values(R).sort((a,b)=>b.n-a.n).map(r=>'<tr><td>'+esc(nm(r.who))+'</td><td>'+esc(r.doc)+'</td><td>'+esc(r.site&&SITE[r.site]?SITE[r.site].no+". "+SITE[r.site].name:r.site==="all"?"All sites":"-")+'</td><td class="n">'+r.n+'</td><td class="n">'+(r.ms.length?dur(r.ms.reduce((a,b)=>a+b,0)/r.ms.length):"-")+'</td><td class="n">'+(r.ms.length?dur(Math.max(...r.ms)):"-")+'</td><td>'+esc(fmtIST(r.last))+'</td></tr>').join(""):'<tr><td colspan="7" class="muted">Nothing generated yet. Documents are counted from now on.</td></tr>')+'</table></div></div>';
+  const rec=A.events.filter(sel).slice(0,100);
+  const site=d=>d&&d.scope&&SITE[d.scope]?"Site "+SITE[d.scope].no:d&&d.site&&SITE[d.site]?"Site "+SITE[d.site].no:"";
+  h+='<div class="card"><div class="card-t">Recent activity'+(who==="all"?"":" - "+esc(nm(who)))+'</div><div class="ad-scroll" style="margin-top:6px;max-height:520px"><table class="ad-t"><tr><th>When (IST)</th><th>Who</th><th>What</th><th>Details</th><th class="ad-hn">Device</th></tr>'+
+    (rec.length?rec.map(e=>{const d=e.detail||{};const det=e.action==="report.doc"||e.action==="report.pack"?[d.doc,site(d)||(d.site==="all"?"All sites":""),d.ms?dur(d.ms):"",d.mb?d.mb+" MB":"",d.ok===false?"failed":""].filter(Boolean).join(" · ")
+      :e.action.startsWith("access.")?(e.target||"")+(d.until?" · until "+fmtIST(d.until):"")
+      :/^(entry|note)\./.test(e.action)?[site(d),d.point,d.risk?"risk "+d.risk:"",d.photos?d.photos+" photo"+(d.photos>1?"s":""):""].filter(Boolean).join(" · ")
+      :/^auditee\./.test(e.action)?[site(d),d.name].filter(Boolean).join(" · ")
+      :e.action==="photo.upload"?((d.files||[]).filter(f=>!/-t\.jpg$/.test(f)).length+" photo(s)"):"";
       return '<tr><td>'+esc(fmtFull(e.at))+'</td><td>'+esc(nm(e.actor))+'</td><td>'+esc(EVL[e.action]||e.action)+'</td><td>'+esc(det)+'</td><td class="ad-hn muted">'+esc(((e.ua||"").match(/\(([^)]+)\)/)||[,""])[1].slice(0,40))+'</td></tr>';}).join(""):'<tr><td colspan="5" class="muted">No activity yet.</td></tr>')+'</table></div></div>';
   return h+'</div>';
 }
@@ -3028,7 +3046,7 @@ async function doLogin(){
     saveProf({username:r.username,name:r.name,role:r.role||"auditor",perms:r.perms||null,accessUntil:r.accessUntil||null});
     STATE.user=r.username;STATE.token=r.token;lsSet("sa.user",r.username);lsSet("sa.token",r.token);
     if(!isClient())startGeo();render();scheduleSync(50);setTimeout(()=>loadResources(true),1500);
-    if(isClient())api("track",{event:"ping"}).catch(()=>{});
+    api("track",{event:"ping"}).catch(()=>{});
   }catch(e){$("#l-err").textContent=e.name==="AbortError"?"No response. Check the signal and try again.":e.message;btn.disabled=false;btn.textContent="Sign in";}
 }
 function signOut(expired,msg){
@@ -3072,6 +3090,7 @@ document.addEventListener("click",async ev=>{
     case "mkopen":makeOpenPoints();break;
     case "access":openAccess();break;
     case "acview":ui.sheet.view=v;ui.sheet.edit=null;renderSheet();break;
+    case "acwho":ui.sheet.who=v;renderSheet();break;
     case "acreload":loadAccess();break;
     case "acnew":ui.sheet.edit={isNew:true,perms:{sites:[],items:PACK_PARTS.map(x=>x[0])},access_until:new Date(Date.now()+10*864e5).toISOString()};renderSheet();break;
     case "acedit":ui.sheet.edit=Object.assign({},(ACC.clients||[]).find(x=>x.username===v));renderSheet();break;
