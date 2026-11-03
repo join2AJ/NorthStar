@@ -362,6 +362,13 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
   body.sheet-open .v-list #rows{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .16s ease-out}@keyframes up{from{transform:translateY(20px);opacity:.5}to{transform:none;opacity:1}}}
+.zt-r{display:flex;align-items:flex-start;gap:4px}.zt-b{white-space:pre;flex:none}.zt-f{overflow-wrap:anywhere;min-width:0}
+.zt-n{flex:none;font:700 10px/1.6 system-ui,sans-serif;padding:0 5px;margin-top:1px;border-radius:5px;background:var(--brand);color:#fff}
+.rep-banner{display:flex;gap:12px;align-items:center;margin:20px 0 4px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,var(--brand),#1d7f8c);color:#fff;animation:repPulse 2.2s ease-out 3;scroll-margin-top:130px}
+.rep-banner.flash{animation:repPulse 1.1s ease-out 2}.rep-ic{font-size:30px;line-height:1}.rep-t{font:700 19px/1.25 system-ui,sans-serif}.rep-s{font-size:13px;opacity:.92;margin-top:2px}
+@keyframes repPulse{0%{box-shadow:0 0 0 0 rgba(43,179,177,.7)}70%{box-shadow:0 0 0 14px rgba(43,179,177,0)}100%{box-shadow:0 0 0 0 rgba(43,179,177,0)}}
+.wv{display:inline-block;animation:wv 1s ease-in-out 3;transform-origin:70% 80%}@keyframes wv{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg) scale(1.15)}75%{transform:rotate(12deg) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.rep-banner,.wv{animation:none}}
 </style>
 </head>
 <body>
@@ -384,7 +391,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-03.65";
+const VERSION="2026-11-03.66";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -963,6 +970,7 @@ const ICON={
 const LOGO='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>';
 function renderTop(){
   if(!STATE.user){$("#top").innerHTML="";return;}
+  if(isClient()){renderClientTop();return;}
   const g=GEO.last,st=GEO.state;
   const gl=st==="ok"&&g?"GPS ±"+Math.round(g.acc)+" m":st==="wait"?"Finding GPS…":st==="denied"?"GPS blocked":st==="unsupported"?"No GPS":"Turn on GPS";
   const gc=st==="ok"?"ok":st==="wait"?"wait":st==="idle"?"":"bad";
@@ -1594,7 +1602,7 @@ function reportSheet(){
    '<div class="muted small">Each document opens in a new tab with a <b>Print / Save as PDF</b> bar at the top. Tap it and choose <b>Save as PDF</b> (on iPhone: Share → Print → pinch out to get the PDF).</div>'+
    '<div class="card" style="margin-top:10px;border-left:4px solid #0E5A61"><div class="card-t">📦 Site pack (ZIP)</div><div class="small muted" style="margin:3px 0 8px">Pick one site, or All sites for one ZIP with a folder per site (checklist, SOP set and the all-sites KML once in 0_Common). Tick what to include below. Allow a few minutes per site and keep this screen open.</div>'+
    '<select id="zp-site">'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'<option value="all">All sites - one ZIP, a folder per site</option></select>'+
-   '<div class="small" style="margin:10px 0 4px;font-weight:700">Include in the ZIP (tick what you need)</div><div id="zp-parts" style="display:grid;gap:6px">'+PACK_PARTS.map(([k,l])=>{const on=packSel().includes(k);return '<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'"'+(on?" checked":"")+' style="width:20px;height:20px;flex:none">'+esc(l)+'</label>';}).join("")+'</div>'+
+   '<div class="small" style="margin:10px 0 4px;font-weight:700">Include in the ZIP (tick what you need)</div><div id="zp-parts" style="display:grid;gap:6px">'+(PACK_NUM=null,"")+PACK_PARTS.map(([k,l])=>{const on=packSel().includes(k);return '<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'"'+(on?" checked":"")+' style="width:20px;height:20px;flex:none">'+esc(l)+'</label>';}).join("")+'</div>'+
    '<div class="btn-row" style="margin-top:6px"><button class="btn sm" data-act="zpall" data-v="1">Select all</button><button class="btn sm" data-act="zpall" data-v="0">Clear</button></div>'+
    ZIP_TREE_BOX+'<div class="btn-row"><button class="btn primary" data-act="mkpack">📦 Download site pack</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>'+
    '<span class="lbl">Site (for deliverables 2, 3 and 4)</span><select id="r-site"><option value="all">All sites</option>'+SITES.map(s=>'<option value="'+s.id+'"'+(r.site===s.id?" selected":"")+'>'+esc(s.no+" · "+s.name)+'</option>').join("")+'</select>'+
@@ -1969,6 +1977,10 @@ async function captureDoc(fn,...a){DOC_CAP={};try{fn(...a);await DOC_CAP.p;retur
 const PACK_PARTS=[["1","1. Site photos (full size) with photo index"],["2","2. Excel - risk matrix, auditees, findings with photos in the row"],["3","3. Findings PDF - photos in each row"],["4","4. Findings PDF - table, then photos"],["5","5. Deliverables (PDF):"],["5.1","5.1 Security Audit Checklist"],["5.2","5.2 Security Audit Report"],["5.3","5.3 Site Security Plan (SSP)"],["5.4","5.4 Operational Requirement (OR)"],["5.5","5.5 Corporate Security SOP Set"],["6","6. KML map file - site perimeter and location pin (opens in Google Earth)"]];
 document.addEventListener("change",ev=>{const t=ev.target;if(!t||!t.closest||!t.closest("#zp-parts"))return;const all=[...document.querySelectorAll("#zp-parts input")],kids=all.filter(x=>x.value.startsWith("5.")),par=all.find(x=>x.value==="5");
   if(t===par)kids.forEach(x=>x.checked=par.checked);else if(kids.includes(t)&&par)par.checked=kids.some(x=>x.checked);});
+let PACK_NUM=null;
+function setPackNums(keys){const m={};let n=0,sub=0;PACK_PARTS.forEach(([k])=>{if(!keys.includes(k))return;if(k.includes(".")){m[k]=(m[k.split(".")[0]]||k.split(".")[0])+"."+(++sub);}else{m[k]=String(++n);sub=0;}});PACK_NUM=m;}
+const pnum=k=>(PACK_NUM&&PACK_NUM[k])||k;
+const plabel=k=>{const p=PACK_PARTS.find(x=>x[0]===k);return pnum(k)+(k.includes(".")?" ":". ")+p[1].replace(/^\d+(\.\d+)?\.? /,"");};
 const packSel=()=>{const v=lsGet("sa.packParts");return v?v.split(","):PACK_PARTS.map(x=>x[0]);};
 let packBusy=false;
 async function makePack(v,sel){
@@ -1987,7 +1999,7 @@ async function makePack(v,sel){
     if(all&&has("6"))add("0_Common/Dixon_Selaqui_Site_Map_All_Sites.kml",new TextEncoder().encode(sitesKML(sites)));
     for(const [si,sc] of sites.entries()){
       const tag=siteTag(sc),dir=all?tag+"/":"",P=m=>prog((all?"Site "+(si+1)+"/"+sites.length+" · ":"")+"Site "+SITE[sc].no+": "+m);
-      const pf=has("1")||has("4")?await photoFiles(allPhotos().filter(x=>x.e.scope===sc&&(has("1")||rowsHasPhoto(sc,x.ph.p))),dir+"1_Photos/",m=>P("photos "+m)):{files:[],byPath:{}};
+      const pf=has("1")||has("4")?await photoFiles(allPhotos().filter(x=>x.e.scope===sc&&(has("1")||rowsHasPhoto(sc,x.ph.p))),dir+pnum("1")+"_Photos/",m=>P("photos "+m)):{files:[],byPath:{}};
       if(has("1"))pf.files.forEach(f=>add(f.name,f.data));pf.files=null;
       const rows=packRows(sc),ents=D.obs.filter(e=>e.scope===sc);
       const tPaths=has("2")||has("3")||has("5.2")?[...new Set(ents.flatMap(e=>(e.photos||[]).map(p=>p.t)))]:[];
@@ -1999,12 +2011,12 @@ async function makePack(v,sel){
         for(const p of fPaths){const b=pf.byPath[p]?new Blob([pf.byPath[p]],{type:"image/jpeg"}):fb[p];const im=b?await imgData(b,1100,0.72):null;if(im)med[p]=im;}
         P("PDF with photo annex");add(dir+pdfNameX("Findings then Photos",sc)+".pdf",await packAnnexPdf(sc,rows,med));}
       pf.byPath=null;
-      if(has("5.1")&&!common.cl){common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));add((all?"0_Common/":"5_Deliverables/")+pdfName(1,"Security Audit Checklist")+".pdf",common.cl);}
+      if(has("5.1")&&!common.cl){common.cl=await htmlToPdf(checklistHTML(),m=>P("Deliverable 1 checklist - "+m));add((all?"0_Common/":pnum("5")+"_Deliverables/")+pdfName(1,"Security Audit Checklist")+".pdf",common.cl);}
       const urls={};for(const p of tPaths)if(tb[p]){const u=URL.createObjectURL(tb[p]);urls[p]=u;blobUrls0.push(u);}
-      if(has("5.2"))add(dir+"5_Deliverables/"+pdfName(2,"Security Audit Report",sc)+".pdf",await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m)));
-      if(has("5.3"))add(dir+"5_Deliverables/"+pdfName(3,"Site Security Plan",sc)+".pdf",await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m)));
-      if(has("5.4"))add(dir+"5_Deliverables/"+pdfName(4,"Operational Requirement",sc)+".pdf",await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m)));
-      if(has("5.5")&&!common.sop){common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));add((all?"0_Common/":"5_Deliverables/")+pdfName(5,"Corporate Security SOP Set")+".pdf",common.sop);}
+      if(has("5.2"))add(dir+pnum("5")+"_Deliverables/"+pdfName(2,"Security Audit Report",sc)+".pdf",await htmlToPdf(reportHTML({site:sc,period:"all",photos:true},[sc],ents,urls),m=>P("Deliverable 2 report - "+m)));
+      if(has("5.3"))add(dir+pnum("5")+"_Deliverables/"+pdfName(3,"Site Security Plan",sc)+".pdf",await htmlToPdf(await captureDoc(makeSSP,sc),m=>P("Deliverable 3 SSP - "+m)));
+      if(has("5.4"))add(dir+pnum("5")+"_Deliverables/"+pdfName(4,"Operational Requirement",sc)+".pdf",await htmlToPdf(await captureDoc(makeOR,sc),m=>P("Deliverable 4 OR - "+m)));
+      if(has("5.5")&&!common.sop){common.sop=await htmlToPdf(await captureDoc(makeSOPSet),m=>P("Deliverable 5 SOP set - "+m));add((all?"0_Common/":pnum("5")+"_Deliverables/")+pdfName(5,"Corporate Security SOP Set")+".pdf",common.sop);}
       if(has("6"))add(dir+pdfNameX("Site Map",sc)+".kml",new TextEncoder().encode(sitesKML([sc])));
       while(blobUrls0.length)URL.revokeObjectURL(blobUrls0.pop());
     }
@@ -2899,15 +2911,15 @@ function renderClientTop(){
 }
 function renderClient(m){
   const sites=clientSiteIds(),until=PROF.accessUntil,docs=[["5.1","mkchecklist","Security Audit Checklist",false],["5.2","mkreport","Security Audit Report",true],["5.3","mkssp","Site Security Plan (SSP)",true],["5.4","mkor","Operational Requirement (OR)",true],["5.5","mksop","Corporate Security SOP Set",false]].filter(d=>clientCan(d[0]));
-  const parts=PACK_PARTS.filter(([k])=>clientCan(k)||(k==="5"&&docs.length));
+  const parts=PACK_PARTS.filter(([k])=>clientCan(k)||(k==="5"&&docs.length));setPackNums(parts.map(x=>x[0]));
   const siteOpts=sel=>sites.map(s=>'<option value="'+s+'"'+(s===sel?" selected":"")+'>'+esc(SITE[s].no+" · "+SITE[s].name)+'</option>').join("");
   const ready=STATE.lastSync&&D&&D.obs&&D.obs.length;
-  let h='<div class="card" style="margin-top:4px;background:var(--brand-soft);border-color:var(--brand)"><div style="font:400 24px/1.25 Georgia,\'Times New Roman\',serif;color:var(--ink)">Welcome, '+esc(uname(STATE.user))+'</div>'+
+  let h='<div class="card" style="margin-top:4px;background:var(--brand-soft);border-color:var(--brand)"><div style="font:400 24px/1.25 Georgia,\'Times New Roman\',serif;color:var(--ink)"><span class="wv">🎉</span> Welcome, '+esc(uname(STATE.user))+'</div>'+
      '<p style="margin:8px 0 0;font-size:15px">Congratulations - the security audit of the Dixon Technologies sites at Selaqui, Dehradun, carried out from <b>'+AUDIT_PERIOD+'</b>, has been completed successfully.</p>'+
-     '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports one by one or together as a ZIP.</p>'+
+     '<p style="margin:6px 0 0;font-size:15px">The audit reports are ready. Review the combined risk picture below, then download the reports one by one or together as a ZIP.</p><div class="btn-row"><button class="btn primary" data-act="toreports">📥 Go to the reports</button></div>'+
      '<div class="small muted" style="margin-top:8px">Dixon Technologies (India) Limited · Northstar Safety Systemz · ref. NSS/DTIL/SECA/2026-07/01</div></div>';
   if(ready)h+='<div class="h-page" style="margin-top:16px">Combined risk picture</div>'+auditDashHTML();
-  h+='<div class="h-page" style="margin-top:16px">Reports</div>';
+  h+='<div id="cl-reports" class="rep-banner"><div class="rep-ic">📥</div><div><div class="rep-t">Reports - download here</div><div class="rep-s">Your access, the PDF documents and the ZIP download are in this section.</div></div></div>';
   h+='<div class="card" style="margin-top:12px;border-left:5px solid var(--brand)"><div class="card-t">Your access</div><div class="small" style="margin-top:4px">Signed in as <b>'+esc(uname(STATE.user))+'</b>. You can download the reports for '+sites.map(s=>esc(SITE[s].no+". "+SITE[s].name)).join(", ")+'.</div>'+
      '<div style="margin-top:8px;font-size:15px"><b id="cl-left">Available for '+esc(leftTxt(until))+'</b> <span class="muted small">· until '+esc(fmtIST(until))+'</span></div>'+
      '<div class="small muted" style="margin-top:4px">After that the documents are no longer available from this login. Contact Ajay Kumar (Northstar) to extend access.</div></div>';
@@ -2917,9 +2929,22 @@ function renderClient(m){
      '<div class="btn-row" style="flex-wrap:wrap">'+docs.map(d=>'<button class="btn primary" data-act="'+d[1]+'"'+(ready?"":" disabled")+'>📄 '+esc(d[2])+'</button>').join("")+'</div></div>';
   if(parts.length)h+='<div class="card"><div class="card-t">📦 Download as ZIP</div><div class="small muted" style="margin:3px 0 8px">Tick what to include. Allow a few minutes per site and keep this screen open.</div>'+
      '<select id="zp-site">'+siteOpts(sites[0])+(sites.length>1?'<option value="all">All sites - one ZIP, a folder per site</option>':'')+'</select>'+
-     '<div id="zp-parts" style="display:grid;gap:6px;margin-top:8px">'+parts.map(([k,l])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'" checked style="width:20px;height:20px;flex:none">'+esc(l)+'</label>').join("")+'</div>'+
+     '<div id="zp-parts" style="display:grid;gap:6px;margin-top:8px">'+parts.map(([k])=>'<label style="display:flex;gap:8px;align-items:flex-start;'+(k.length>1?"margin-left:26px;":"font-weight:600;")+'"><input type="checkbox" value="'+k+'" checked style="width:20px;height:20px;flex:none">'+esc(plabel(k))+'</label>').join("")+'</div>'+
      ZIP_TREE_BOX+'<div class="btn-row"><button class="btn primary" data-act="mkpack"'+(ready?"":" disabled")+'>📦 Download ZIP</button></div><div id="zp-prog" class="small muted" style="margin-top:6px"></div></div>';
   m.innerHTML=h;updateZipTree();
+  const ck="sa.cheer."+String(STATE.token||"").slice(-12);let seen=false;try{seen=!!sessionStorage.getItem(ck);sessionStorage.setItem(ck,"1");}catch(e){}
+  if(!seen&&!window.__cheered){window.__cheered=1;setTimeout(confettiBlast,300);}
+}
+function confettiBlast(){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const c=document.createElement("canvas"),W=innerWidth,H=innerHeight,dpr=devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;
+  c.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999";document.body.appendChild(c);
+  const x=c.getContext("2d");x.scale(dpr,dpr);const cols=["#2bb3b1","#f2c14e","#e4572e","#4c7bd9","#7bc47f","#ffffff"],P=[];
+  for(const [ox,dir] of [[0,1],[W,-1],[W/2,0]])for(let i=0;i<70;i++){const a=dir===0?(-Math.PI/2+(Math.random()-.5)*1.2):(dir>0?-Math.PI/3:-2*Math.PI/3)+(Math.random()-.5)*.7,v=(9+Math.random()*9)*Math.min(1.4,Math.max(.8,H/800));
+    P.push({x:ox,y:dir===0?H:H*.75,vx:Math.cos(a)*v,vy:Math.sin(a)*v,w:6+Math.random()*6,h:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length]});}
+  const t0=performance.now();(function f(t){const k=t-t0;x.clearRect(0,0,W,H);
+    P.forEach(p=>{p.vy+=.28;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.globalAlpha=Math.max(0,1-k/3200);x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,p.h);x.restore();});
+    if(k<3200)requestAnimationFrame(f);else c.remove();})(t0);
 }
 setInterval(()=>{const el=$("#cl-left");if(el&&PROF&&PROF.accessUntil)el.textContent="Available for "+leftTxt(PROF.accessUntil);},60000);
 
@@ -3037,36 +3062,36 @@ function zipTreeText(v,sel){
   const has=k=>sel.includes(k)||(k.startsWith("5.")&&sel.includes("5")&&!sel.some(x=>x.startsWith("5.")));
   const all=v==="all",scs=all?SITES.filter(s=>D&&D.obs&&D.obs.some(e=>e.scope===s.id)).map(s=>s.id):[v];
   const ph=sc=>D&&D.obs?D.obs.filter(e=>e.scope===sc).reduce((a,e)=>a+(e.photos||[]).length,0):0;
-  const lines=[],leaf=(arr,pre)=>arr.forEach((x,i)=>{const last=i===arr.length-1;if(typeof x==="string")lines.push(pre+(last?"└─ ":"├─ ")+x);else{lines.push(pre+(last?"└─ ":"├─ ")+x[0]);leaf(x[1],pre+(last?"   ":"│  "));}});
+  const lines=[],leaf=(arr,pre)=>arr.forEach((x,i)=>{const last=i===arr.length-1,b=pre+(last?"└─ ":"├─ ");if(typeof x==="string"||!Array.isArray(x[1]))lines.push([b,typeof x==="string"?x:x[0],typeof x==="string"?"":x[1]]);else{lines.push([b,x[0],x[2]||""]);leaf(x[1],pre+(last?"   ":"│  "));}});
   const site=sc=>{const t=[];
-    if(has("1"))t.push(["1_Photos/  ("+ph(sc)+" photos)",["Photo_index.csv","S"+SITE[sc].no+"-AD-31-P01_….jpg  …"]]);
-    if(has("2"))t.push(pdfNameX("Findings Workbook",sc)+".xlsx");
-    if(has("3"))t.push(pdfNameX("Findings Photos in Rows",sc)+".pdf");
-    if(has("4"))t.push(pdfNameX("Findings then Photos",sc)+".pdf");
-    const d=[];if(!all&&has("5.1"))d.push(pdfName(1,"Security Audit Checklist")+".pdf");
-    if(has("5.2"))d.push(pdfName(2,"Security Audit Report",sc)+".pdf");if(has("5.3"))d.push(pdfName(3,"Site Security Plan",sc)+".pdf");if(has("5.4"))d.push(pdfName(4,"Operational Requirement",sc)+".pdf");
-    if(!all&&has("5.5"))d.push(pdfName(5,"Corporate Security SOP Set")+".pdf");
-    if(d.length)t.push(["5_Deliverables/",d]);
-    if(has("6"))t.push(pdfNameX("Site Map",sc)+".kml");
+    if(has("1"))t.push([pnum("1")+"_Photos/  ("+ph(sc)+" photos)",["Photo_index.csv","S"+SITE[sc].no+"-AD-31-P01_….jpg  …"],pnum("1")]);
+    if(has("2"))t.push([pdfNameX("Findings Workbook",sc)+".xlsx",pnum("2")]);
+    if(has("3"))t.push([pdfNameX("Findings Photos in Rows",sc)+".pdf",pnum("3")]);
+    if(has("4"))t.push([pdfNameX("Findings then Photos",sc)+".pdf",pnum("4")]);
+    const d=[];if(!all&&has("5.1"))d.push([pdfName(1,"Security Audit Checklist")+".pdf",pnum("5.1")]);
+    if(has("5.2"))d.push([pdfName(2,"Security Audit Report",sc)+".pdf",pnum("5.2")]);if(has("5.3"))d.push([pdfName(3,"Site Security Plan",sc)+".pdf",pnum("5.3")]);if(has("5.4"))d.push([pdfName(4,"Operational Requirement",sc)+".pdf",pnum("5.4")]);
+    if(!all&&has("5.5"))d.push([pdfName(5,"Corporate Security SOP Set")+".pdf",pnum("5.5")]);
+    if(d.length)t.push([pnum("5")+"_Deliverables/",d,pnum("5")]);
+    if(has("6"))t.push([pdfNameX("Site Map",sc)+".kml",pnum("6")]);
     return t;};
   let top;
-  if(all){const c=[];if(has("6"))c.push("Dixon_Selaqui_Site_Map_All_Sites.kml");if(has("5.1"))c.push(pdfName(1,"Security Audit Checklist")+".pdf");if(has("5.5"))c.push(pdfName(5,"Corporate Security SOP Set")+".pdf");
-    top=(c.length?[["0_Common/",c]]:[]).concat(scs.map(sc=>[siteTag(sc)+"/",site(sc)]));}
+  if(all){const c=[];if(has("6"))c.push(["Dixon_Selaqui_Site_Map_All_Sites.kml",pnum("6")]);if(has("5.1"))c.push([pdfName(1,"Security Audit Checklist")+".pdf",pnum("5.1")]);if(has("5.5"))c.push([pdfName(5,"Corporate Security SOP Set")+".pdf",pnum("5.5")]);
+    top=(c.length?[["0_Common/  (all sites)",c,""]]:[]).concat(scs.map(sc=>[siteTag(sc)+"/  (Site "+SITE[sc].no+" · "+SITE[sc].name+")",site(sc),""]));}
   else top=site(v);
-  lines.push(pdfNameX("Audit Pack",all?"all":v)+".zip");leaf(top,"");
-  return lines.join("\n");
+  lines.push(["",pdfNameX("Audit Pack",all?"all":v)+".zip"+(all?"":"  (Site "+SITE[v].no+" · "+SITE[v].name+")"),""]);leaf(top,"");
+  return lines.map(([b,n,k])=>'<div class="zt-r"><span class="zt-b">'+esc(b)+'</span>'+(k?'<span class="zt-n">'+esc(k)+'</span>':'')+'<span class="zt-f">'+esc(n)+'</span></div>').join("");
 }
 function zipWhatHTML(sel){
-  const keys=Object.keys(PACK_WHAT).filter(k=>sel.includes(k)||(k.startsWith("5.")&&sel.includes("5")&&!sel.some(x=>x.startsWith("5."))));
-  return keys.length?'<ul class="small" style="margin:6px 0 0;padding-left:18px">'+keys.map(k=>'<li><b>'+esc(PACK_PARTS.find(p=>p[0]===k)[1].replace(/:$/,""))+'</b> - '+esc(PACK_WHAT[k])+'</li>').join("")+'</ul>':'<div class="small muted">Tick at least one item.</div>';
+  const keys=PACK_PARTS.map(x=>x[0]).filter(k=>PACK_WHAT[k]).filter(k=>sel.includes(k)||(k.startsWith("5.")&&sel.includes("5")&&!sel.some(x=>x.startsWith("5."))));
+  return keys.length?'<ul class="small" style="margin:6px 0 0;padding-left:18px">'+keys.map(k=>{const w=PACK_WHAT[k],i=w.indexOf(" - ");return '<li><b>'+esc(pnum(k)+" "+(i>0&&i<45?w.slice(0,i):plabel(k).replace(/^[\d.]+\.? /,"").replace(/ - .*$/,"").replace(/:$/,"")))+'</b> - '+esc(i>0&&i<45?w.slice(i+3):w)+'</li>';}).join("")+'</ul>':'<div class="small muted">Tick at least one item.</div>';
 }
 function updateZipTree(){
   const t=$("#zp-tree"),w=$("#zp-what"),s=$("#zp-site");if(!t||!s)return;
   const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);
-  t.textContent=sel.length?zipTreeText(s.value,sel):"Tick at least one item to include.";if(w)w.innerHTML=zipWhatHTML(sel);
+  t.innerHTML=sel.length?zipTreeText(s.value,sel):"Tick at least one item to include.";if(w)w.innerHTML=zipWhatHTML(sel);
 }
 document.addEventListener("change",ev=>{const t=ev.target;if(t&&t.closest&&(t.closest("#zp-parts")||t.id==="zp-site"))setTimeout(updateZipTree,0);});
-const ZIP_TREE_BOX='<div class="small" style="margin-top:12px;font-weight:700">What the ZIP will contain</div><pre id="zp-tree" style="margin:6px 0 0;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre;overflow-x:auto"></pre><div id="zp-what"></div>';
+const ZIP_TREE_BOX='<div class="small" style="margin-top:12px;font-weight:700">What the ZIP will contain</div><div class="small muted">The number in each box matches the ticked item above.</div><div id="zp-tree" style="margin:6px 0 0;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace"></div><div id="zp-what"></div>';
 
 /* ================= login ================= */
 let loginWho="";
@@ -3152,6 +3177,7 @@ document.addEventListener("click",async ev=>{
     case "actoggle":accQuick(v,b=>{b.disabled=!b.disabled;});break;
     case "acdel":if(confirm("Remove the login @"+v+"? They will no longer be able to sign in. Their activity stays in the audit trail.")){api("access.delete",{username:v}).then(loadAccess).catch(e=>toast(e.message,4000));}break;
     case "mkpack":{const sel=[...document.querySelectorAll("#zp-parts input:checked")].map(x=>x.value);if(!sel.length){toast("Tick at least one item to include.",3000);break;}lsSet("sa.packParts",sel.join(","));makePack($("#zp-site").value,sel);break;}
+    case "toreports":{const r=$("#cl-reports");if(r){r.scrollIntoView({behavior:"smooth",block:"start"});r.classList.remove("flash");void r.offsetWidth;r.classList.add("flash");}break;}
     case "zpall":document.querySelectorAll("#zp-parts input").forEach(x=>x.checked=v==="1");updateZipTree();break;
     case "photozip":{let l=allPhotos();if(ui.feedWho!=="all")l=l.filter(x=>x.e.author===ui.feedWho);if(ui.feedSite!=="all")l=l.filter(x=>x.e.scope===ui.feedSite);
       photosZip(l,"Selaqui_photos_"+(ui.feedSite==="all"?"all-sites":"site"+SITE[ui.feedSite].no)+(ui.feedWho==="all"?"":"_"+ui.feedWho)+"_"+dayKey(new Date().toISOString())+".zip");break;}
