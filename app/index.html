@@ -384,7 +384,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center;
 
 /* ================= configuration ================= */
 const API="https://zfinxpsezesqzskhaqad.supabase.co/functions/v1/selaqui-audit";
-const VERSION="2026-11-02.59";
+const VERSION="2026-11-03.60";
 const USERS={ajay:{name:"Ajay Kumar",short:"Ajay",ini:"AK"},anis:{name:"Anis Rao",short:"Anis",ini:"AR"}};
 
 /* ================= reference data ================= */
@@ -1665,7 +1665,7 @@ function checklistHTML(){
    'table{width:100%;border-collapse:collapse;margin:4px 0 8px;font-size:8.8pt}td:first-child{white-space:nowrap}th,td{border:1px solid #C9D3D0;padding:4px 5px;text-align:left;vertical-align:top}th{background:#E6EDEB}tr{page-break-inside:avoid}.bx{width:16%;height:22px}.kv th{width:24%}.muted{color:#5E7079;font-size:8.5pt}.site{page-break-before:always}'+
    RISK_CSS+'.refs{font-size:9pt;margin:4px 0;padding-left:18px}'+
    'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+pdfName(1,"Security Audit Checklist")+'</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+b+'</body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+pdfName(1,"Security Audit Checklist")+'</title><style>'+css+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+withContents(b)+'</body></html>';
 }
 function reportHTML(r,scopes,ents,urls){
   const E=esc,now=new Date().toISOString();
@@ -1683,28 +1683,37 @@ function reportHTML(r,scopes,ents,urls){
    '<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>E(u.name)).join(", ")+' · Northstar audit team</td></tr><tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr>'+(r.period!=="all"?'<tr><th>Entry log</th><td>'+E(period)+' only</td></tr>':'')+
    revRows(2,r.site)+'<tr><th>Classification</th><td>Confidential - Dixon management and Northstar only</td></tr></table>'+revHist(r.site)+
    '<div class="cv-sum"><div class="cv-sum-t">Findings by current risk</div>'+chips(allC)+'</div>'+
-   '<div class="cv-toc"><b>Contents</b><ol>'+(scopes.length>1?'<li>Risk across sites</li>':'')+'<li>Risk assessment methodology</li>'+scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' - at a glance, findings, good practices, status of every point'+(r.photos?', photographic evidence':'')+'</li>').join("")+'</ol></div>'+
-   delivAboutHTML(2)+'<p class="note">Compiled from the Selaqui audit field log. The field log is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
+   '<div class="cv-toc"><b>How this report is organised</b><ol>'+
+   '<li>About this report - purpose, scope and how the observations were agreed (this page)</li>'+
+   '<li>Risk assessment methodology and the 5 × 5 risk matrix</li>'+
+   '<li>Critical risks - findings rated 20-25, with their photographic evidence numbers</li>'+
+   (scopes.length>1?'<li>Dixon sites in Selaqui and risk across sites</li>':'')+
+   scopes.map(sc=>'<li>'+E(SITE[sc].no+". "+SITE[sc].name)+' - at a glance, location, auditees, coverage, risk profile, findings (photographs below each finding), good practices, status of every point and the field entry log</li>').join("")+'</ol></div>'+
+   delivAboutHTML(2)+'<p class="note"><b>Every observation in this document was discussed with the site auditees during the audit before it was recorded.</b> The report is compiled from the Selaqui audit field log, which is append-only and tamper-evident. The audit is on a sampling basis and reflects only the areas, records and people sampled.</p></div></section>';
+  b+='<section class="site"><h2>2. Risk assessment methodology and risk matrix</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
+  {const crit=ents.filter(e=>rsk(e)>=20&&["high","med","low"].includes(e.sev)).sort((a,b2)=>rsk(b2)-rsk(a)||(a.scope<b2.scope?-1:1));
+   b+='<section class="site"><h2>3. Critical risks</h2><div class="muted">Findings rated 20-25 (critical): interim controls within 24-72 hours and closure owned by senior management. The photographic evidence numbers refer to the photographs shown below each finding in the site section.</div>'+
+    (crit.length?'<table class="fd fd6"><colgroup><col style="width:4%"><col style="width:11%"><col style="width:17%"><col style="width:32%"><col style="width:27%"><col style="width:9%"></colgroup><thead><tr><th>#</th><th>Current risk</th><th>Site and point</th><th>Observation</th><th>Recommendation</th><th>Target</th></tr></thead>'+
+     crit.map((e,i)=>'<tr><td>'+(i+1)+'</td>'+riskCellHTML(e.extra.li,e.extra.im,"Critical")+'<td><b>'+E(SITE[e.scope]?SITE[e.scope].no+". "+SITE[e.scope].name:"")+'</b><div><b>'+E(e.item||"Other")+'</b></div>'+(e.item&&ITEM[e.item]?'<div class="muted">'+E(ITEM[e.item].text.slice(0,90))+'</div>':'')+evidLine(e)+'</td><td>'+E(e.body||"")+'</td><td>'+E(e.extra.rec||"-")+'</td>'+(e.extra.tli&&e.extra.tim?riskCellHTML(e.extra.tli,e.extra.tim):'<td class="muted">-</td>')+'</tr>').join("")+'</table>':'<p class="muted">No finding is rated critical.</p>')+'</section>';}
   if(scopes.length>1){const rows=crossRows(5);
-    b+='<section class="site"><h2>Dixon sites in Selaqui</h2>'+sitesMapHTML(null,900,560)+'<div class="mgrid" style="margin-top:10px">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell"><div class="mt"><b>'+s.no+'</b> '+E(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div></section>';
-    b+='<section class="site"><h2>Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · - not logged · n/a not assessed · · not in the site checklist.</div>'+
+    b+='<section class="site"><h2>4. Dixon sites in Selaqui</h2>'+sitesMapHTML(null,900,560)+'<div class="mgrid" style="margin-top:10px">'+SITES.filter(s=>resGeo(s.id)).map(s=>'<div class="mcell"><div class="mt"><b>'+s.no+'</b> '+E(s.name)+'</div>'+siteMapHTML(resGeo(s.id),420,260)+'</div>').join("")+'</div></section>';
+    b+='<section class="site"><h2>4. Risk across sites</h2><div class="muted">Highest current risk of each point rated Medium or above at any site, shown for every site so that common issues and differences in rating are visible. ✓ covered without risk · ✗ not available / not produced · - not logged · n/a not assessed · · not in the site checklist.</div>'+
      '<table class="xs"><tr><th>Point</th>'+SITES.map(s=>'<th>'+E(s.no)+'</th>').join("")+'</tr>'+rows.map(r=>'<tr><td><b>'+r.it.id+'</b> '+E((r.it.sec==="walk"?r.it.area:r.it.text).slice(0,70))+'</td>'+r.c.map(c=>crossCell(c,true)).join("")+'</tr>').join("")+'</table>'+
      '<div class="muted">Sites: '+SITES.map(s=>E(s.no+". "+s.name)).join(" · ")+'</div></section>';}
-  b+='<section class="site"><h2>Risk assessment methodology</h2><div class="muted">How each finding is rated. Colours in the findings tables follow this 5 × 5 matrix.</div>'+riskMethodHTML()+'</section>';
   for(const sc of scopes){
     const S=SITE[sc],its=viewItems(sc);
     const R0=resSite(sc),sf=ents.filter(e=>e.scope===sc),st0=scopeStats(sc),bc0=bandCount(sf);
     const top=sf.filter(e=>rsk(e)&&["high","med","low"].includes(e.sev)).sort((a,b2)=>rsk(b2)-rsk(a)).slice(0,5);
     b+='<section class="site"><div class="sh"><span class="badge">'+E(S.no)+'</span><div><div class="sh-n">'+E(S.name)+'</div><div class="sh-a">'+E(R0.addr||S.addr)+'</div></div></div>'+
-     '<div class="glance"><div class="gl-t">At a glance</div><div class="gl-row"><div class="gl-k"><b>'+st0.covered+' / '+st0.total+'</b><span>points covered'+(st0.na?' ('+st0.na+' desirable not assessed)':'')+'</span></div><div class="gl-k"><b>'+st0.gaps+'</b><span>gaps (not available / non-compliant)</span></div><div class="gl-k"><b>'+sf.reduce((a,e)=>a+(e.photos||[]).length,0)+'</b><span>photographs</span></div></div>'+
+     '<div class="glance"><div class="gl-t">At a glance</div><div class="gl-row"><div class="gl-k"><b>'+st0.covered+' / '+st0.total+'</b><span>points covered'+(st0.na?' ('+st0.na+' desirable not assessed)':'')+'</span></div><div class="gl-k"><b>'+sf.filter(e=>rsk(e)>=5&&["high","med","low"].includes(e.sev)).length+'</b><span>observations rated Medium risk or higher</span></div><div class="gl-k"><b>'+sf.reduce((a,e)=>a+(e.photos||[]).length,0)+'</b><span>photographs</span></div></div>'+
      chips(bc0)+(top.length?'<div class="gl-top"><b>Highest risks</b><ol>'+top.map(e=>'<li><span class="rtag r-'+riskBand(rsk(e))[1]+'">'+rsk(e)+'</span> <b>'+E(e.item||"Other")+'</b> '+E((e.body||"").split(/(?<=\.)\s/)[0].slice(0,150))+'</li>').join("")+'</ol></div>':'')+'</div>';
     const geo=resGeo(sc);if(geo)b+='<h3>Site location and perimeter</h3>'+siteMapHTML(geo,680,300)+'<h3>Location among the Dixon sites in Selaqui</h3>'+sitesMapHTML(sc,900,520);
     const v=(D.visits[sc]||[]).filter(inPeriodV=>r.period==="all"||dayKey(inPeriodV.ts)===r.period);
     if(v.length)b+='<h3>Site visits</h3><table><tr><th>When (IST)</th><th>Event</th><th>Auditor</th><th>GPS</th></tr>'+v.map(x=>'<tr><td>'+fmtFull(x.ts)+'</td><td>'+(x.status==="in"?"Checked in":"Checked out")+'</td><td>'+E(uname(x.author))+'</td><td>'+(x.geo?x.geo.lat.toFixed(5)+", "+x.geo.lng.toFixed(5):"-")+'</td></tr>').join("")+'</table>';
     const ppl=D.people[sc]||[];
     b+='<h3>Auditees</h3>'+(ppl.length?'<table><tr><th>Name</th><th>Designation</th><th>Function</th><th>Email</th><th>Mobile</th></tr>'+ppl.map(x=>'<tr><td>'+E(x.d.name)+'</td><td>'+E(x.d.designation)+'</td><td>'+E(x.d.func)+'</td><td>'+E(x.d.email)+'</td><td>'+E(x.d.mobile)+'</td></tr>').join("")+'</table>':'<p class="muted">None recorded.</p>');
-    b+='<h3>Coverage</h3><table><tr><th>Type</th><th>Points</th><th>Covered</th><th>In progress</th><th>Not covered</th><th>Gaps</th></tr>'+
-      SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+x.gaps+'</td></tr>';}).join("")+'</table>';
+    b+='<h3>Coverage</h3><table><tr><th>Type</th><th>Points</th><th>Covered</th><th>In progress</th><th>Not covered</th><th>Rated Medium or higher</th></tr>'+
+      SECTIONS.filter(([k])=>itemsFor(sc,k).length).map(([k,l])=>{const x=scopeStats(sc,k);return '<tr><td>'+l+'</td><td>'+x.total+'</td><td>'+x.covered+'</td><td>'+x.progress+'</td><td>'+x.none+'</td><td>'+sf.filter(e=>rsk(e)>=5&&["high","med","low"].includes(e.sev)&&e.item&&ITEM[e.item]&&ITEM[e.item].sec===k).length+'</td></tr>';}).join("")+'</table>';
     const skip=skippedDesirable(sc);
     if(skip.length)b+='<div class="note" style="border:1px solid #D0DAD7;border-left:4px solid #9A9A93;border-radius:6px;padding:6px 9px;margin:6px 0"><b>Scope limitation:</b> the audit concentrated on mandatory points. '+skip.length+' desirable document'+(skip.length>1?"s were":" was")+' not assessed due to time constraints ('+skip.map(it=>it.id).join(", ")+'). They are not rated and are not counted as gaps.</div>';
     const rs=e=>e.extra&&e.extra.li&&e.extra.im?e.extra.li*e.extra.im:0;
@@ -1736,7 +1745,7 @@ function reportHTML(r,scopes,ents,urls){
        (e.extra&&(e.extra.li||(e.extra.sop&&e.extra.sop.length))?'<div class="muted">'+[e.extra.li&&e.extra.im?'<span class="rtag r-'+riskBand(e.extra.li*e.extra.im)[1]+'">Risk '+(e.extra.li*e.extra.im)+" "+riskBand(e.extra.li*e.extra.im)[0]+"</span> L"+e.extra.li+" × I"+e.extra.im+(e.extra.tli&&e.extra.tim?' → target <span class="rtag r-'+riskBand(e.extra.tli*e.extra.tim)[1]+'">'+(e.extra.tli*e.extra.tim)+" "+riskBand(e.extra.tli*e.extra.tim)[0]+"</span>":""):"",(e.extra.sop||[]).length?"SOP: "+E(e.extra.sop.join(", ")):""].filter(Boolean).join(" · ")+'</div>':'')+
        (L?'<div class="muted">Will be shared by '+E(L.name)+(L.mobile?' · '+E(L.mobile):'')+(L.email?' · '+E(L.email):'')+(L.due?' · expected '+E(fmtDate(L.due)):'')+'</div>':
          ((e.evid&&e.evid.length)||e.by||e.ref?'<div class="muted">'+[E((e.evid||[]).join(", ")),e.by?"From "+E(e.by):"",e.ref?"Ref "+E(e.ref):""].filter(Boolean).join(" · ")+'</div>':''))+
-       (r.photos&&e.photos&&e.photos.length&&(shown.has(e.id)||(e.mergedInto&&shown.has(e.mergedInto)))?'<div class="muted">📷 Photos shown under the finding above.</div>':'')+(r.photos&&e.photos&&e.photos.length&&!shown.has(e.id)&&!(e.mergedInto&&shown.has(e.mergedInto))?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
+       (r.photos&&e.photos&&e.photos.length?'<div class="ph">'+e.photos.map(p=>urls[p.t]?'<figure><img src="'+E(urls[p.t])+'"><figcaption>'+E(photoRef(p.p))+'</figcaption></figure>':'').join("")+'</div>':'')+'</div>';}).join(""):'<p class="muted">No entries in this period.</p>');
     b+='</section>';
   }
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+pdfName(2,"Security Audit Report",r.site)+(r.period==="all"?"":"_entries_"+r.period)+'</title><style>'+
@@ -2054,7 +2063,15 @@ const DOC_CSS='@page{size:A4;margin:14mm 12mm}*{-webkit-print-color-adjust:exact
  '.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}@media screen and (max-width:600px){.mgrid{grid-template-columns:1fr}}'+
    '.xs td,.xs th{font-size:8pt;padding:3px 4px}.xs td:not(:first-child),.xs th:not(:first-child){text-align:center;width:34px}.xs-na{color:#8a9aa2}.evd{font-size:7.8pt;color:#0E5A61;font-weight:600;margin-top:3px}.why{font-size:8pt;color:#3C4C55;margin-top:4px;font-style:italic}.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mcell{border:1px solid #D0DAD7;border-radius:8px;padding:6px;break-inside:avoid}.mcell.on{border:2px solid #0E5A61}.mt{font-size:9.5pt;margin-bottom:4px}.mcell .muted{font-size:7.5pt}.sop{page-break-before:always}.sop h2{border:0;margin-top:0}.sop .hd td,.sop .hd th{font-size:8.6pt}'+
  'button.noprint{margin-top:16px;padding:10px 16px;font-size:12pt;border-radius:8px;border:0;background:#0E5A61;color:#fff}@media print{.noprint{display:none}}';
+// Contents list built from a document's section headings, placed right after its cover.
+function withContents(body){
+  const i0=body.indexOf("</section>"),hs=[];body.slice(i0<0?0:i0).replace(/<h2[^>]*>([\s\S]*?)<\/h2>/g,(m,t)=>{const x=t.replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();if(x&&!hs.includes(x))hs.push(x);return m;});
+  if(hs.length<2)return body;
+  const toc='<style>.toc-sec{border:1px solid #D0DAD7;border-radius:8px;padding:10px 14px;margin:10px 0 14px;break-inside:avoid}.toc-h{font-weight:700;color:#0E3F45;margin-bottom:4px}.toc-l{columns:2 260px;column-gap:28px;margin:0;padding-left:20px;font-size:9pt}.toc-l li{break-inside:avoid;margin:1px 0}</style><section class="toc-sec"><div class="toc-h">How this document is organised</div><ol class="toc-l">'+hs.map(h=>'<li>'+h+'</li>').join("")+'</ol></section>';
+  return i0<0?toc+body:body.slice(0,i0+10)+toc+body.slice(i0+10);
+}
 function docShell(title,body){
+  body=withContents(body);
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+DOC_CSS+PBAR_CSS+ABOUT_CSS+'</style></head><body>'+PBAR+body+
    '<script>function fit(){document.querySelectorAll(".smap-in").forEach(function(el){var w=+el.dataset.w,bw=el.parentNode.clientWidth;if(bw&&w)el.style.transform="scale("+Math.min(1,bw/w)+")";});}fit();addEventListener("resize",fit);addEventListener("beforeprint",fit);<\/script></body></html>';
 }
@@ -2111,6 +2128,7 @@ const docCover=(kind,sub,extra,sc)=>'<section class="cover"><div class="brand">N
   '<table class="kv"><tr><th>Client</th><td>Dixon Technologies (India) Limited</td></tr>'+(extra||"")+'<tr><th>Audit period</th><td>'+AUDIT_PERIOD+'</td></tr>'+'<tr><th>Prepared by</th><td>'+Object.values(USERS).map(u=>esc(u.name)).join(", ")+' (Northstar audit team)</td></tr>'+
   revRows(/Site Security Plan/.test(kind)?3:/Operational Requirement/.test(kind)?4:5,sc)+'<tr><th>Classification</th><td>Confidential - for Dixon management and Northstar only</td></tr></table>'+revHist(sc)+
   delivAboutHTML(/Site Security Plan/.test(kind)?3:/Operational Requirement/.test(kind)?4:5)+
+  (/Checklist/.test(kind)?'':'<p class="note"><b>Every observation in this document was discussed with the site auditees during the audit before it was recorded.</b></p>')+
   '<button class="noprint" onclick="print()">Print / Save as PDF</button></section>';
 // All Dixon pockets in Selaqui on one satellite view (sites whose perimeter has been marked).
 function sitesMapHTML(hl,W,H){
